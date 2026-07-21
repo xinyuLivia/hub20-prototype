@@ -8,9 +8,9 @@ Avant Hub 2.0 静态 HTML 原型合集，可本地打开或通过 GitHub Pages �
 
 | 入口 | 地址 |
 | --- | --- |
-| **原型导航门户** | [hub20-prototype 根路径](https://xiaoxinyu19940414-sudo.github.io/hub20-prototype/) |
-| 巡检驾驶舱 | [home-dashboard.html](https://xiaoxinyu19940414-sudo.github.io/hub20-prototype/home-dashboard.html) |
-| 项目首页 | [project-home.html](https://xiaoxinyu19940414-sudo.github.io/hub20-prototype/project-home.html) |
+| **原型导航门户** | [hub20-prototype 根路径](https://xinyulivia.github.io/hub20-prototype/) |
+| 巡检驾驶舱 | [home-dashboard.html](https://xinyulivia.github.io/hub20-prototype/home-dashboard.html) |
+| 项目首页 | [project-home.html](https://xinyulivia.github.io/hub20-prototype/project-home.html) |
 
 ## 模块一览
 
