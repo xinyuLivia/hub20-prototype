@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机/机巢实况 - 监控中心 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        .ctrl-tab { border-bottom: 2px solid transparent; color: #8b949e; }
+        .ctrl-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+        .param-label { color: #8b949e; font-size: 11px; }
+        .param-value { color: #e6edf3; font-size: 13px; font-weight: 500; }
+        .ptz-btn { background:#1e1e1e; border:1px solid #333; color:#c9d1d9; }
+        .ptz-btn:hover { border-color:#58a6ff; color:#fff; }
+        .type-pill.active { background:#1f6feb; color:#fff; border-color:#1f6feb; }
+        .dev-row.offline { opacity:.75; cursor:not-allowed; }
+        .dev-row.displayed { background:rgba(31,111,235,.14); }
+        #video-grid { display:grid; gap:2px; background:#2d2d2d; height:100%; }
+
+        .video-cell {
+            border: 1px solid #30363d;
+            background: #000;
+            position: relative;
+        }
+        .video-cell.active {
+            border-color: #58a6ff;
+        }
+        .video-placeholder {
+            background: repeating-linear-gradient(
+                45deg,
+                #161b22,
+                #161b22 10px,
+                #0d1117 10px,
+                #0d1117 20px
+            );
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>监控中心</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 监控中心二级导航 -->
+    <div class="bg-[#1e1e1e] border-b border-[#2d2d2d] px-4 flex space-x-8 text-sm shrink-0">
+        <div class="py-3 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer flex items-center">
+            <i class="fas fa-plane mr-2"></i> 无人机/机巢实况
+        </div>
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer flex items-center" onclick="location.href='camera-monitor.html'">
+            <i class="fas fa-video mr-2"></i> 摄像头监控
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- 左侧设备列表（非树状；机巢与无人机绑定展示；可分别选中；仅展示启用设备；离线不可点） -->
+        <div class="w-72 bg-[#141414] border-r border-[#2d2d2d] flex flex-col shrink-0">
+            <div class="p-2 space-y-2 shrink-0">
+                <div class="relative">
+                    <input id="dev-search" type="text" oninput="onSearch(this.value)" placeholder="搜索设备名称/SN" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                    <i class="fas fa-search absolute left-2.5 top-2 text-gray-500 text-xs"></i>
+                </div>
+                <div class="relative">
+                    <select id="type-filter" onchange="setType(this.value)" class="w-full appearance-none bg-[#1e1e1e] border border-[#333] text-xs rounded pl-3 pr-8 py-1.5 text-gray-200 focus:outline-none focus:border-[#58a6ff] cursor-pointer">
+                        <option value="all">全部类型</option>
+                        <option value="drone">无人机</option>
+                        <option value="nest">机巢</option>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-2.5 text-gray-500 text-[10px] pointer-events-none"></i>
+                </div>
+            </div>
+            <div id="dev-list" class="p-2 flex-1 overflow-y-auto custom-scrollbar space-y-2"></div>
+        </div>
+
+        <!-- 右侧主监控区 -->
+        <div class="flex-1 flex bg-[#0d1117] min-w-0">
+
+            <!-- 视频分屏区 -->
+            <div class="flex-1 flex flex-col p-2 min-w-0 min-h-0">
+                <div class="flex justify-between items-center mb-2 px-1 shrink-0">
+                    <div class="flex space-x-1 bg-[#1e1e1e] rounded border border-[#2d2d2d] p-0.5" id="layout-controls">
+                        <button data-layout="1" class="px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors layout-btn" onclick="setLayout(1)"><i class="fas fa-square mr-1.5"></i>1 画面</button>
+                        <button data-layout="2" class="px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors layout-btn" onclick="setLayout(2)"><i class="fas fa-columns mr-1.5"></i>2 画面</button>
+                        <button data-layout="4" class="px-3 h-7 flex items-center justify-center rounded bg-[#333] text-white transition-colors layout-btn" onclick="setLayout(4)"><i class="fas fa-th-large mr-1.5"></i>4 画面</button>
+                    </div>
+                    <div class="flex items-center space-x-4 text-xs text-gray-300">
+                        <span class="text-gray-500">点击左侧设备 → 展示到当前选中窗口</span>
+                        <button class="px-3 py-1.5 bg-[#1e1e1e] border border-[#2d2d2d] rounded hover:text-white hover:bg-[#252525] transition-colors"><i class="fas fa-expand mr-1"></i> 全屏</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 min-h-0 rounded overflow-hidden border border-[#2d2d2d]">
+                    <div id="video-grid"></div>
+                </div>
+            </div>
+
+            <!-- 操控面板（右侧竖排） -->
+            <div class="w-[360px] shrink-0 bg-[#161616] border-l border-[#2d2d2d] flex flex-col min-h-0">
+                <!-- 当前设备 -->
+                <div class="px-4 py-2.5 border-b border-[#2d2d2d] shrink-0 flex items-center text-xs text-gray-400">
+                    <i class="fas fa-microchip mr-1.5 text-gray-500"></i>当前设备：<span id="ctrl-device-name" class="text-[#58a6ff] bg-[#58a6ff]/10 px-1.5 py-0.5 rounded border border-[#58a6ff]/20 ml-1 truncate">深圳站evo_4T_真机</span>
+                </div>
+
+                <!-- 飞行直播 -->
+                <div id="cpanel-fly" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-3 space-y-4">
+                    <!-- 飞机参数 -->
+                    <div>
+                        <div class="text-xs text-gray-300 font-medium mb-2">飞机参数</div>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                            <div><div class="param-label">相对起飞点高度</div><div class="param-value">120.0 m</div></div>
+                            <div><div class="param-label">海拔</div><div class="param-value">156.0 m</div></div>
+                            <div><div class="param-label">电量</div><div class="param-value">45%</div></div>
+                            <div><div class="param-label">垂直速度</div><div class="param-value">0.2 m/s</div></div>
+                            <div><div class="param-label">航向角度</div><div class="param-value">90°</div></div>
+                            <div><div class="param-label">剩余飞行时间</div><div class="param-value">18 min</div></div>
+                            <div><div class="param-label">水平速度</div><div class="param-value">12.5 m/s</div></div>
+                            <div><div class="param-label">起降高度</div><div class="param-value">0 m</div></div>
+                            <div class="col-span-2"><div class="param-label">GPS坐标</div><div class="param-value font-mono">22.5431, 114.0579</div></div>
+                        </div>
+                    </div>
+                    <!-- 起飞 / 控制权 -->
+                    <div class="flex items-center space-x-2">
+                        <button class="flex-1 py-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs rounded flex items-center justify-center"><i class="fas fa-plane-departure mr-1.5"></i>一键起飞</button>
+                        <label class="flex-1 flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-gray-300 cursor-pointer">
+                            <span>飞行控制权</span>
+                            <span class="relative inline-block w-9 h-5 bg-[#333] rounded-full" onclick="this.querySelector('span').classList.toggle('translate-x-4');this.classList.toggle('bg-[#1f6feb]')"><span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform"></span></span>
+                        </label>
+                    </div>
+                    <!-- 云台 PTZ -->
+                    <div>
+                        <div class="text-xs text-gray-300 font-medium mb-2">云台控制</div>
+                        <div class="grid grid-cols-3 gap-1 w-36 mx-auto">
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台左上"><i class="fas fa-arrow-up rotate-[-45deg]"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向上"><i class="fas fa-chevron-up"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台右上"><i class="fas fa-arrow-up rotate-45"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向左"><i class="fas fa-chevron-left"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台复位"><i class="fas fa-crosshairs"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向右"><i class="fas fa-chevron-right"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台左下"><i class="fas fa-arrow-down rotate-45"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向下"><i class="fas fa-chevron-down"></i></button>
+                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台右下"><i class="fas fa-arrow-down rotate-[-45deg]"></i></button>
+                        </div>
+                        <div class="flex justify-center space-x-1 mt-2 text-[10px]">
+                            <button class="ptz-btn px-2 py-1 rounded">缩小</button>
+                            <button class="ptz-btn px-2 py-1 rounded">复位</button>
+                            <button class="ptz-btn px-2 py-1 rounded">放大</button>
+                            <button class="ptz-btn px-2 py-1 rounded">云台重置</button>
+                        </div>
+                    </div>
+                    <!-- 镜头 -->
+                    <div>
+                        <div class="text-xs text-gray-300 font-medium mb-2">镜头切换</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="py-1.5 bg-[#1f6feb] text-white text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-expand-arrows-alt mb-1"></i>广角镜头</button>
+                            <button class="py-1.5 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] text-gray-300 text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-search-plus mb-1"></i>变焦镜头</button>
+                            <button class="py-1.5 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] text-gray-300 text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-thermometer-half mb-1"></i>红外镜头</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 机巢监控 -->
+                <div id="cpanel-nest" class="hidden flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-3 space-y-4">
+                    <!-- 远程控制模式 -->
+                    <label class="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-gray-300 cursor-pointer">
+                        <span>远程控制模式</span>
+                        <span class="relative inline-block w-9 h-5 bg-[#333] rounded-full transition-colors" onclick="this.querySelector('span').classList.toggle('translate-x-4');this.classList.toggle('bg-[#1f6feb]')"><span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform"></span></span>
+                    </label>
+                    <!-- 机巢气象检测 -->
+                    <div>
+                        <div class="text-xs text-gray-300 font-medium mb-2">机巢气象检测</div>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                            <div><div class="param-label">环境温度</div><div class="param-value">26.70°C</div></div>
+                            <div><div class="param-label">舱内无人机电量</div><div class="param-value">89.00%</div></div>
+                            <div><div class="param-label">舱内温度</div><div class="param-value">30.30°C</div></div>
+                            <div><div class="param-label">舱内湿度</div><div class="param-value">77.00%</div></div>
+                            <div><div class="param-label">风速</div><div class="param-value">0.00 m/s</div></div>
+                            <div><div class="param-label">降雨量</div><div class="param-value">无雨</div></div>
+                        </div>
+                    </div>
+                    <!-- 机巢控制 -->
+                    <div>
+                        <div class="text-xs text-gray-300 font-medium mb-2">机巢控制</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-plug mr-1 text-gray-500"></i>飞机电源</span><span class="text-[10px] text-gray-500">关闭</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开启</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">关闭</button></div>
+                            </div>
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-battery-half mr-1 text-gray-500"></i>飞机电池</span><span class="text-[10px] text-gray-500">未充电</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">充电</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">停充</button></div>
+                            </div>
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-door-open mr-1 text-gray-500"></i>舱门</span><span class="text-[10px] text-gray-500">已关闭</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开启</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">关闭</button></div>
+                            </div>
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-redo mr-1 text-gray-500"></i>机巢重启</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">重启</button></div>
+                            </div>
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-grip-lines mr-1 text-gray-500"></i>推杆</span><span class="text-[10px] text-gray-500">已关闭</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">推开</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">收回</button></div>
+                            </div>
+                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
+                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-warehouse mr-1 text-gray-500"></i>舱盖</span></div>
+                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开盖</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const DRONE_IMG = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1200&auto=format&fit=crop';
+        const NEST_IMG  = 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?q=80&w=1200&auto=format&fit=crop';
+
+        // 设备数据（仅启用设备；online 决定能否点击展示实况）
+        const NESTS = [
+            { id:'nest1', name:'深圳站_机巢', sn:'SIMU-SZ-NEST01', online:true, signal:5, battery:100, rtk:'Fixed', stream:NEST_IMG,
+              drone:{ id:'drone1', name:'深圳站evo_4T', sn:'SIMU-SZ-4T01', online:true, signal:1, battery:89, rtk:'Fixed', stream:DRONE_IMG } },
+            { id:'nest2', name:'007机巢576号677', sn:'1581F4BFC1234567', online:true, signal:4, battery:100, rtk:'Fixed', stream:NEST_IMG,
+              drone:{ id:'drone2', name:'无人机 M30T', sn:'SN-M30T-002', online:true, inTask:true, signal:3, battery:76, rtk:'Float', stream:DRONE_IMG } },
+            { id:'nest3', name:'J89', sn:'SN-NEST-J89', online:false, signal:0, battery:0, rtk:'无', stream:NEST_IMG,
+              drone:{ id:'drone3', name:'无人机 M300', sn:'SN-M300-003', online:false, signal:0, battery:0, rtk:'无', stream:DRONE_IMG } },
+        ];
+
+        let typeFilter = 'all';
+        let keyword = '';
+        let layout = 4;
+        let slots = [null, null, null, null];
+        let activeCell = 0;
+
+        function findDevice(id){
+            for (const n of NESTS){
+                if (n.id === id) return { ...n, type:'nest' };
+                if (n.drone && n.drone.id === id) return { ...n.drone, type:'drone', nestName:n.name };
+            }
+            return null;
+        }
+        function displayedIds(){
+            return slots.slice(0, layout).filter(Boolean).map(d => d.id);
+        }
+
+        /* ---------- 左侧列表 ---------- */
+        function rowHtml(d, iconType){
+            const on = d.online;
+            const disp = displayedIds().includes(d.id) ? 'displayed' : '';
+            const click = on ? `onclick="event.stopPropagation(); selectDevice('${d.id}')"` : '';
+            
+            const statusBadge = on 
+                ? `<span class="ml-1 text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1 py-0.5 rounded border border-[#3fb950]/20 shrink-0">在线</span>`
+                : `<span class="ml-1 text-[10px] text-gray-500 bg-gray-800 px-1 py-0.5 rounded border border-gray-600 shrink-0">离线</span>`;
+
+            return `
+            <div class="dev-row flex items-start px-2 py-1.5 rounded ${on ? 'cursor-pointer hover:bg-[#21262d]' : 'offline'} ${disp}" ${click} title="${on ? '点击展示实况' : '离线设备，不可展示实况'}">
+                <i class="fas fa-${iconType} ${on ? 'text-gray-400' : 'text-gray-500'} mt-0.5 mr-2"></i>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center min-w-0">
+                        <span class="text-xs ${on ? 'text-gray-300' : 'text-gray-400'} font-medium truncate" title="${d.name}">${d.name}</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="text-[10px] text-gray-500 font-mono truncate" title="${d.sn}">SN：${d.sn}</div>
+                </div>
+            </div>`;
+        }
+        function renderList(){
+            const box = document.getElementById('dev-list');
+            const kw = keyword.trim().toLowerCase();
+            let html = '';
+            NESTS.forEach(n => {
+                const rows = [];
+                const nestMatch = (n.name + n.sn).toLowerCase().includes(kw);
+                const droneMatch = (n.drone.name + n.drone.sn).toLowerCase().includes(kw);
+                if (typeFilter !== 'drone' && (!kw || nestMatch)) rows.push(rowHtml({ ...n }, 'box'));
+                if (typeFilter !== 'nest'  && (!kw || droneMatch)) rows.push(rowHtml({ ...n.drone }, 'plane'));
+                if (rows.length === 0) return;
+                html += `<div class="border border-[#2d2d2d] rounded p-1 space-y-1">${rows.join('')}</div>`;
+            });
+            box.innerHTML = html || '<p class="text-center text-xs text-gray-600 py-6">无匹配设备</p>';
+        }
+
+        function onSearch(v){ keyword = v; renderList(); }
+        function setType(t){
+            typeFilter = t;
+            renderList();
+        }
+
+        /* ---------- 画面 ---------- */
+        function signalIcon(level){
+            const color = level >= 3 ? 'text-[#3fb950]' : level >= 1 ? 'text-[#d29922]' : 'text-[#f85149]';
+            return `<span class="flex items-center ${color}"><i class="fas fa-signal mr-1"></i>${level}</span>`;
+        }
+        function batteryIcon(pct){
+            const color = pct > 50 ? 'text-[#3fb950]' : pct > 20 ? 'text-[#d29922]' : 'text-[#f85149]';
+            const ic = pct > 66 ? 'battery-full' : pct > 33 ? 'battery-half' : 'battery-quarter';
+            return `<span class="flex items-center ${color}"><i class="fas fa-${ic} mr-1"></i>${pct}%</span>`;
+        }
+        function rtkBadge(rtk){
+            const color = rtk === 'Fixed' ? 'text-[#3fb950]' : rtk === 'Float' ? 'text-[#d29922]' : 'text-gray-500';
+            return `<span class="flex items-center ${color}"><i class="fas fa-satellite-dish mr-1"></i>RTK ${rtk}</span>`;
+        }
+        function osd(d){
+            return `<div class="absolute top-9 right-2 z-20 flex items-center space-x-3 bg-black/60 rounded px-2 py-1 text-[11px] font-mono backdrop-blur">
+                ${signalIcon(d.signal)}${batteryIcon(d.battery)}${rtkBadge(d.rtk)}
+            </div>`;
+        }
+        function renderVideo(){
+            const grid = document.getElementById('video-grid');
+            grid.style.gridTemplateColumns = layout === 1 ? '1fr' : '1fr 1fr';
+            grid.style.gridTemplateRows = layout === 4 ? '1fr 1fr' : '1fr';
+            let html = '';
+            for (let i = 0; i < layout; i++){
+                const d = slots[i];
+                const active = i === activeCell ? 'active' : '';
+                if (d){
+                    html += `<div class="video-cell flex flex-col cursor-pointer ${active}" onclick="focusCell(${i})">
+                        <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                            <div class="flex items-center text-white font-medium channel-title">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>
+                                ${d.name}
+                            </div>
+                            <div class="flex items-center space-x-3 text-gray-400">
+                                <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); clearCell(${i})"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center relative overflow-hidden bg-black">
+                            <img src="${d.stream}" class="absolute inset-0 w-full h-full object-cover opacity-90">
+                            ${osd(d)}
+                            <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                        </div>
+                    </div>`;
+                } else {
+                    html += `<div class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer ${active}" onclick="focusCell(${i})">
+                        <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                            <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                            <span class="text-xs placeholder-text">点击左侧设备添加画面</span>
+                            <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                        </div>
+                    </div>`;
+                }
+            }
+            grid.innerHTML = html;
+        }
+
+        function firstEmpty(){
+            for (let i = 0; i < layout; i++) if (!slots[i]) return i;
+            return -1;
+        }
+        function emptySlots(){
+            const arr = [];
+            for (let i = 0; i < layout; i++) if (!slots[i]) arr.push(i);
+            return arr;
+        }
+        function selectDevice(id){
+            const d = findDevice(id);
+            if (!d || !d.online) return;
+
+            // 解析该设备所属「机巢 + 绑定无人机」这一对
+            let nestObj = null, droneObj = null;
+            for (const n of NESTS){
+                if (n.id === id || (n.drone && n.drone.id === id)){
+                    nestObj = n.online ? { ...n, type: 'nest' } : null;
+                    droneObj = (n.drone && n.drone.online) ? { ...n.drone, type: 'drone', nestName: n.name } : null;
+                    break;
+                }
+            }
+
+            const empty = emptySlots();
+            // 2/4 窗口且有 2 个及以上空余：机巢与其绑定无人机成对载入
+            const pairLoadable = (layout === 2 || layout === 4) && empty.length >= 2 && nestObj && droneObj;
+            if (pairLoadable){
+                slots[empty[0]] = nestObj;
+                slots[empty[1]] = droneObj;
+                activeCell = (d.type === 'nest') ? empty[0] : empty[1];
+            } else {
+                let t = empty.length ? empty[0] : activeCell;
+                slots[t] = d;
+                activeCell = t;
+            }
+            renderVideo(); renderList(); syncPanel();
+        }
+        function focusCell(i){ activeCell = i; renderVideo(); syncPanel(); }
+        function clearCell(i){ slots[i] = null; renderVideo(); renderList(); syncPanel(); }
+
+        function setLayout(n, silent){
+            layout = n;
+            if (activeCell >= n) activeCell = 0;
+            document.querySelectorAll('#layout-controls .layout-btn').forEach(btn => {
+                const on = Number(btn.dataset.layout) === n;
+                btn.classList.toggle('bg-[#333]', on);
+                btn.classList.toggle('text-white', on);
+                btn.classList.toggle('text-gray-400', !on);
+            });
+            renderVideo();
+            if (!silent) { renderList(); syncPanel(); }
+        }
+
+        /* ---------- 操控面板联动 ---------- */
+        function switchCtrlTab(tab){
+            const isFly = tab === 'fly';
+            document.getElementById('cpanel-fly').classList.toggle('hidden', !isFly);
+            document.getElementById('cpanel-nest').classList.toggle('hidden', isFly);
+        }
+        function isDeviceInTask(d){
+            if (!d) return false;
+            if (d.type === 'drone') return !!d.inTask;
+            if (d.type === 'nest') return !!(d.drone && d.drone.inTask);
+            return false;
+        }
+        function goTaskLive(droneName){
+            const q = droneName ? ('?device=' + encodeURIComponent(droneName)) : '';
+            location.href = 'task-live.html' + q;
+        }
+        function applyTaskLock(locked, droneName){
+            ['cpanel-fly', 'cpanel-nest'].forEach(id => {
+                const p = document.getElementById(id);
+                if (!p) return;
+                let banner = p.querySelector('.task-lock-banner');
+                if (locked){
+                    const bannerHtml = '<div class="flex items-center min-w-0"><i class="fas fa-plane-departure mr-1.5 shrink-0"></i><span class="truncate">无人机在任务中，暂不支持操控</span></div>'
+                        + '<button onclick="goTaskLive(\'' + (droneName || '').replace(/'/g, "\\'") + '\')" class="ml-2 shrink-0 inline-flex items-center px-2 py-0.5 rounded bg-[#1f6feb] text-white hover:bg-[#388bfd]">查看任务实况<i class="fas fa-arrow-right ml-1"></i></button>';
+                    if (!banner){
+                        banner = document.createElement('div');
+                        banner.className = 'task-lock-banner flex items-center justify-between px-3 py-2 rounded text-xs text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30';
+                        p.insertBefore(banner, p.firstChild);
+                    }
+                    banner.innerHTML = bannerHtml;
+                    p.querySelectorAll('button:not(.task-lock-banner button), input, label').forEach(el => el.classList.add('pointer-events-none', 'opacity-40'));
+                    banner.querySelectorAll('button').forEach(el => el.classList.remove('pointer-events-none', 'opacity-40'));
+                } else {
+                    if (banner) banner.remove();
+                    p.querySelectorAll('button, input, label').forEach(el => el.classList.remove('pointer-events-none', 'opacity-40'));
+                }
+            });
+        }
+        function syncPanel(){
+            const d = slots[activeCell];
+            if (!d) return;
+            const isNest = d.type === 'nest';
+            document.getElementById('ctrl-device-name').textContent = d.name + (isNest ? '_机巢' : '_真机');
+            // 无人机只展示「飞行直播」，机巢只展示「机巢监控」
+            switchCtrlTab(isNest ? 'nest' : 'fly');
+            const taskDroneName = isNest ? (d.drone && d.drone.name) : d.name;
+            applyTaskLock(isDeviceInTask(d), taskDroneName);
+        }
+
+        (function(){
+            document.addEventListener('click', function(e){
+                var dd = document.getElementById('breadcrumbDropdown');
+                var menu = document.getElementById('breadcrumbMenu');
+                if (dd && menu && !dd.contains(e.target)) menu.classList.add('hidden');
+            });
+            setLayout(4, true);
+            selectDevice('nest1');
+        })();
+    </script>
+</body>
+</html>

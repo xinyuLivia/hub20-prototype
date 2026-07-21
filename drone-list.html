@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 - 无人机及机巢 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+        .map-bg {
+            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
+            position: relative;
+        }
+        .map-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(20, 20, 20, 0.4);
+            z-index: 0;
+        }
+        .device-card.active {
+            border-color: #58a6ff;
+            background-color: rgba(31, 111, 235, 0.1);
+        }
+        .map-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 10;
+        }
+        .map-popup {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 12px;
+            z-index: 20;
+        }
+        .map-popup::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: #2d2d2d transparent transparent transparent;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>设备管理</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 设备管理二级导航 (Tabs) -->
+    <div class="bg-[#1e1e1e] border-b border-[#2d2d2d] px-4 flex space-x-8 text-sm shrink-0 z-10 relative">
+        <div class="py-3 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer flex items-center" onclick="location.href='drone-list.html'">
+            <i class="fas fa-plane mr-2"></i> 无人机及机巢
+        </div>
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer flex items-center" onclick="location.href='camera-list.html'">
+            <i class="fas fa-video mr-2"></i> 摄像头
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧列表区 -->
+        <div class="w-96 bg-[#141414] border-r border-[#2d2d2d] flex flex-col z-10 shrink-0">
+            
+            <!-- 筛选区 -->
+            <div class="p-3 border-b border-[#2d2d2d] flex space-x-2 shrink-0">
+                <div class="w-20 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center justify-between cursor-pointer hover:border-[#555] shrink-0">
+                    <span class="text-xs text-gray-400">类型</span>
+                    <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+                </div>
+                <div class="w-20 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center justify-between cursor-pointer hover:border-[#555] shrink-0">
+                    <span class="text-xs text-gray-400">状态</span>
+                    <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+                </div>
+                <div class="relative flex-1 min-w-0">
+                    <input type="text" placeholder="请搜索设备名" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-2 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                    <i class="fas fa-search absolute right-2.5 top-2 text-gray-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- 设备列表 -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                
+                <!-- 卡片 1 (选中) -->
+                <div class="device-card active border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer transition-colors">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-plane text-gray-400 shrink-0"></i>
+                        <span class="text-xs text-white truncate">007机巢576号677</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <div class="flex items-center text-[#f85149] text-[10px]" title="电量低"><i class="fas fa-battery-quarter mr-1"></i> 24%</div>
+                        <span class="text-[10px] text-[#58a6ff]">已启用</span>
+                        <i class="fas fa-chevron-right text-gray-500 text-[10px]"></i>
+                    </div>
+                </div>
+
+                <!-- 卡片 2 -->
+                <div class="device-card border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1e1e1e] transition-colors">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-box text-gray-400 shrink-0"></i>
+                        <span class="text-xs text-gray-300 truncate">J89</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <div class="flex items-center text-[#3fb950] text-[10px]" title="电量充足"><i class="fas fa-battery-full mr-1"></i> 94%</div>
+                        <span class="text-[10px] text-[#58a6ff]">已启用</span>
+                        <i class="fas fa-chevron-right text-gray-500 text-[10px]"></i>
+                    </div>
+                </div>
+
+                <!-- 卡片 3 -->
+                <div class="device-card border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1e1e1e] transition-colors">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-plane text-gray-400 shrink-0"></i>
+                        <span class="text-xs text-gray-300 truncate">007机巢576号677</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <div class="flex items-center text-[#f85149] text-[10px]"><i class="fas fa-battery-quarter mr-1"></i> 24%</div>
+                        <span class="text-[10px] text-[#58a6ff]">已启用</span>
+                        <i class="fas fa-chevron-right text-gray-500 text-[10px]"></i>
+                    </div>
+                </div>
+
+                <!-- 卡片 4 -->
+                <div class="device-card border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1e1e1e] transition-colors">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-box text-gray-400 shrink-0"></i>
+                        <span class="text-xs text-gray-300 truncate">J89</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <div class="flex items-center text-[#3fb950] text-[10px]"><i class="fas fa-battery-full mr-1"></i> 94%</div>
+                        <span class="text-[10px] text-[#58a6ff]">已启用</span>
+                        <i class="fas fa-chevron-right text-gray-500 text-[10px]"></i>
+                    </div>
+                </div>
+
+                <!-- 卡片 5 (离线) -->
+                <div class="device-card border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1e1e1e] transition-colors opacity-60">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-box text-gray-500 shrink-0"></i>
+                        <span class="text-xs text-gray-400 truncate">006机巢</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <span class="text-[10px] text-gray-500">离线</span>
+                        <span class="text-[10px] text-[#58a6ff]">已启用</span>
+                        <i class="fas fa-chevron-right text-gray-600 text-[10px]"></i>
+                    </div>
+                </div>
+                
+                <!-- 卡片 6 (离线/故障) -->
+                <div class="device-card border border-[#333] rounded p-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1e1e1e] transition-colors opacity-60">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <i class="fas fa-box text-gray-500 shrink-0"></i>
+                        <span class="text-xs text-gray-400 truncate">006机巢</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 ml-2">
+                        <span class="text-[10px] text-gray-500">离线</span>
+                        <span class="text-[10px] text-[#f85149]">已停用</span>
+                        <i class="fas fa-chevron-right text-gray-600 text-[10px]"></i>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 右侧地图区 -->
+        <div class="flex-1 map-bg relative z-0">
+            
+            <!-- 顶部操作栏 -->
+            <div class="absolute top-4 right-4 z-10 flex space-x-2">
+                <button class="bg-[#252525] border border-[#444] hover:bg-[#2d2d2d] text-gray-300 text-sm px-4 py-2 rounded shadow-lg transition-colors">
+                    无人机故障
+                </button>
+                <button class="bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm px-4 py-2 rounded shadow-lg transition-colors">
+                    <i class="fas fa-book mr-1"></i> 无人机添加指南
+                </button>
+            </div>
+
+            <!-- 地图标记 1 (机巢 - 正常) -->
+            <div class="map-marker" style="top: 20%; left: 45%;">
+                <div class="w-6 h-6 rounded-full bg-[#3fb950] border-2 border-white flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-box text-[10px]"></i>
+                </div>
+            </div>
+
+            <!-- 地图标记 2 (机巢 - 正常) -->
+            <div class="map-marker" style="top: 40%; left: 75%;">
+                <div class="w-6 h-6 rounded-full bg-[#3fb950] border-2 border-white flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-box text-[10px]"></i>
+                </div>
+            </div>
+
+            <!-- 地图标记 3 (无人机 - 飞行中) -->
+            <div class="map-marker" style="top: 35%; left: 55%;">
+                <div class="w-6 h-6 rounded-full bg-[#58a6ff] border-2 border-white flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-plane text-[10px]"></i>
+                </div>
+            </div>
+
+            <!-- 地图标记 4 (无人机 - 选中状态带光圈和弹窗) -->
+            <div class="map-marker" style="top: 55%; left: 45%;">
+                <!-- 光圈动画 -->
+                <div class="absolute inset-0 rounded-full border border-[#58a6ff] animate-ping scale-150"></div>
+                <div class="absolute inset-0 rounded-full border-2 border-[#58a6ff] scale-110"></div>
+                
+                <!-- 图标 -->
+                <div class="w-6 h-6 rounded-full bg-[#58a6ff] border-2 border-white flex items-center justify-center text-white shadow-lg relative z-10">
+                    <i class="fas fa-plane text-[10px]"></i>
+                </div>
+
+                <!-- 弹窗 Popup -->
+                <div class="map-popup w-56 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg shadow-2xl overflow-hidden">
+                    <div class="p-2 flex justify-between items-center border-b border-[#333]">
+                        <div class="text-xs text-white font-medium flex items-center">
+                            西安设备1036 <span class="mx-1 text-gray-500">•</span> <span class="text-gray-400">在线</span>
+                        </div>
+                        <a href="drone-detail.html" class="text-[10px] text-[#58a6ff] hover:underline">详情</a>
+                    </div>
+                    <div class="p-2">
+                        <!-- 视频缩略图 -->
+                        <div class="w-full aspect-video bg-black rounded overflow-hidden relative mb-2 group cursor-pointer">
+                            <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <i class="fas fa-play-circle text-white/70 text-2xl group-hover:text-white transition-colors"></i>
+                            </div>
+                        </div>
+                        <!-- 设备实况入口 -->
+                        <a href="#" class="flex items-center justify-between text-xs text-gray-300 hover:text-white bg-[#252525] hover:bg-[#2d2d2d] rounded px-2 py-1.5 transition-colors">
+                            <div class="flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-2"></span> 设备实况
+                            </div>
+                            <i class="fas fa-chevron-right text-[10px] text-gray-500"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右下角地图控件 -->
+            <div class="absolute right-4 bottom-4 flex flex-col space-y-2 z-10">
+                <button class="w-7 h-7 bg-[#1e1e1e] border border-[#333] rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] shadow-lg flex items-center justify-center transition-colors">
+                    <i class="fas fa-plus text-xs"></i>
+                </button>
+                <button class="w-7 h-7 bg-[#1e1e1e] border border-[#333] rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] shadow-lg flex items-center justify-center transition-colors">
+                    <i class="fas fa-minus text-xs"></i>
+                </button>
+                <button class="w-7 h-7 bg-[#1e1e1e] border border-[#333] rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] shadow-lg flex items-center justify-center mt-2 transition-colors">
+                    <i class="fas fa-crosshairs text-xs"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

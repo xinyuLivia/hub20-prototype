@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>巡检驾驶舱 - Avant 智慧巡检</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #0a0e14;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* 地球背景（巡检大屏） */
+        .earth-bg {
+            background:
+              radial-gradient(circle at 50% 45%, rgba(30,80,160,0.35) 0%, rgba(10,14,20,0) 55%),
+              url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat,
+              #05070c;
+            position: relative;
+        }
+        /* 卫星地图背景（项目总览） */
+        .sat-bg {
+            background: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
+            position: relative;
+        }
+        .panel {
+            background-color: rgba(20,26,36,0.92);
+            border: 1px solid #22304a;
+            backdrop-filter: blur(6px);
+        }
+        .card {
+            background-color: #141a24;
+            border: 1px solid #22304a;
+        }
+        .stat-num { font-size: 22px; font-weight: 700; color: #fff; line-height: 1; }
+        .stat-label { font-size: 11px; color: #7d8aa0; margin-top: 4px; }
+        .sec-title {
+            font-size: 13px; font-weight: 600; color: #cfe0ff;
+            display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+        }
+        .sec-title::before {
+            content: ''; width: 3px; height: 13px; background: #3b82f6; border-radius: 2px;
+        }
+        .top-tab {
+            padding: 5px 18px; font-size: 13px; border-radius: 4px; cursor: pointer;
+            color: #9aa7bd; display: flex; align-items: center; gap: 6px;
+        }
+        .top-tab.active { background: #1f5fd6; color: #fff; }
+        .side-tab {
+            font-size: 14px; font-weight: 500; padding: 6px 2px; cursor: pointer;
+            color: #7d8aa0; position: relative;
+        }
+        .side-tab.active { color: #fff; }
+        .side-tab.active::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; background: #3b82f6;
+        }
+        .seg { padding: 3px 10px; font-size: 11px; cursor: pointer; color: #7d8aa0; border-radius: 3px; }
+        .seg.active { background: #1f5fd6; color: #fff; }
+        .marker { transform: translate(-50%, -100%); }
+        .cluster {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(31,95,214,0.85); border: 2px solid #7fb0ff;
+            display: flex; align-items: center; justify-content: center; color: #fff;
+            font-weight: 700; box-shadow: 0 0 12px rgba(59,130,246,0.6); cursor: pointer;
+        }
+        .pin { color: #3b82f6; font-size: 26px; cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+        .fade-in { animation: fade .2s ease; }
+        @keyframes fade { from{opacity:0} to{opacity:1} }
+        .hidden-imp { display: none !important; }
+        .alert-card:hover .alert-actions { display: flex; }
+        .task-card:hover .task-live { display: block; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- ============ 顶栏（左右贯穿） ============ -->
+    <header class="h-14 shrink-0 flex items-center justify-between px-5 border-b border-[#1a2740] bg-[#0c1220] z-50 relative">
+        <div class="flex items-center gap-2">
+            <span class="text-[#58a6ff] font-bold text-xl italic tracking-wide">Avant</span>
+            <span class="text-white text-lg">智慧巡检</span>
+        </div>
+
+        <!-- 中部 Tab -->
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 panel rounded-md p-1">
+            <div id="tab-screen" class="top-tab active" onclick="switchTop('screen')"><i class="fas fa-desktop text-xs"></i>巡检大屏</div>
+            <div id="tab-overview" class="top-tab" onclick="switchTop('overview')"><i class="fas fa-layer-group text-xs"></i>项目总览</div>
+        </div>
+
+        <div class="flex items-center gap-5">
+            <span id="clock" class="text-sm text-[#cfe0ff] font-medium tabular-nums tracking-wide"></span>
+            <div class="relative cursor-pointer">
+                <i class="fas fa-bell text-gray-300 hover:text-white"></i>
+                <span class="absolute -top-1.5 -right-1.5 bg-[#f85149] text-white text-[9px] leading-none px-1 py-0.5 rounded-full">9</span>
+            </div>
+            
+            <!-- 头像及下拉菜单 -->
+            <div class="relative group h-full flex items-center">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#8957e5] flex items-center justify-center text-xs text-white cursor-pointer">A</div>
+                <!-- 下拉菜单区域（增加 pt-2 作为桥接，避免移出时菜单消失） -->
+                <div class="absolute right-0 top-[calc(100%-8px)] pt-4 w-56 hidden group-hover:block z-50 text-sm">
+                    <div class="panel rounded-lg shadow-xl py-2">
+                        <div class="px-4 py-3 border-b border-[#22304a] flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-[#1f5fd6] flex items-center justify-center text-white font-medium">A</div>
+                            <div class="text-white">昕昱 (xinyuceshi)</div>
+                        </div>
+                        <div class="py-1 border-b border-[#22304a]">
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex justify-between items-center text-gray-300 hover:text-white transition-colors">
+                                <div class="flex items-center gap-3"><i class="fas fa-language w-4 text-center"></i> 语言切换</div>
+                                <i class="fas fa-chevron-right text-[10px] text-gray-500"></i>
+                            </div>
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex justify-between items-center text-gray-300 hover:text-white transition-colors">
+                                <div class="flex items-center gap-3"><i class="fas fa-sliders-h w-4 text-center"></i> 显示设置</div>
+                                <i class="fas fa-chevron-right text-[10px] text-gray-500"></i>
+                            </div>
+                        </div>
+                        <div class="py-1 border-b border-[#22304a]">
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="location.href='platform-device-management.html'">
+                                <i class="fas fa-microchip w-4 text-center"></i> 设备管理
+                            </div>
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="location.href='operation-log.html'">
+                                <i class="fas fa-cog w-4 text-center"></i> 系统设置
+                            </div>
+                        </div>
+                        <div class="py-1">
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex items-center gap-3 text-gray-300 hover:text-white transition-colors">
+                                <i class="fas fa-user w-4 text-center"></i> 个人中心
+                            </div>
+                            <div class="px-4 py-2.5 hover:bg-[#1a2740] cursor-pointer flex items-center gap-3 text-gray-300 hover:text-white transition-colors">
+                                <i class="fas fa-sign-out-alt w-4 text-center"></i> 退出登录
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- ==================================================== -->
+        <!-- ================= 巡检大屏 视图 ===================== -->
+        <!-- ==================================================== -->
+        <section id="view-screen" class="flex-1 flex overflow-hidden">
+
+            <!-- ---------- 左栏 ---------- -->
+            <aside class="w-[360px] shrink-0 bg-[#0b111c] border-r border-[#1a2740] flex flex-col overflow-hidden">
+                <!-- 左栏 Tab -->
+                <div class="flex items-center gap-6 px-5 pt-4 pb-2 border-b border-[#1a2740] shrink-0">
+                    <div id="s-tab-today" class="side-tab active" onclick="switchLeft('today')">今日巡检</div>
+                    <div id="s-tab-stats" class="side-tab" onclick="switchLeft('stats')">数据统计</div>
+                </div>
+
+                <!-- === 今日巡检 === -->
+                <div id="left-today" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                    <!-- 日常巡检 -->
+                    <div>
+                        <div class="sec-title">日常巡检</div>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div class="card rounded p-2 text-center"><div class="stat-num">24</div><div class="stat-label">计划架次</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#58a6ff]">12</div><div class="stat-label">待开始</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#3fb950]">18</div><div class="stat-label">巡检完成</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#d29922]">75%</div><div class="stat-label">计划完成率</div></div>
+                        </div>
+                    </div>
+                    <!-- 今日实飞 -->
+                    <div>
+                        <div class="sec-title">今日实飞</div>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#58a6ff]">75</div><div class="stat-label">执行中</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#d29922]">24</div><div class="stat-label">延误中</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num text-[#f85149]">18</div><div class="stat-label">巡检异常</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num">12</div><div class="stat-label">临时任务</div></div>
+                        </div>
+                    </div>
+                    <!-- 实时巡检任务流 -->
+                    <div>
+                        <div class="sec-title">实时巡检任务流</div>
+                        <div class="space-y-3">
+                            <!-- 项目分组 1 -->
+                            <div>
+                                <div class="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+                                    <span class="text-white">西安领域高速</span>
+                                    <span class="text-[#58a6ff]">2 执行中 <i class="fas fa-chevron-down text-[10px]"></i></span>
+                                </div>
+                                <div class="task-card card rounded p-2.5 mb-2 relative cursor-pointer hover:border-[#3b82f6]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-white text-xs">绕城高速东段早巡</span>
+                                        <span class="text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1.5 py-0.5 rounded">● 执行中</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-gray-500 mt-1">
+                                        <span>设备：EVO Max 4T_001</span><span>10:47:40</span>
+                                    </div>
+                                    <div class="w-full bg-[#22304a] rounded-full h-1 mt-2"><div class="bg-[#58a6ff] h-1 rounded-full" style="width:64%"></div></div>
+                                </div>
+                                <div class="task-card card rounded p-2.5 relative cursor-pointer hover:border-[#3b82f6]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-white text-xs">绕城高速南段红外</span>
+                                        <span class="text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1.5 py-0.5 rounded">● 执行中</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-gray-500 mt-1">
+                                        <span>设备：EVO Max 4T_001</span><span>10:47:40</span>
+                                    </div>
+                                    <div class="w-full bg-[#22304a] rounded-full h-1 mt-2"><div class="bg-[#58a6ff] h-1 rounded-full" style="width:40%"></div></div>
+                                    <div class="task-live hidden mt-2 pt-2 border-t border-[#22304a] text-center">
+                                        <button class="text-[11px] text-[#58a6ff] hover:underline"><i class="fas fa-play-circle mr-1"></i>任务实况</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 项目分组 2 -->
+                            <div>
+                                <div class="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+                                    <span class="text-white">榆林光伏场站</span>
+                                </div>
+                                <div class="task-card card rounded p-2.5 cursor-pointer hover:border-[#3b82f6]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-white text-xs">光伏面板精细巡检 A区</span>
+                                        <span class="text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1.5 py-0.5 rounded">● 执行中</span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 mt-1">设备自主巡检 · 2</div>
+                                    <div class="text-[10px] text-gray-500 mt-0.5">计划时间：16:24 ~ 17:24</div>
+                                </div>
+                            </div>
+                            <!-- 项目分组 3 -->
+                            <div>
+                                <div class="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+                                    <span class="text-white">深圳铁路公安</span>
+                                    <span class="text-[#58a6ff]">2 执行中 <i class="fas fa-chevron-down text-[10px]"></i></span>
+                                </div>
+                                <div class="task-card card rounded p-2.5 cursor-pointer hover:border-[#3b82f6]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-white text-xs">绕城高速东段早巡</span>
+                                        <span class="text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1.5 py-0.5 rounded">● 执行中</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-gray-500 mt-1">
+                                        <span>设备：EVO Max 4T_001</span><span>10:47:40</span>
+                                    </div>
+                                    <div class="w-full bg-[#22304a] rounded-full h-1 mt-2"><div class="bg-[#58a6ff] h-1 rounded-full" style="width:55%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === 数据统计 === -->
+                <div id="left-stats" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 hidden-imp">
+                    <!-- 关键指标 -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="card rounded p-3 text-center"><div class="stat-num text-[#58a6ff]">8</div><div class="stat-label">项目总数</div></div>
+                        <div class="card rounded p-3 text-center"><div class="stat-num text-[#3fb950]">156</div><div class="stat-label">用户总数</div></div>
+                    </div>
+                    <!-- 日期段选择器 -->
+                    <div class="flex items-center gap-2 card rounded px-2.5 py-2 text-xs text-gray-300">
+                        <i class="fas fa-calendar-day text-gray-500"></i>
+                        <span>2026-05-10</span><span class="text-gray-600">~</span><span>2026-06-10</span>
+                        <span class="ml-auto text-[10px] text-[#58a6ff]">近一月</span>
+                    </div>
+                    <!-- 巡检统计 -->
+                    <div>
+                        <div class="sec-title">巡检统计</div>
+                        <div class="flex gap-1 mb-2">
+                            <div class="seg active" onclick="segToggle(this)">次数</div>
+                            <div class="seg" onclick="segToggle(this)">里程</div>
+                            <div class="seg" onclick="segToggle(this)">时长</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="card rounded p-2.5 flex-1 flex items-center gap-2">
+                                <i class="fas fa-route text-[#58a6ff]"></i>
+                                <div><div class="text-lg text-white font-semibold leading-none">11.90</div><div class="stat-label">日均巡检次数</div></div>
+                            </div>
+                            <div class="card rounded p-2.5 flex-1 flex items-center gap-2">
+                                <i class="fas fa-layer-group text-[#3fb950]"></i>
+                                <div><div class="text-lg text-white font-semibold leading-none">2345</div><div class="stat-label">累计巡检次数</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 告警趋势 -->
+                    <div>
+                        <div class="sec-title">告警趋势</div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-400 mb-1 flex-wrap">
+                            <span><i class="fas fa-circle text-[#f85149] text-[6px] mr-1"></i>一级</span>
+                            <span><i class="fas fa-circle text-[#d29922] text-[6px] mr-1"></i>二级</span>
+                            <span><i class="fas fa-circle text-[#58a6ff] text-[6px] mr-1"></i>三级</span>
+                            <span><i class="fas fa-circle text-[#3fb950] text-[6px] mr-1"></i>四级</span>
+                            <span><i class="fas fa-circle text-[#8957e5] text-[6px] mr-1"></i>五级</span>
+                        </div>
+                        <svg viewBox="0 0 300 110" class="w-full h-24 card rounded">
+                            <polyline fill="none" stroke="#f85149" stroke-width="1.5" points="5,70 45,55 85,58 125,40 165,45 205,30 245,35 295,25"/>
+                            <polyline fill="none" stroke="#d29922" stroke-width="1.5" points="5,80 45,70 85,60 125,65 165,50 205,55 245,45 295,40"/>
+                            <polyline fill="none" stroke="#58a6ff" stroke-width="1.5" points="5,90 45,82 85,75 125,70 165,72 205,60 245,58 295,50"/>
+                            <polyline fill="none" stroke="#3fb950" stroke-width="1.5" points="5,95 45,90 85,88 125,80 165,78 205,72 245,70 295,65"/>
+                            <polyline fill="none" stroke="#8957e5" stroke-width="1.5" points="5,100 45,98 85,92 125,90 165,88 205,85 245,80 295,78"/>
+                        </svg>
+                        <div class="flex justify-between text-[10px] text-gray-600 mt-1"><span>2026-05-10</span><span>2026-06-10</span></div>
+                    </div>
+                    <!-- 事件联动处置 -->
+                    <div>
+                        <div class="sec-title">事件联动处置</div>
+                        <table class="w-full text-[11px]">
+                            <thead><tr class="text-gray-500 text-left">
+                                <th class="font-normal pb-1">类型</th><th class="font-normal pb-1 text-center">工作流数</th>
+                                <th class="font-normal pb-1 text-center">累计执行</th><th class="font-normal pb-1 text-right">执行成功率</th></tr></thead>
+                            <tbody class="text-gray-300">
+                                <tr><td class="py-0.5">行人闯入</td><td class="text-center">3</td><td class="text-center">89</td><td class="text-right text-[#3fb950]">67%</td></tr>
+                                <tr><td class="py-0.5">烟火告警</td><td class="text-center">2</td><td class="text-center">89</td><td class="text-right text-[#3fb950]">67%</td></tr>
+                                <tr><td class="py-0.5">车辆违停</td><td class="text-center">1</td><td class="text-center">89</td><td class="text-right text-[#3fb950]">67%</td></tr>
+                                <tr><td class="py-0.5">疑似烟火</td><td class="text-center">6</td><td class="text-center">89</td><td class="text-right text-[#3fb950]">67%</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- 飞行统计 -->
+                    <div>
+                        <div class="sec-title">飞行统计</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="card rounded p-2 text-center"><div class="stat-num">34</div><div class="stat-label">累计飞行架次</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num">79</div><div class="stat-label">累计飞行里程/km</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num">567</div><div class="stat-label">累计飞行时长</div></div>
+                        </div>
+                    </div>
+                    <!-- 巡检成果 -->
+                    <div>
+                        <div class="sec-title">巡检成果</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="card rounded p-2 text-center"><div class="stat-num">567</div><div class="stat-label">模型接管</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num">34</div><div class="stat-label">图片采集数</div></div>
+                            <div class="card rounded p-2 text-center"><div class="stat-num">79</div><div class="stat-label">视频数</div></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ---------- 中间地球地图 ---------- -->
+            <main class="flex-1 earth-bg relative">
+                <!-- 视图切换：地球↔平面 -->
+                <div class="absolute top-4 left-4 flex panel rounded p-1 gap-1 z-10">
+                    <button id="globe-btn" class="seg active" onclick="toggleGlobe('globe')"><i class="fas fa-globe mr-1"></i>地球</button>
+                    <button id="plane-btn" class="seg" onclick="toggleGlobe('plane')"><i class="fas fa-map mr-1"></i>平面</button>
+                </div>
+
+                <!-- 项目落点聚合 -->
+                <div class="marker absolute" style="top:48%; left:52%;">
+                    <div class="pin" onclick="showProjectBubble(event)"><i class="fas fa-map-marker-alt"></i></div>
+                </div>
+                <div class="marker absolute" style="top:62%; left:63%;">
+                    <div class="cluster" onclick="alert('聚合点：3 个项目（40×40 网格 >3 自动聚合），放大后展开')">3</div>
+                </div>
+                <div class="marker absolute" style="top:40%; left:38%;">
+                    <div class="pin" onclick="showProjectBubble(event)"><i class="fas fa-map-marker-alt"></i></div>
+                </div>
+
+                <!-- 项目气泡卡片 -->
+                <div id="projectBubble" class="panel rounded-lg p-4 w-72 absolute z-20 hidden fade-in" style="top:30%; left:44%;">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="w-2 h-2 rounded-full bg-[#3fb950]"></span>
+                        <span class="text-white font-medium text-sm">渤海湾钻井平台项目</span>
+                        <i class="fas fa-times text-gray-500 ml-auto cursor-pointer hover:text-white" onclick="hideBubble()"></i>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1"><span>最近巡检</span><span class="text-gray-200">2026/1/6 12:00</span></div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-3"><span>项目人数</span><span class="text-gray-200">12人</span></div>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <div class="text-center"><div class="text-lg text-white font-semibold">79</div><div class="stat-label">无人机</div></div>
+                        <div class="text-center"><div class="text-lg text-white font-semibold">48</div><div class="stat-label">机巢库</div></div>
+                        <div class="text-center"><div class="text-lg text-white font-semibold">7</div><div class="stat-label">摄像头</div></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="flex-1 border border-[#22304a] text-gray-300 text-xs py-1.5 rounded hover:bg-[#1a2740]" onclick="alert('管理项目弹窗（高保真待补充，占位提示）')">管理项目</button>
+                        <button class="flex-1 bg-[#1f5fd6] text-white text-xs py-1.5 rounded hover:bg-[#2f6fe6]" onclick="location.href='project-home.html'">进入项目</button>
+                    </div>
+                </div>
+
+                <!-- 底部坐标状态栏 -->
+                <div class="absolute bottom-0 left-0 right-0 h-7 bg-[#0a0e14]/80 backdrop-blur border-t border-[#1a2740] flex items-center justify-end px-4 gap-6 text-[10px] text-gray-500 z-10">
+                    <span>100 m</span><span>22.524734° N</span><span>113.965810° E</span><span>WGS 84</span>
+                </div>
+            </main>
+
+            <!-- ---------- 右栏 ---------- -->
+            <aside class="w-[340px] shrink-0 bg-[#0b111c] border-l border-[#1a2740] flex flex-col overflow-hidden">
+                <div class="flex items-center gap-6 px-5 pt-4 pb-2 border-b border-[#1a2740] shrink-0">
+                    <div id="r-tab-alert" class="side-tab active" onclick="switchRight('alert')">巡检告警</div>
+                    <div id="r-tab-drone" class="side-tab" onclick="switchRight('drone')">无人机队列</div>
+                </div>
+
+                <!-- === 巡检告警 === -->
+                <div id="right-alert" class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                    <!-- 时间/全部海策 -->
+                    <div class="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                        <i class="fas fa-calendar text-gray-500"></i><span>2026-05-10</span><span class="text-gray-600">~</span><span>2026-06-10</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-gray-400 mb-3">
+                        <label class="flex items-center gap-1.5"><input type="checkbox" checked class="accent-[#3b82f6]">全部海策</label>
+                        <label class="flex items-center gap-1.5"><input type="checkbox" class="accent-[#3b82f6]">行人入侵(3)</label>
+                        <label class="flex items-center gap-1.5"><input type="checkbox" class="accent-[#3b82f6]">车辆违停(3)</label>
+                        <label class="flex items-center gap-1.5"><input type="checkbox" class="accent-[#3b82f6]">烟火疑似(3)</label>
+                    </div>
+                    <!-- 告警列表分级汇总 -->
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-white text-xs font-medium">告警列表</span>
+                        <span class="text-[10px] text-gray-500">总数 1228 <i class="fas fa-chevron-down"></i></span>
+                    </div>
+                    <div class="flex items-center justify-between card rounded px-2 py-2 mb-3 text-center">
+                        <div><div class="text-base font-bold text-[#f85149]">34</div><div class="stat-label">一级</div></div>
+                        <div><div class="text-base font-bold text-[#d29922]">79</div><div class="stat-label">二级</div></div>
+                        <div><div class="text-base font-bold text-[#58a6ff]">567</div><div class="stat-label">三级</div></div>
+                        <div><div class="text-base font-bold text-[#3fb950]">567</div><div class="stat-label">四级</div></div>
+                        <div><div class="text-base font-bold text-gray-400">567</div><div class="stat-label">五级</div></div>
+                    </div>
+                    <!-- 告警卡片列表（hover 出去确认/去处理） -->
+                    <div class="space-y-2">
+                        <!-- 一级：红框强调 -->
+                        <div class="alert-card card rounded p-2 border-[#f85149]/60 relative cursor-pointer" onclick="location.href='alert/alert-list.html'">
+                            <div class="flex gap-2">
+                                <div class="w-16 h-12 bg-[#22304a] rounded shrink-0 flex items-center justify-center"><i class="fas fa-person-walking text-gray-500"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between"><span class="text-white text-xs">行人入侵</span><span class="text-[10px] text-[#f85149]">10分钟前</span></div>
+                                    <div class="text-[10px] text-gray-500 truncate mt-0.5">所属项目：西安领域高速项目</div>
+                                    <div class="text-[10px] text-gray-500 truncate">绕城高速 k1 - k2</div>
+                                </div>
+                            </div>
+                            <div class="alert-actions hidden gap-2 mt-2 pt-2 border-t border-[#22304a]">
+                                <button class="flex-1 border border-[#22304a] text-gray-300 text-[11px] py-1 rounded hover:bg-[#1a2740]" onclick="event.stopPropagation();location.href='alert/alert-details.html'">去确认</button>
+                                <button class="flex-1 bg-[#1f5fd6] text-white text-[11px] py-1 rounded hover:bg-[#2f6fe6]" onclick="event.stopPropagation();location.href='alert/alert-list.html'">去处理</button>
+                            </div>
+                        </div>
+                        <!-- 其余卡片 -->
+                        <div class="alert-card card rounded p-2 relative cursor-pointer" onclick="location.href='alert/alert-list.html'">
+                            <div class="flex gap-2">
+                                <div class="w-16 h-12 bg-[#22304a] rounded shrink-0 flex items-center justify-center"><i class="fas fa-fire text-[#d29922]"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between"><span class="text-white text-xs">烟火疑似</span><span class="text-[10px] text-gray-500">停留中</span></div>
+                                    <div class="text-[10px] text-gray-500 truncate mt-0.5">所属项目：榆林光伏场站</div>
+                                    <div class="text-[10px] text-gray-500 truncate">绕城高速 k1 - k2</div>
+                                </div>
+                            </div>
+                            <div class="alert-actions hidden gap-2 mt-2 pt-2 border-t border-[#22304a]">
+                                <button class="flex-1 border border-[#22304a] text-gray-300 text-[11px] py-1 rounded hover:bg-[#1a2740]" onclick="event.stopPropagation();location.href='alert/alert-details.html'">去确认</button>
+                                <button class="flex-1 bg-[#1f5fd6] text-white text-[11px] py-1 rounded hover:bg-[#2f6fe6]" onclick="event.stopPropagation();location.href='alert/alert-list.html'">去处理</button>
+                            </div>
+                        </div>
+                        <div class="alert-card card rounded p-2 relative cursor-pointer" onclick="location.href='alert/alert-list.html'">
+                            <div class="flex gap-2">
+                                <div class="w-16 h-12 bg-[#22304a] rounded shrink-0 flex items-center justify-center"><i class="fas fa-person-walking text-gray-500"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between"><span class="text-white text-xs">行人入侵</span><span class="text-[10px] text-gray-500">处理中</span></div>
+                                    <div class="text-[10px] text-gray-500 truncate mt-0.5">所属项目：深圳铁路公安</div>
+                                    <div class="text-[10px] text-gray-500 truncate">绕城高速 k1 - k2</div>
+                                </div>
+                            </div>
+                            <div class="alert-actions hidden gap-2 mt-2 pt-2 border-t border-[#22304a]">
+                                <button class="flex-1 border border-[#22304a] text-gray-300 text-[11px] py-1 rounded hover:bg-[#1a2740]" onclick="event.stopPropagation();location.href='alert/alert-details.html'">去确认</button>
+                                <button class="flex-1 bg-[#1f5fd6] text-white text-[11px] py-1 rounded hover:bg-[#2f6fe6]" onclick="event.stopPropagation();location.href='alert/alert-list.html'">去处理</button>
+                            </div>
+                        </div>
+                        <div class="alert-card card rounded p-2 relative cursor-pointer" onclick="location.href='alert/alert-list.html'">
+                            <div class="flex gap-2">
+                                <div class="w-16 h-12 bg-[#22304a] rounded shrink-0 flex items-center justify-center"><i class="fas fa-triangle-exclamation text-[#d29922]"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between"><span class="text-white text-xs">异常物挂</span><span class="text-[10px] text-gray-500">已确认</span></div>
+                                    <div class="text-[10px] text-gray-500 truncate mt-0.5">所属项目：油田管道场站</div>
+                                    <div class="text-[10px] text-gray-500 truncate">绕城高速 k1 - k2</div>
+                                </div>
+                            </div>
+                            <div class="alert-actions hidden gap-2 mt-2 pt-2 border-t border-[#22304a]">
+                                <button class="flex-1 border border-[#22304a] text-gray-300 text-[11px] py-1 rounded hover:bg-[#1a2740]" onclick="event.stopPropagation();location.href='alert/alert-details.html'">去确认</button>
+                                <button class="flex-1 bg-[#1f5fd6] text-white text-[11px] py-1 rounded hover:bg-[#2f6fe6]" onclick="event.stopPropagation();location.href='alert/alert-list.html'">去处理</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="text-[11px] text-[#58a6ff] hover:underline" onclick="location.href='alert/alert-list.html'">查看全部无人机告警 →</button>
+                    </div>
+                </div>
+
+                <!-- === 无人机队列 === -->
+                <div id="right-drone" class="flex-1 overflow-y-auto custom-scrollbar p-4 hidden-imp">
+                    <div class="text-white text-xs font-medium mb-2">设备列表</div>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="card rounded p-2.5 flex items-center gap-2"><i class="fas fa-plane text-[#58a6ff]"></i>
+                            <div><div class="text-lg text-white font-semibold leading-none">48<span class="text-[10px] text-gray-500 font-normal"> / 89</span></div><div class="stat-label">无人机</div></div></div>
+                        <div class="card rounded p-2.5 flex items-center gap-2"><i class="fas fa-box text-[#3fb950]"></i>
+                            <div><div class="text-lg text-white font-semibold leading-none">48<span class="text-[10px] text-gray-500 font-normal"> / 89</span></div><div class="stat-label">机巢</div></div></div>
+                    </div>
+                    <!-- 搜索 -->
+                    <div class="flex items-center card rounded px-2 py-1.5 mb-3">
+                        <select class="bg-transparent text-[11px] text-gray-400 outline-none mr-1"><option>状态</option><option>在线</option><option>离线</option></select>
+                        <input type="text" placeholder="请输入设备名/SN" class="bg-transparent text-xs text-white outline-none flex-1 min-w-0">
+                        <i class="fas fa-search text-gray-500 text-xs"></i>
+                    </div>
+                    <!-- 设备列表 -->
+                    <div class="space-y-2 mb-4">
+                        <div class="card rounded p-2 flex items-center gap-2 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='drone-monitor.html'">
+                            <div class="w-10 h-10 bg-[#22304a] rounded flex items-center justify-center shrink-0"><i class="fas fa-plane text-gray-400"></i></div>
+                            <div class="flex-1 min-w-0"><div class="text-white text-xs truncate">EVO Max 4T_APITESTSIMU202605...</div>
+                                <div class="text-[10px] text-gray-500 truncate">项目：深圳铁路公安实验-深圳东</div></div>
+                            <span class="text-[10px] text-[#3fb950] shrink-0">● 在线</span>
+                        </div>
+                        <div class="card rounded p-2 flex items-center gap-2 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='drone-monitor.html'">
+                            <div class="w-10 h-10 bg-[#22304a] rounded flex items-center justify-center shrink-0"><i class="fas fa-plane text-gray-400"></i></div>
+                            <div class="flex-1 min-w-0"><div class="text-white text-xs truncate">EVO Max 4T_APITESTSIMU202605...</div>
+                                <div class="text-[10px] text-gray-500 truncate">项目：深圳铁路公安实验-深圳东</div></div>
+                            <span class="text-[10px] text-gray-500 shrink-0">● 空闲</span>
+                        </div>
+                        <div class="card rounded p-2 flex items-center gap-2 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='drone-monitor.html'">
+                            <div class="w-10 h-10 bg-[#22304a] rounded flex items-center justify-center shrink-0"><i class="fas fa-plane text-gray-400"></i></div>
+                            <div class="flex-1 min-w-0"><div class="text-white text-xs truncate">EVO Max 4T_APITESTSIMU202605...</div>
+                                <div class="text-[10px] text-gray-500 truncate">项目：深圳铁路公安实验-深圳东</div></div>
+                            <span class="text-[10px] text-[#d29922] shrink-0">● 巡检</span>
+                        </div>
+                        <div class="card rounded p-2 flex items-center gap-2 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='drone-monitor.html'">
+                            <div class="w-10 h-10 bg-[#22304a] rounded flex items-center justify-center shrink-0"><i class="fas fa-plane text-gray-400"></i></div>
+                            <div class="flex-1 min-w-0"><div class="text-white text-xs truncate">EVO Max 4T_APITESTSIMU202605...</div>
+                                <div class="text-[10px] text-gray-500 truncate">项目：深圳铁路公安实验-深圳东</div></div>
+                            <span class="text-[10px] text-gray-600 shrink-0">● 离线</span>
+                        </div>
+                    </div>
+                    <!-- 设备故障 -->
+                    <div class="sec-title">设备故障 <span class="ml-auto text-[10px] text-[#58a6ff] cursor-pointer font-normal" onclick="location.href='platform-device-management.html'">查看全部</span></div>
+                    <div class="space-y-2">
+                        <div class="card rounded p-2 border-[#f85149]/50 cursor-pointer hover:border-[#f85149]" onclick="location.href='platform-device-management.html'">
+                            <div class="flex items-center justify-between"><span class="text-[#f85149] text-xs">电池关机，请长按电源键开机</span><span class="text-[10px] text-gray-500">告警</span></div>
+                            <div class="text-[10px] text-gray-500 truncate mt-0.5">EVO Max 4T_APITESTSIMU202605...</div>
+                        </div>
+                        <div class="card rounded p-2 border-[#f85149]/50 cursor-pointer hover:border-[#f85149]" onclick="location.href='platform-device-management.html'">
+                            <div class="flex items-center justify-between"><span class="text-[#f85149] text-xs">电池关机，请长按电源键开机</span><span class="text-[10px] text-gray-500">告警</span></div>
+                            <div class="text-[10px] text-gray-500 truncate mt-0.5">EVO Max 4T_APITESTSIMU202605...</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <!-- ==================================================== -->
+        <!-- ================= 项目总览 视图 ===================== -->
+        <!-- ==================================================== -->
+        <section id="view-overview" class="flex-1 flex overflow-hidden hidden-imp">
+            <!-- 左栏：项目列表 -->
+            <aside class="w-[360px] shrink-0 bg-[#0b111c] border-r border-[#1a2740] flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+                    <span class="text-white font-medium text-sm">项目列表（共 12）</span>
+                    <i class="fas fa-plus text-gray-400 hover:text-white cursor-pointer" title="新建项目"></i>
+                </div>
+                <div class="flex items-center gap-2 px-5 pb-3 shrink-0">
+                    <div class="flex items-center card rounded px-2 py-1.5 flex-1">
+                        <input type="text" placeholder="请输入项目名称/编码" class="bg-transparent text-xs text-white outline-none flex-1 min-w-0">
+                        <i class="fas fa-search text-gray-500 text-xs"></i>
+                    </div>
+                    <select class="card rounded px-2 py-1.5 text-[11px] text-gray-400 outline-none"><option>创建时间倒序</option><option>创建时间正序</option></select>
+                    <i class="fas fa-rotate-right text-gray-400 hover:text-white cursor-pointer text-xs"></i>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar px-5 pb-4 space-y-3">
+                    <!-- 项目卡片 x4（第一个选中态） -->
+                    <div class="card rounded-lg p-3 border-[#3b82f6] relative cursor-pointer" onclick="location.href='project-home.html'">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-white text-sm font-medium">深圳彩虹巡检项目A</span>
+                            <div class="flex items-center gap-2">
+                                <button class="bg-[#1f5fd6] text-white text-[11px] px-2.5 py-0.5 rounded" onclick="event.stopPropagation();location.href='project-home.html'">进入</button>
+                                <i class="fas fa-ellipsis-h text-gray-500 hover:text-white" onclick="event.stopPropagation();toggleMenu(this)"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-1">
+                            <span>负责人：李工、张青苗</span><span>创建时间：2026/1/6 12:00:19</span><span>项目人数：79</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 mb-2 leading-relaxed">此处是项目简介文字，可展示项目行业处及场项目期间简介介绍多两行多两行多两行多两行多两行…</div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-[#22304a]">
+                            <div class="text-center"><div class="text-base text-white font-semibold">79</div><div class="stat-label">无人机</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">48</div><div class="stat-label">机巢库</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">7</div><div class="stat-label">摄像头</div></div>
+                        </div>
+                        <!-- 编辑/删除菜单 -->
+                        <div class="proj-menu hidden absolute right-3 top-9 panel rounded shadow-lg z-10 w-24 text-xs">
+                            <div class="px-3 py-2 text-gray-300 hover:bg-[#1a2740] cursor-pointer" onclick="event.stopPropagation();alert('编辑项目')">编辑</div>
+                            <div class="px-3 py-2 text-[#f85149] hover:bg-[#1a2740] cursor-pointer" onclick="event.stopPropagation();alert('删除项目')">删除</div>
+                        </div>
+                    </div>
+                    <div class="card rounded-lg p-3 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='project-home.html'">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-white text-sm font-medium">深圳彩虹巡检项目A</span>
+                            <button class="bg-[#1f5fd6] text-white text-[11px] px-2.5 py-0.5 rounded" onclick="event.stopPropagation();location.href='project-home.html'">进入</button>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-1"><span>负责人：李工、张青苗</span><span>创建时间：2026/1/6 12:00:19</span><span>项目人数：79</span></div>
+                        <div class="text-[10px] text-gray-500 mb-2 leading-relaxed">此处是项目简介文字，可展示项目行业处及场项目期间简介介绍多两行多两行多两行…</div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-[#22304a]">
+                            <div class="text-center"><div class="text-base text-white font-semibold">79</div><div class="stat-label">无人机</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">48</div><div class="stat-label">机巢库</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">7</div><div class="stat-label">摄像头</div></div>
+                        </div>
+                    </div>
+                    <div class="card rounded-lg p-3 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='project-home.html'">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-white text-sm font-medium">深圳彩虹巡检项目A</span>
+                            <button class="bg-[#1f5fd6] text-white text-[11px] px-2.5 py-0.5 rounded" onclick="event.stopPropagation();location.href='project-home.html'">进入</button>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-1"><span>负责人：李工、张青苗</span><span>创建时间：2026/1/6 12:00:19</span><span>项目人数：79</span></div>
+                        <div class="text-[10px] text-gray-500 mb-2 leading-relaxed">此处是项目简介文字，可展示项目行业处及场项目期间简介介绍多两行多两行…</div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-[#22304a]">
+                            <div class="text-center"><div class="text-base text-white font-semibold">79</div><div class="stat-label">无人机</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">48</div><div class="stat-label">机巢库</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">7</div><div class="stat-label">摄像头</div></div>
+                        </div>
+                    </div>
+                    <div class="card rounded-lg p-3 cursor-pointer hover:border-[#3b82f6]" onclick="location.href='project-home.html'">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-white text-sm font-medium">深圳彩虹巡检项目A</span>
+                            <button class="bg-[#1f5fd6] text-white text-[11px] px-2.5 py-0.5 rounded" onclick="event.stopPropagation();location.href='project-home.html'">进入</button>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-1"><span>负责人：李工、张青苗</span><span>创建时间：2026/1/6 12:00:19</span><span>项目人数：79</span></div>
+                        <div class="text-[10px] text-gray-500 mb-2 leading-relaxed">此处是项目简介文字，可展示项目行业处及场项目期间简介介绍多两行…</div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-[#22304a]">
+                            <div class="text-center"><div class="text-base text-white font-semibold">79</div><div class="stat-label">无人机</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">48</div><div class="stat-label">机巢库</div></div>
+                            <div class="text-center"><div class="text-base text-white font-semibold">7</div><div class="stat-label">摄像头</div></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 中间：卫星地图 + 项目落点 -->
+            <main class="flex-1 sat-bg relative">
+                <div class="absolute top-4 right-4 z-10">
+                    <div class="w-8 h-8 panel rounded flex items-center justify-center text-gray-300 cursor-pointer hover:text-white"><i class="fas fa-search"></i></div>
+                </div>
+                <div class="marker absolute" style="top:44%; left:38%;">
+                    <div class="flex flex-col items-center cursor-pointer" onclick="location.href='project-home.html'">
+                        <i class="fas fa-map-marker-alt pin"></i>
+                        <span class="text-[10px] text-[#7fb0ff] bg-[#0a0e14]/70 px-1.5 py-0.5 rounded mt-0.5 whitespace-nowrap">深圳彩虹巡检项目A</span>
+                    </div>
+                </div>
+                <div class="marker absolute" style="top:38%; left:62%;">
+                    <div class="flex flex-col items-center cursor-pointer" onclick="location.href='project-home.html'">
+                        <i class="fas fa-map-marker-alt pin"></i>
+                        <span class="text-[10px] text-[#7fb0ff] bg-[#0a0e14]/70 px-1.5 py-0.5 rounded mt-0.5 whitespace-nowrap">深圳彩虹巡检项目A</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 h-7 bg-[#0a0e14]/80 backdrop-blur border-t border-[#1a2740] flex items-center justify-between px-4 text-[10px] text-gray-500 z-10">
+                    <span>100%</span><div class="flex items-center gap-6"><span>100 m</span><span>WGS 84</span></div>
+                </div>
+            </main>
+        </section>
+    </div>
+
+    <script>
+        // 服务器时间（按秒走）
+        function tick() {
+            const d = new Date();
+            const p = n => String(n).padStart(2,'0');
+            const wk = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+            document.getElementById('clock').textContent =
+                `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} ${wk}`;
+        }
+        setInterval(tick, 1000); tick();
+
+        // 顶栏 Tab：巡检大屏 / 项目总览
+        function switchTop(v) {
+            document.getElementById('tab-screen').classList.toggle('active', v==='screen');
+            document.getElementById('tab-overview').classList.toggle('active', v==='overview');
+            document.getElementById('view-screen').classList.toggle('hidden-imp', v!=='screen');
+            document.getElementById('view-overview').classList.toggle('hidden-imp', v!=='overview');
+        }
+        // 左栏 Tab
+        function switchLeft(v) {
+            document.getElementById('s-tab-today').classList.toggle('active', v==='today');
+            document.getElementById('s-tab-stats').classList.toggle('active', v==='stats');
+            document.getElementById('left-today').classList.toggle('hidden-imp', v!=='today');
+            document.getElementById('left-stats').classList.toggle('hidden-imp', v!=='stats');
+        }
+        // 右栏 Tab
+        function switchRight(v) {
+            document.getElementById('r-tab-alert').classList.toggle('active', v==='alert');
+            document.getElementById('r-tab-drone').classList.toggle('active', v==='drone');
+            document.getElementById('right-alert').classList.toggle('hidden-imp', v!=='alert');
+            document.getElementById('right-drone').classList.toggle('hidden-imp', v!=='drone');
+        }
+        // 巡检统计 段选择
+        function segToggle(el) {
+            el.parentElement.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));
+            el.classList.add('active');
+        }
+        // 地球/平面切换（占位）
+        function toggleGlobe(v) {
+            document.getElementById('globe-btn').classList.toggle('active', v==='globe');
+            document.getElementById('plane-btn').classList.toggle('active', v==='plane');
+        }
+        // 项目气泡
+        function showProjectBubble(e) { e.stopPropagation(); document.getElementById('projectBubble').classList.remove('hidden'); }
+        function hideBubble() { document.getElementById('projectBubble').classList.add('hidden'); }
+        // 项目卡片菜单
+        function toggleMenu(el) {
+            const m = el.closest('.card').querySelector('.proj-menu');
+            if (m) m.classList.toggle('hidden');
+        }
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.marker') && !e.target.closest('#projectBubble')) hideBubble();
+            if (!e.target.closest('.fa-ellipsis-h')) document.querySelectorAll('.proj-menu').forEach(m=>m.classList.add('hidden'));
+        });
+    </script>
+<script src="custom-select.js"></script>
+</body>
+</html>

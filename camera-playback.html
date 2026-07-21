@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>录像回放 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        .ptz-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ptz-btn:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #8b949e;
+            color: #fff;
+        }
+        .ptz-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .video-cell {
+            border: 1px solid #30363d;
+            background: #000;
+            position: relative;
+        }
+        .video-cell.active {
+            border-color: #58a6ff;
+        }
+        
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: #58a6ff;
+            border-bottom-color: #58a6ff;
+        }
+
+        /* 模拟视频噪点/背景 */
+        .video-placeholder {
+            background: repeating-linear-gradient(
+                45deg,
+                #161b22,
+                #161b22 10px,
+                #0d1117 10px,
+                #0d1117 20px
+            );
+        }
+        
+        /* 时间轴样式 */
+        .timeline-container {
+            position: relative;
+            height: 40px;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            border-bottom: 1px solid #30363d;
+        }
+        .timeline-ruler {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(to right, #30363d 1px, transparent 1px);
+            background-size: 4.166% 100%; /* 24小时 */
+        }
+        .timeline-event {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: #f85149;
+            cursor: pointer;
+        }
+        .timeline-progress {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 2px;
+            background-color: #58a6ff;
+            left: 45%; /* 模拟当前进度 */
+            z-index: 10;
+        }
+        .timeline-progress::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #58a6ff;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-gray-400" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>监控中心</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+            <span>/</span>
+            <span class="text-white">录像回放</span>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧设备通道树（与摄像头监控页一致） -->
+        <div class="w-72 bg-[#161b22] border-r border-[#30363d] flex flex-col shrink-0">
+            <div class="p-2">
+                <div class="relative">
+                    <input type="text" id="tree-search" placeholder="搜索名称 / 国标编码" oninput="filterDeviceTree(this.value)" class="w-full bg-[#0d1117] border border-[#30363d] text-sm rounded pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#58a6ff]">
+                    <i class="fas fa-search absolute left-2.5 top-2 text-gray-500 text-sm"></i>
+                </div>
+            </div>
+            <div id="device-tree" class="p-2 flex-1 overflow-y-auto custom-scrollbar">
+                <div class="mb-2 device-group" data-name="海康双光谱球机-北门" data-gb="44030000001320000001">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-300 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node1')">
+                        <i id="icon-node1" class="fas fa-caret-down w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <span class="truncate font-medium" title="海康双光谱球机-北门">海康双光谱球机-北门</span>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000001">44030000001320000001</span>
+                        </div>
+                    </div>
+                    <div id="node1" class="pl-6 pr-2 mt-1 space-y-1">
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm bg-[#58a6ff]/10 text-[#58a6ff] rounded cursor-pointer border border-[#58a6ff]/30" data-name="通道1: 可见光" data-gb="44030000001310000001" onclick="selectPlaybackChannel('海康双光谱球机-北门', '通道1: 可见光', this)">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道1: 可见光</span>
+                                <span class="text-[10px] text-[#58a6ff]/70 font-mono truncate" title="44030000001310000001">44030000001310000001</span>
+                            </div>
+                        </div>
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" data-name="通道2: 红外" data-gb="44030000001310000002" onclick="selectPlaybackChannel('海康双光谱球机-北门', '通道2: 红外', this)">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道2: 红外</span>
+                                <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000002">44030000001310000002</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2 device-group" data-name="大华枪机-东侧围墙" data-gb="44030000001320000002">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-300 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node2')">
+                        <i id="icon-node2" class="fas fa-caret-right w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <span class="truncate font-medium" title="大华枪机-东侧围墙">大华枪机-东侧围墙</span>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000002">44030000001320000002</span>
+                        </div>
+                    </div>
+                    <div id="node2" class="pl-6 pr-2 mt-1 space-y-1 hidden">
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" data-name="通道1" data-gb="44030000001310000003" onclick="selectPlaybackChannel('大华枪机-东侧围墙', '通道1', this)">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道1</span>
+                                <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000003">44030000001310000003</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2 opacity-75 device-group" data-name="海康全景-料场全景" data-gb="44030000001320000003">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node3')">
+                        <i id="icon-node3" class="fas fa-caret-down w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-500 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center min-w-0">
+                                <span class="truncate font-medium" title="海康全景-料场全景">海康全景-料场全景</span>
+                                <span class="ml-1 text-[10px] text-gray-500 bg-gray-800 px-1 py-0.5 rounded border border-gray-600 shrink-0">离线</span>
+                            </div>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000003">44030000001320000003</span>
+                        </div>
+                    </div>
+                    <div id="node3" class="pl-6 pr-2 mt-1 space-y-1">
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm text-gray-600 rounded cursor-not-allowed opacity-60" data-name="通道1" data-gb="44030000001310000004" data-offline="1" onclick="showToast('设备离线，无法拉取设备端录像', 'warning')" title="设备离线，无法拉取设备端录像">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道1</span>
+                                <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000004">44030000001310000004</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tree-empty" class="hidden text-center text-xs text-gray-500 py-8">无匹配设备或通道</div>
+            </div>
+        </div>
+
+        <!-- 右侧主回放区 -->
+        <div class="flex-1 flex flex-col bg-[#0d1117] min-w-0 relative">
+            <div id="view-playback" class="flex-1 flex">
+                <!-- 播放器与时间轴 -->
+                <div class="flex-1 flex flex-col p-2 min-w-0">
+                    <!-- 工具栏 -->
+                    <div class="flex justify-between items-center mb-2 px-1 shrink-0">
+                        <div class="flex items-center space-x-3">
+                            <span id="playback-channel-title" class="text-sm text-white font-medium">海康双光谱球机-北门 - 通道1: 可见光 <span class="text-gray-400 font-normal ml-1">的录像回放</span></span>
+                            <span class="text-[10px] text-gray-500 border border-[#30363d] px-1.5 py-0.5 rounded">设备端录像</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="date" value="2026-06-06" class="bg-[#1e1e1e] border border-[#2d2d2d] text-xs text-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#58a6ff] [color-scheme:dark]">
+                            <button class="px-3 py-1.5 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs rounded transition-colors">
+                                查询
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 视频播放器 -->
+                    <div class="flex-1 bg-black border border-[#2d2d2d] relative mb-2 flex items-center justify-center overflow-hidden rounded">
+                        <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-80" alt="回放画面">
+                        <!-- OSD 时间 -->
+                        <div class="absolute top-4 right-4 text-white font-mono text-lg drop-shadow-md">2026-06-06 10:24:12</div>
+                        <!-- AI 告警框 (演示) -->
+                        <div class="absolute border-2 border-[#f85149] w-32 h-40 top-1/3 left-1/3 bg-[#f85149]/10">
+                            <div class="absolute -top-6 left-[-2px] bg-[#f85149] text-white text-xs px-1 py-0.5">区域入侵 98%</div>
+                        </div>
+                    </div>
+
+                    <!-- 播放控制与时间轴 -->
+                    <div class="h-24 bg-[#141414] border border-[#2d2d2d] rounded flex flex-col shrink-0">
+                        <!-- 控制条 -->
+                        <div class="h-10 flex items-center px-4 justify-between border-b border-[#2d2d2d]">
+                            <div class="flex items-center space-x-4 text-gray-300">
+                                <button class="hover:text-white"><i class="fas fa-step-backward"></i></button>
+                                <button class="hover:text-white text-xl text-[#58a6ff]"><i class="fas fa-pause-circle"></i></button>
+                                <button class="hover:text-white"><i class="fas fa-step-forward"></i></button>
+                                <span class="text-xs font-mono w-20 text-center">10:24:12</span>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <select class="bg-transparent border-none focus:outline-none cursor-pointer hover:text-white">
+                                    <option>1.0x</option>
+                                    <option>2.0x</option>
+                                    <option>4.0x</option>
+                                    <option>8.0x</option>
+                                </select>
+                                <button class="hover:text-white" title="全屏"><i class="fas fa-expand"></i></button>
+                            </div>
+                        </div>
+                        <!-- 时间轴 -->
+                        <div class="flex-1 timeline-container overflow-hidden">
+                            <div class="timeline-ruler"></div>
+                            <!-- 录像片段 (绿色表示有录像) -->
+                            <div class="absolute top-2 bottom-2 left-[10%] right-[20%] bg-[#2ea043]/40 border-y border-[#2ea043]/60"></div>
+                            <!-- 事件标记 -->
+                            <div class="timeline-event" style="left: 25%;" title="06:00:00 区域入侵"></div>
+                            <div class="timeline-event" style="left: 45%;" title="10:24:12 区域入侵"></div>
+                            <div class="timeline-event" style="left: 60%;" title="14:30:00 车辆违停"></div>
+                            <!-- 当前进度 -->
+                            <div class="timeline-progress"></div>
+                            <!-- 时间刻度文字 -->
+                            <div class="absolute bottom-0 w-full flex justify-between px-1 text-[10px] text-gray-500 font-mono">
+                                <span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>24:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧关联告警 -->
+                <div class="w-80 bg-[#141414] border-l border-[#2d2d2d] flex flex-col shrink-0">
+                    <div class="p-3 border-b border-[#2d2d2d] font-medium text-white flex justify-between items-center shrink-0">
+                        <span>关联告警 <span class="text-gray-400 font-normal">(3)</span></span>
+                        <span class="text-xs text-gray-400 font-normal">2026-06-06</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                        <!-- 告警 1 -->
+                        <div class="bg-[#1e1e1e] border border-[#58a6ff] rounded p-2 cursor-pointer hover:border-[#58a6ff] transition-colors">
+                            <div class="flex gap-2">
+                                <div class="w-20 h-14 shrink-0 rounded overflow-hidden bg-[#0d1117] border border-[#333] cursor-pointer" onclick="locateAlarm('10:24:12')" title="点击定位播放">
+                                    <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=160&q=80" class="w-full h-full object-cover" alt="告警截图">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start mb-1 gap-1">
+                                        <span class="text-sm text-white font-medium truncate">区域入侵</span>
+                                        <span class="text-[10px] text-[#f85149] bg-[#f85149]/10 px-1.5 py-0.5 rounded shrink-0">一级</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400 font-mono mb-1.5">10:24:12</div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] text-gray-500">处置中</span>
+                                        <button class="text-[10px] text-[#58a6ff] hover:underline" onclick="locateAlarm('10:24:12')">定位播放</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 告警 2 -->
+                        <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 cursor-pointer hover:border-gray-500 transition-colors">
+                            <div class="flex gap-2">
+                                <div class="w-20 h-14 shrink-0 rounded overflow-hidden bg-[#0d1117] border border-[#333] cursor-pointer" onclick="locateAlarm('14:30:00')" title="点击定位播放">
+                                    <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=160&q=80" class="w-full h-full object-cover" alt="告警截图">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start mb-1 gap-1">
+                                        <span class="text-sm text-white font-medium truncate">车辆违停</span>
+                                        <span class="text-[10px] text-[#d29922] bg-[#d29922]/10 px-1.5 py-0.5 rounded shrink-0">二级</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400 font-mono mb-1.5">14:30:00</div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] text-gray-500">-</span>
+                                        <button class="text-[10px] text-gray-400 hover:text-[#58a6ff] hover:underline" onclick="locateAlarm('14:30:00')">定位播放</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 告警 3 -->
+                        <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 cursor-pointer hover:border-gray-500 transition-colors">
+                            <div class="flex gap-2">
+                                <div class="w-20 h-14 shrink-0 rounded overflow-hidden bg-[#0d1117] border border-[#333] cursor-pointer" onclick="locateAlarm('06:00:00')" title="点击定位播放">
+                                    <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=160&q=80" class="w-full h-full object-cover opacity-70" alt="告警截图">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start mb-1 gap-1">
+                                        <span class="text-sm text-white font-medium truncate">区域入侵</span>
+                                        <span class="text-[10px] text-[#f85149] bg-[#f85149]/10 px-1.5 py-0.5 rounded shrink-0">一级</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400 font-mono mb-1.5">06:00:00</div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] text-gray-500">处置完成</span>
+                                        <button class="text-[10px] text-gray-400 hover:text-[#58a6ff] hover:underline" onclick="locateAlarm('06:00:00')">定位播放</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>
+
+    <script>
+        // Toast 系统
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-[#238636]/90 border-[#2ea043]' : 
+                            type === 'error' ? 'bg-[#f85149]/90 border-[#ff6a69]' : 
+                            type === 'warning' ? 'bg-[#5a3a00]/90 border-[#d29922]' :
+                            'bg-[#1f6feb]/90 border-[#388bfd]';
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                         type === 'error' ? 'fa-exclamation-circle' : 
+                         type === 'warning' ? 'fa-exclamation-triangle' :
+                         'fa-info-circle';
+            
+            toast.className = `flex items-center px-4 py-2 rounded text-white text-sm shadow-lg border ${bgColor} transform transition-all duration-300 translate-y-[-100%] opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i> ${message}`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.remove('translate-y-[-100%]', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const device = urlParams.get('device') || '海康双光谱球机-北门';
+            const channel = urlParams.get('channel') || '通道1: 可见光';
+            // 回放仅取设备端录像；离线设备不可进入（含历史 offline 参数）
+            if (urlParams.get('offline') === '1') {
+                showToast('设备离线，无法拉取设备端录像', 'warning');
+                selectPlaybackChannel('海康双光谱球机-北门', '通道1: 可见光');
+                return;
+            }
+            selectPlaybackChannel(device, channel);
+        };
+
+        function selectPlaybackChannel(device, channel, el = null) {
+            if (el && el.dataset.offline === '1') {
+                showToast('设备离线，无法拉取设备端录像', 'warning');
+                return;
+            }
+            document.getElementById('playback-channel-title').innerHTML = `${device} - ${channel} <span class="text-gray-400 font-normal ml-1">的录像回放</span>`;
+
+            document.querySelectorAll('.channel-item').forEach(item => {
+                if (item.dataset.offline === '1') return;
+                item.classList.remove('bg-[#58a6ff]/10', 'text-[#58a6ff]', 'border', 'border-[#58a6ff]/30');
+                item.classList.add('text-gray-400');
+                const code = item.querySelector('.font-mono');
+                if (code) {
+                    code.classList.remove('text-[#58a6ff]/70');
+                    code.classList.add('text-gray-500');
+                }
+            });
+            if (el) {
+                el.classList.remove('text-gray-400', 'text-gray-500');
+                el.classList.add('bg-[#58a6ff]/10', 'text-[#58a6ff]', 'border', 'border-[#58a6ff]/30');
+                const code = el.querySelector('.font-mono');
+                if (code) {
+                    code.classList.remove('text-gray-500');
+                    code.classList.add('text-[#58a6ff]/70');
+                }
+            }
+        }
+
+        function locateAlarm(time) {
+            showToast(`已定位至 ${time}`, 'success');
+        }
+
+        function filterDeviceTree(keyword) {
+            const q = keyword.trim().toLowerCase();
+            let visibleCount = 0;
+
+            document.querySelectorAll('.device-group').forEach(group => {
+                const deviceName = (group.dataset.name || '').toLowerCase();
+                const deviceGb = (group.dataset.gb || '').toLowerCase();
+                const deviceMatch = !q || deviceName.includes(q) || deviceGb.includes(q);
+
+                let anyChannelVisible = false;
+                group.querySelectorAll('.channel-item').forEach(ch => {
+                    const chName = (ch.dataset.name || '').toLowerCase();
+                    const chGb = (ch.dataset.gb || '').toLowerCase();
+                    const chMatch = !q || deviceMatch || chName.includes(q) || chGb.includes(q);
+                    ch.classList.toggle('hidden', !chMatch);
+                    if (chMatch) anyChannelVisible = true;
+                });
+
+                const showGroup = !q || deviceMatch || anyChannelVisible;
+                group.classList.toggle('hidden', !showGroup);
+                if (showGroup) visibleCount++;
+
+                if (q && showGroup) {
+                    const channels = group.querySelector('[id^="node"]');
+                    const icon = group.querySelector('[id^="icon-node"]');
+                    if (channels) channels.classList.remove('hidden');
+                    if (icon) {
+                        icon.classList.remove('fa-caret-right');
+                        icon.classList.add('fa-caret-down');
+                    }
+                }
+            });
+
+            const empty = document.getElementById('tree-empty');
+            if (empty) empty.classList.toggle('hidden', !q || visibleCount > 0);
+        }
+
+        function toggleNode(nodeId) {
+            const node = document.getElementById(nodeId);
+            const icon = document.getElementById('icon-' + nodeId);
+            if (node.classList.contains('hidden')) {
+                node.classList.remove('hidden');
+                icon.classList.remove('fa-caret-right');
+                icon.classList.add('fa-caret-down');
+            } else {
+                node.classList.add('hidden');
+                icon.classList.remove('fa-caret-down');
+                icon.classList.add('fa-caret-right');
+            }
+        }
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作流事件列表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { dark: {
+                bg: '#141414', panel: '#1f1f1f', border: '#303030',
+                text: '#e5e5e5', textSecondary: '#a6a6a6',
+                primary: '#177ddc', primaryHover: '#1765ad'
+            } } } }
+        }
+    </script>
+    <style>
+        body { background-color:#141414; color:#e5e5e5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif; }
+        .top-nav { height:48px; background:#1f1f1f; border-bottom:1px solid #303030; display:flex; align-items:center; padding:0 24px; justify-content:space-between; }
+        table { border-collapse:collapse; width:100%; }
+        thead th { font-weight:500; color:#a6a6a6; font-size:13px; text-align:left; padding:12px 12px; border-bottom:1px solid #303030; white-space:nowrap; }
+        tbody td { font-size:13px; padding:12px 12px; border-bottom:1px solid #262626; vertical-align:middle; }
+        tbody tr:hover { background:rgba(255,255,255,0.02); }
+        .level { padding:1px 8px; border-radius:4px; font-size:12px; }
+        .level-1 { background:rgba(255,77,79,0.15); color:#ff7875; border:1px solid rgba(255,77,79,0.3); }
+        .level-2 { background:rgba(250,173,20,0.15); color:#ffc53d; border:1px solid rgba(250,173,20,0.3); }
+        .level-3 { background:rgba(23,125,220,0.15); color:#69b1ff; border:1px solid rgba(23,125,220,0.3); }
+        .dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; }
+        .link { color:#177ddc; cursor:pointer; }
+        .link:hover { color:#1765ad; }
+        .device-tab { padding:8px 16px; font-size:14px; border-bottom:2px solid transparent; color:#a6a6a6; cursor:pointer; }
+        .device-tab.active { color:#fff; border-bottom-color:#177ddc; }
+        select { appearance:none; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #434343; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
+    </style>
+</head>
+<body class="dark antialiased h-screen flex flex-col">
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav shrink-0">
+        <div class="flex items-center text-sm text-dark-textSecondary gap-2">
+            <i class="fas fa-arrow-left cursor-pointer hover:text-white mr-2" onclick="window.location.href='workflow-list.html'"></i>
+            <span class="cursor-pointer hover:text-white" onclick="window.location.href='project-home.html'">项目首页</span>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-dark-textSecondary" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>自动化工作流</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-dark-panel border border-dark-border rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 bg-[rgba(23,125,220,0.1)] text-dark-primary cursor-pointer" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+            <span>/</span>
+            <span class="text-dark-text">工作流事件列表</span>
+        </div>
+        <i class="fas fa-times cursor-pointer text-dark-textSecondary hover:text-white text-lg transition-colors" onclick="window.location.href='project-home.html'" title="关闭"></i>
+    </div>
+
+    <div class="flex-1 overflow-auto p-6 flex flex-col gap-4">
+
+        <!-- 执行设备分栏 Tab -->
+        <div class="flex items-center gap-1 border-b border-dark-border">
+            <div class="device-tab active" data-device="drone" onclick="switchDevice('drone')">无人机处置</div>
+            <div class="device-tab" data-device="dog" onclick="switchDevice('dog')">地面机器人处置</div>
+        </div>
+
+        <!-- 筛选区 -->
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="relative w-56">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-sm"></i>
+                <input type="text" placeholder="请输入事件名称" class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-text pl-9 pr-3 py-1.5 focus:outline-none focus:border-dark-primary h-[34px]">
+            </div>
+            <div class="relative w-36">
+                <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 focus:outline-none focus:border-dark-primary h-[34px]">
+                    <option value="" disabled selected hidden>事件类型</option>
+                    <option>全部事件类型</option>
+                    <option>园区-行人闯入</option>
+                    <option>高速-行人闯入</option>
+                </select>
+                <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+            </div>
+            <div class="relative w-36">
+                <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 focus:outline-none focus:border-dark-primary h-[34px]">
+                    <option value="" disabled selected hidden>触发形式</option>
+                    <option>全部触发形式</option>
+                    <option>告警触发</option>
+                    <option>手动触发</option>
+                </select>
+                <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+            </div>
+            <div class="relative w-36">
+                <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 focus:outline-none focus:border-dark-primary h-[34px]">
+                    <option value="" disabled selected hidden>全部状态</option>
+                    <option>全部状态</option>
+                    <option>待处置</option>
+                    <option>调度中</option>
+                    <option>处置中</option>
+                    <option>处置完成</option>
+                    <option>处置失败</option>
+                    <option>已取消</option>
+                    <option>已过期</option>
+                </select>
+                <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+            </div>
+            <div class="relative w-44">
+                <i class="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs"></i>
+                <input type="text" placeholder="事件发生时间" class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-text pl-8 pr-3 py-1.5 focus:outline-none focus:border-dark-primary h-[34px]">
+            </div>
+            <button class="px-4 py-1.5 rounded text-sm border border-dark-border text-dark-textSecondary hover:text-white">重置</button>
+        </div>
+
+        <!-- 表格 -->
+        <div class="bg-dark-panel border border-dark-border rounded-lg overflow-auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>事件ID</th>
+                        <th>事件名称</th>
+                        <th>触发形式</th>
+                        <th>事件类型</th>
+                        <th>告警等级</th>
+                        <th>事件发生地点</th>
+                        <th>事件发生时间</th>
+                        <th>告警图片</th>
+                        <th>状态</th>
+                        <th>处置任务</th>
+                        <th>触发人</th>
+                        <th>触发时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="eventBody"></tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="flex items-center justify-end gap-2 text-sm text-dark-textSecondary">
+            <i class="fas fa-chevron-left cursor-pointer hover:text-white"></i>
+            <span class="px-2">1</span>
+            <span class="px-2">2</span>
+            <span class="px-2 text-white bg-dark-primary rounded">3</span>
+            <span class="px-2">4</span>
+            <span class="px-2">5</span>
+            <span>…</span>
+            <span class="px-2">50</span>
+            <i class="fas fa-chevron-right cursor-pointer hover:text-white"></i>
+            <select class="bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary px-2 py-1 ml-2">
+                <option>10 条/页</option>
+                <option>20 条/页</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 地图查看弹窗 -->
+    <div id="mapModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black/65" onclick="closeMap()"></div>
+        <div class="bg-dark-panel border border-dark-border rounded-lg w-full max-w-2xl relative z-10 mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border">
+                <h2 class="text-base font-medium">事件发生地点</h2>
+                <button onclick="closeMap()" class="text-dark-textSecondary hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <div class="text-sm text-dark-textSecondary mb-3" id="mapCoord">经度 114.3050975，纬度 22.7352507</div>
+                <div class="h-72 rounded bg-dark-bg border border-dark-border flex items-center justify-center text-dark-textSecondary">
+                    <div class="text-center">
+                        <i class="fas fa-map-location-dot text-4xl mb-3 text-dark-primary"></i>
+                        <div>地图定位示意（Leaflet / OSM）</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rows = [
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:1, status:'待处置' },
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:2, status:'已过期', reason:'超时未确认' },
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:3, status:'已取消' },
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:1, status:'处置失败', reason:'飞抵目标点失败' },
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:2, status:'调度中' },
+            { device:'drone', id:'CZ123456', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:2, status:'处置成功' },
+            { device:'dog', id:'CZ123789', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:1, status:'处置中' },
+            { device:'dog', id:'CZ123789', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'手动触发', type:'园区-行人闯入', level:2, status:'处置失败', reason:'处置动作执行失败' },
+            { device:'dog', id:'CZ123789', name:'【事件联动处置】园区-行人闯入 20260112-12:00', trigger:'告警触发', type:'园区-行人闯入', level:3, status:'处置成功' },
+        ];
+
+        const statusMap = {
+            '待处置':   { color:'#faad14', dot:'#faad14' },
+            '调度中':   { color:'#69b1ff', dot:'#177ddc' },
+            '处置中':   { color:'#69b1ff', dot:'#177ddc' },
+            '处置成功': { color:'#52c41a', dot:'#52c41a' },
+            '处置失败': { color:'#ff7875', dot:'#ff4d4f' },
+            '已取消':   { color:'#a6a6a6', dot:'#8c8c8c' },
+            '已过期':   { color:'#a6a6a6', dot:'#8c8c8c' },
+        };
+
+        function deviceTag(d) {
+            return d === 'dog'
+                ? '<span class="text-green-400 whitespace-nowrap"><i class="fas fa-robot mr-1"></i>地面机器狗</span>'
+                : '<span class="text-dark-primary whitespace-nowrap"><i class="fas fa-plane mr-1"></i>无人机</span>';
+        }
+
+        function statusCell(r) {
+            const s = statusMap[r.status];
+            let html = `<span class="whitespace-nowrap" style="color:${s.color}"><span class="dot" style="background:${s.dot}"></span>${r.status}</span>`;
+            if (r.reason) html += `<div class="text-xs text-dark-textSecondary mt-0.5">原因：${r.reason}</div>`;
+            return html;
+        }
+
+        function opsCell(r) {
+            if (r.status === '待处置') return '<span class="link mr-2">取消处置</span><span class="link">立即处置</span>';
+            if (r.status === '调度中') return '<span class="link">终止</span>';
+            return '<span class="link">查看</span>';
+        }
+
+        function render(device) {
+            const body = document.getElementById('eventBody');
+            body.innerHTML = rows.filter(r => r.device === device).map(r => `
+                <tr>
+                    <td class="whitespace-nowrap">${r.id}</td>
+                    <td class="min-w-[220px]">${r.name}</td>
+                    <td class="whitespace-nowrap">${r.trigger}</td>
+                    <td class="whitespace-nowrap">${r.type}</td>
+                    <td><span class="level level-${r.level}">${['','一级','二级','三级'][r.level]}</span></td>
+                    <td class="min-w-[200px]">
+                        <span class="link" onclick="openMap('22.7352507','114.3050975')">22.7352507，114.3050975</span>
+                    </td>
+                    <td class="whitespace-nowrap">2026-01-15 09:00</td>
+                    <td><div class="w-16 h-10 rounded bg-dark-bg border border-dark-border flex items-center justify-center text-dark-textSecondary"><i class="fas fa-image"></i></div></td>
+                    <td>${statusCell(r)}</td>
+                    <td class="whitespace-nowrap"><span class="link">处置任务链接</span></td>
+                    <td class="whitespace-nowrap">admin</td>
+                    <td class="whitespace-nowrap">2026-01-15 09:00</td>
+                    <td class="whitespace-nowrap">${opsCell(r)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function switchDevice(device) {
+            document.querySelectorAll('.device-tab').forEach(t => t.classList.toggle('active', t.dataset.device === device));
+            render(device);
+        }
+
+        function openMap(lat, lng) {
+            document.getElementById('mapCoord').textContent = `经度 ${lng}，纬度 ${lat}`;
+            document.getElementById('mapModal').classList.remove('hidden');
+        }
+        function closeMap() { document.getElementById('mapModal').classList.add('hidden'); }
+
+        // 支持从列表页「查看详情」带入 ?device=drone|dog，落到对应 Tab
+        const urlDevice = new URLSearchParams(location.search).get('device');
+        switchDevice(urlDevice === 'dog' ? 'dog' : 'drone');
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

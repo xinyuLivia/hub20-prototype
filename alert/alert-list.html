@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>告警中心 - 无人机告警 - Avant Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgMain: '#0A0A0A', // Deep black as in screenshot
+            bgPanel: '#141414', // Slightly lighter for panels
+            borderDark: '#2A2A2A',
+            textMain: '#E0E0E0',
+            textSub: '#8C8C8C',
+            accent: '#1890FF',
+            level1: '#F53F3F', // Red
+            level2: '#FF7D00', // Orange
+            level3: '#F7BA1E', // Yellow
+            tagBg1: 'rgba(245, 63, 63, 0.15)',
+            tagBg2: 'rgba(255, 125, 0, 0.15)',
+            tagBg3: 'rgba(247, 186, 30, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0A0A0A; color: #E0E0E0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 13px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    
+    input, select {
+      background-color: transparent;
+      border: 1px solid #2A2A2A;
+      color: #E0E0E0;
+    }
+    input:focus, select:focus {
+      border-color: #1890FF;
+      outline: none;
+    }
+    
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238C8C8C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px !important;
+    }
+    select option { background-color: #141414; }
+
+    /* Toggle buttons */
+    .btn-toggle { color: #8C8C8C; }
+    .btn-toggle.active { color: #1890FF; background-color: rgba(24, 144, 255, 0.15); }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- Toast Container -->
+  <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform -translate-y-full opacity-0">
+    <div class="bg-bgPanel border border-borderDark text-textMain px-4 py-2.5 rounded shadow-lg flex items-center gap-2">
+      <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+      <span id="toastMsg">操作成功</span>
+    </div>
+  </div>
+
+  <!-- Invalid Confirm Modal -->
+  <div id="invalidModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/60" onclick="closeInvalidModal()"></div>
+    <div class="relative bg-bgPanel border border-borderDark rounded-lg shadow-2xl w-[420px] p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-medium text-textMain">确认标记无效</h3>
+        <button onclick="closeInvalidModal()" class="text-textSub hover:text-textMain transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <p class="text-[13px] text-textSub leading-relaxed mb-6">您确定要将以下告警标记为无效吗？此操作无法撤销，标记为无效的告警将不再需要处理。</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeInvalidModal()" class="px-4 py-1.5 border border-borderDark rounded text-sm text-textMain hover:bg-borderDark transition-colors">取消</button>
+        <button onclick="confirmInvalid()" class="px-4 py-1.5 bg-level1 text-white rounded text-sm hover:opacity-90 transition-opacity font-medium">确认标记无效</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="h-[52px] shrink-0 border-b border-borderDark flex items-center justify-between px-6">
+    <div class="flex items-center gap-2 text-sm">
+      <button class="hover:text-white transition-colors" onclick="location.href='../project-home.html'">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <span class="text-textSub hover:text-white cursor-pointer" onclick="location.href='../project-home.html'">项目首页</span>
+      <span class="text-textSub">/</span>
+      <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-textMain" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+              <span>告警中心</span>
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-bgPanel border border-borderDark rounded shadow-lg py-1">
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../drone-list.html'">设备管理</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../task-live.html'">任务实况</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../camera-monitor.html'">监控中心</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../task-list.html'">任务管理</div>
+                  <div class="px-4 py-2 bg-[rgba(24,144,255,0.1)] text-accent cursor-pointer" onclick="window.location.href='alert-list.html'">告警中心</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../resource-list.html'">资源库</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../workflow-list.html'">自动化工作流</div>
+              </div>
+          </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="../project-home.html" class="text-textSub hover:text-white transition-colors" title="关闭">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- 告警中心二级 Tab -->
+  <div class="px-6 pt-4 flex gap-6 border-b border-borderDark shrink-0" id="alertCenterTabs">
+    <div class="pb-3 border-b-2 border-accent text-accent font-medium cursor-pointer -mb-px" data-tab="drone" onclick="switchAlertTab('drone')">无人机告警</div>
+    <div class="pb-3 text-textSub hover:text-textMain cursor-pointer -mb-px" data-tab="camera" onclick="location.href='../camera-alarm-list.html'">摄像头告警</div>
+    <div class="pb-3 text-textSub hover:text-textMain cursor-pointer -mb-px" data-tab="fiber" onclick="switchAlertTab('fiber')">震动光纤告警</div>
+    <div class="pb-3 text-textSub hover:text-textMain cursor-pointer -mb-px" data-tab="blackflight" onclick="switchAlertTab('blackflight')">黑飞告警</div>
+  </div>
+
+  <!-- 无人机告警内容区（原告警列表） -->
+  <div id="panel-drone" class="flex-1 flex flex-col min-h-0">
+  <!-- Filters & Toolbar -->
+  <div class="px-6 py-4 flex items-center justify-between shrink-0 border-b border-borderDark">
+    <div class="flex items-center gap-3">
+      <!-- Search -->
+      <div class="relative w-64">
+        <svg class="w-4 h-4 absolute left-3 top-2.5 text-textSub" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <input type="text" placeholder="请输入告警编号/告警名称" class="w-full rounded bg-[#1A1A1A] border-borderDark px-9 py-2 hover:border-accent/50 focus:border-accent transition-colors">
+      </div>
+      
+      <!-- Status -->
+      <div class="relative w-36">
+        <select class="w-full rounded bg-[#1A1A1A] border-borderDark px-3 py-2 cursor-pointer hover:border-accent/50 focus:border-accent transition-colors text-textSub" onchange="this.classList.toggle('text-textSub', this.value==='');">
+          <option value="" selected disabled hidden>全部告警状态</option>
+          <option value="" class="text-textSub">全部告警状态</option>
+          <option value="待确认" class="text-textMain">待确认</option>
+          <option value="已确认" class="text-textMain">已确认</option>
+          <option value="已处理" class="text-textMain">已处理</option>
+          <option value="无效告警" class="text-textMain">无效告警</option>
+        </select>
+      </div>
+
+      <!-- Level -->
+      <div class="relative w-32">
+        <select class="w-full rounded bg-[#1A1A1A] border-borderDark px-3 py-2 cursor-pointer hover:border-accent/50 focus:border-accent transition-colors text-textSub" onchange="this.classList.toggle('text-textSub', this.value==='');">
+          <option value="" selected disabled hidden>全部等级</option>
+          <option value="" class="text-textSub">全部等级</option>
+          <option value="一级" class="text-textMain">一级</option>
+          <option value="二级" class="text-textMain">二级</option>
+          <option value="三级" class="text-textMain">三级</option>
+          <option value="四级" class="text-textMain">四级</option>
+          <option value="五级" class="text-textMain">五级</option>
+        </select>
+      </div>
+
+      <!-- Event Status -->
+      <div class="relative w-36">
+        <select class="w-full rounded bg-[#1A1A1A] border-borderDark px-3 py-2 cursor-pointer hover:border-accent/50 focus:border-accent transition-colors text-textSub" onchange="this.classList.toggle('text-textSub', this.value==='');">
+          <option value="" selected disabled hidden>全部处置状态</option>
+          <option value="" class="text-textSub">全部处置状态</option>
+          <option value="待处置" class="text-textMain">待处置</option>
+          <option value="调度中" class="text-textMain">调度中</option>
+          <option value="处置中" class="text-textMain">处置中</option>
+          <option value="处置完成" class="text-textMain">处置完成</option>
+          <option value="处置失败" class="text-textMain">处置失败</option>
+          <option value="已取消" class="text-textMain">已取消</option>
+          <option value="已过期" class="text-textMain">已过期</option>
+        </select>
+      </div>
+
+      <!-- Date Range (New style with dropdown) -->
+      <div class="relative w-64 z-20">
+        <!-- Trigger -->
+        <div id="dateRangeTrigger" onclick="toggleDatePicker()" class="flex items-center justify-between border border-borderDark bg-transparent rounded px-3 py-[7px] cursor-pointer hover:border-textSub transition-colors text-[13px] group">
+          <span class="text-textMain">2026-06-04 - 2026-06-20</span>
+          <div class="flex items-center gap-1.5 text-textSub">
+            <svg class="w-3.5 h-3.5 hover:text-textMain opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" onclick="event.stopPropagation();"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          </div>
+        </div>
+
+        <!-- Dropdown Panel -->
+        <div id="dateRangeDropdown" class="absolute top-full left-0 mt-1 bg-bgPanel border border-borderDark rounded shadow-2xl p-4 flex gap-6 w-[560px] hidden">
+          
+          <!-- Left Month (June) -->
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-4">
+              <button class="text-textSub hover:text-textMain">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+              </button>
+              <span class="font-medium text-textMain text-[13px]">六月 2026</span>
+              <div class="w-4 h-4"></div> <!-- Spacer -->
+            </div>
+            
+            <div class="grid grid-cols-7 gap-y-2 gap-x-1 text-center text-xs">
+              <div class="text-textSub mb-2">一</div><div class="text-textSub mb-2">二</div><div class="text-textSub mb-2">三</div><div class="text-textSub mb-2">四</div><div class="text-textSub mb-2">五</div><div class="text-textSub mb-2">六</div><div class="text-textSub mb-2">日</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">1</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">2</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">3</div>
+              <div class="py-1 bg-accent text-white rounded cursor-pointer">4</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">5</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">6</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">7</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">8</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">9</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">10</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">11</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">12</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">13</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">14</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">15</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">16</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">17</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">18</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">19</div>
+              <div class="py-1 bg-accent text-white rounded cursor-pointer">20</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">21</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">22</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">23</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">24</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">25</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">26</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">27</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">28</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">29</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">30</div>
+              <div class="py-1 text-[#444]">1</div>
+              <div class="py-1 text-[#444]">2</div>
+              <div class="py-1 text-[#444]">3</div>
+              <div class="py-1 text-[#444]">4</div>
+              <div class="py-1 text-[#444]">5</div>
+            </div>
+          </div>
+          
+          <!-- Right Month (July) -->
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-4 h-4"></div> <!-- Spacer -->
+              <span class="font-medium text-textMain text-[13px]">七月 2026</span>
+              <button class="text-textSub hover:text-textMain">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-y-2 gap-x-1 text-center text-xs">
+              <div class="text-textSub mb-2">一</div><div class="text-textSub mb-2">二</div><div class="text-textSub mb-2">三</div><div class="text-textSub mb-2">四</div><div class="text-textSub mb-2">五</div><div class="text-textSub mb-2">六</div><div class="text-textSub mb-2">日</div>
+              
+              <div class="py-1 text-[#444]">29</div>
+              <div class="py-1 text-[#444]">30</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">1</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">2</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">3</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">4</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">5</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">6</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">7</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">8</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">9</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">10</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">11</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">12</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">13</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">14</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">15</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">16</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">17</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">18</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">19</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">20</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">21</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">22</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">23</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">24</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">25</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">26</div>
+              
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">27</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">28</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">29</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">30</div>
+              <div class="py-1 cursor-pointer hover:bg-borderDark rounded text-textMain">31</div>
+              <div class="py-1 text-[#444]">1</div>
+              <div class="py-1 text-[#444]">2</div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <button class="flex items-center gap-1.5 text-textMain px-4 py-2 bg-[#2A2A2A] border border-transparent rounded hover:bg-[#333] transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        重置
+      </button>
+    </div>
+
+    <!-- View Toggles -->
+    <div class="flex items-center gap-3">
+      <button onclick="location.href='../detection-zone-config.html'" class="flex items-center gap-1.5 text-textMain px-3 py-2 border border-borderDark rounded hover:border-accent hover:text-accent transition-colors" title="配置无人机告警的检测区域">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+        检测区域配置
+      </button>
+      <div class="flex gap-1">
+      <button id="btnList" onclick="setView('list')" class="btn-toggle active p-2 rounded hover:text-white hover:bg-borderDark transition-colors" title="列表视图">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+      </button>
+      <button id="btnGrid" onclick="setView('grid')" class="btn-toggle p-2 rounded hover:text-white hover:bg-borderDark transition-colors" title="卡片视图">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+      </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="flex-1 overflow-auto px-6 relative" id="contentArea">
+    
+    <!-- ================= LIST VIEW ================= -->
+    <div id="listView" class="block">
+      <table class="w-full text-left border-collapse">
+        <thead class="text-textSub border-b border-borderDark sticky top-0 bg-bgMain z-10 font-normal">
+          <tr>
+            <th class="py-3 px-2 font-normal">告警编号</th>
+            <th class="py-3 px-2 font-normal">告警名称</th>
+            <th class="py-3 px-2 font-normal">告警等级</th>
+            <th class="py-3 px-2 font-normal">巡检对象</th>
+            <th class="py-3 px-2 font-normal">告警图片</th>
+            <th class="py-3 px-2 font-normal">所属任务</th>
+            <th class="py-3 px-2 font-normal">告警渠道</th>
+            <th class="py-3 px-2 font-normal">告警状态</th>
+            <th class="py-3 px-2 font-normal">上报人</th>
+            <th class="py-3 px-2 font-normal">上报时间</th>
+            <th class="py-3 px-2 font-normal">处置状态</th>
+            <th class="py-3 px-2 font-normal">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-borderDark" id="tableBody">
+          <!-- Rows will be injected via JS to keep data in one place -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ================= GRID VIEW ================= -->
+    <div id="gridView" class="hidden">
+      <!-- Cards will be injected via JS -->
+    </div>
+
+  </div>
+
+  <!-- Pagination -->
+  <div class="h-14 shrink-0 border-t border-borderDark flex items-center justify-end px-6 gap-4">
+    <span class="text-textSub">共 <span id="totalCount">6078</span> 条记录</span>
+    <div class="flex items-center gap-1">
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">&lt;</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded bg-accent text-white font-medium">1</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">2</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">3</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">4</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">5</button>
+      <span class="px-1 text-textSub">...</span>
+      <button class="w-9 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">608</button>
+      <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-borderDark text-textSub">&gt;</button>
+    </div>
+    <div class="relative w-20">
+      <select class="w-full rounded border-borderDark px-2 py-1 cursor-pointer bg-transparent">
+        <option>10/页</option>
+        <option>20/页</option>
+        <option>50/页</option>
+      </select>
+    </div>
+  </div>
+  </div><!-- /panel-drone -->
+
+  <!-- 震动光纤 / 黑飞 占位 -->
+  <div id="panel-fiber" class="hidden flex-1 flex items-center justify-center text-textSub">
+    <div class="text-center py-20">
+      <div class="text-4xl mb-3 opacity-40">〰️</div>
+      <div class="text-textMain mb-1">震动光纤告警</div>
+      <div class="text-sm">暂无告警数据（原型占位）</div>
+    </div>
+  </div>
+  <div id="panel-blackflight" class="hidden flex-1 flex items-center justify-center text-textSub">
+    <div class="text-center py-20">
+      <div class="text-4xl mb-3 opacity-40">✈</div>
+      <div class="text-textMain mb-1">黑飞告警</div>
+      <div class="text-sm">暂无告警数据（原型占位）</div>
+    </div>
+  </div>
+
+  <script>
+    // Data definition for consistency between views
+    const alerts = [
+      {
+        id: '1',
+        no: '20260601100406',
+        name: '行人闯入',
+        level: 3,
+        levelLabel: '三级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202606011...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-06-01 10:04:06'
+      },
+      {
+        id: '2',
+        no: '20260529165829',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '处置失败', // From our new requirement
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:29'
+      },
+      {
+        id: '3',
+        no: '20260529165827',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '已过期',
+        retryWorkflowAvailable: false,
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:27'
+      },
+      {
+        id: '4',
+        no: '20260529165826',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已确认',
+        eventStatus: '调度中',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:26'
+      },
+      {
+        id: '5',
+        no: '20260529165825',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已确认',
+        eventStatus: '处置完成',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:25'
+      },
+      {
+        id: '6',
+        no: '20260529165824',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已处理',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:24'
+      },
+      {
+        id: '7',
+        no: '20260529165823',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=300&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '无效告警',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:23'
+      }
+    ];
+
+    function getLevelClasses(level) {
+      if (level === 1) return 'border-level1/30 bg-tagBg1 text-level1';
+      if (level === 2) return 'border-level2/30 bg-tagBg2 text-level2';
+      return 'border-level3/30 bg-tagBg3 text-level3';
+    }
+
+    function getStatusDot(status) {
+      if (status === '待确认') return 'bg-level3';
+      if (status === '已确认') return 'bg-accent'; // Usually blue/green
+      if (status === '已处理') return 'bg-textSub';
+      return 'bg-level1'; // 无效告警
+    }
+
+    function getEventStatusHTML(eventStatus) {
+      if (eventStatus === '处置失败' || eventStatus === '已过期' || eventStatus === '已取消') return `<span class="text-level1 font-medium">${eventStatus}</span>`;
+      if (eventStatus === '调度中' || eventStatus === '处置中') return `<span class="text-accent font-medium">${eventStatus}</span>`;
+      if (eventStatus === '处置完成') return `<span class="text-green-500 font-medium">${eventStatus}</span>`;
+      return '<span class="text-textSub">-</span>';
+    }
+
+    function getActionsHTML(item) {
+      let actions = [];
+      
+      // 查看详情 按钮在最左边
+      actions.push(`<a href="alert-details.html?id=${item.id}" class="text-accent hover:text-blue-400">查看详情</a>`);
+
+      if (item.status === '待确认') {
+        actions.push(`<button onclick="handleAction('confirm', '${item.id}')" class="text-accent hover:text-blue-400">确认告警</button>`);
+        actions.push(`<button onclick="handleAction('invalid', '${item.id}')" class="text-accent hover:text-blue-400">标记无效</button>`);
+      } else if (item.status === '已确认') {
+        actions.push(`<button onclick="handleAction('cancelConfirm', '${item.id}')" class="text-accent hover:text-blue-400">取消确认</button>`);
+        actions.push(`<button onclick="handleAction('push', '${item.id}')" class="text-accent hover:text-blue-400">消息推送</button>`);
+      }
+      
+      // 新增要求：处置失败/已取消/已过期，且告警是待确认，可以重新处置
+      if (item.status === '待确认' && (item.eventStatus === '处置失败' || item.eventStatus === '已取消' || item.eventStatus === '已过期')) {
+        actions.push(`<button onclick="handleRetry('${item.id}')" class="text-accent hover:text-blue-400 font-medium">重新处置</button>`);
+      }
+      
+      return `<div class="flex items-center gap-3">${actions.join('')}</div>`;
+    }
+
+    function renderList() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = alerts.map(item => `
+        <tr class="hover:bg-[#1C1C1C] transition-colors border-b border-borderDark/50 group">
+          <td class="py-4 px-2 text-[#8C8C8C] text-[13px] font-mono">${item.no}</td>
+          <td class="py-4 px-2 text-textMain font-medium text-[13px]">${item.name}</td>
+          <td class="py-4 px-2"><span class="px-2 py-[1px] border rounded text-xs ${getLevelClasses(item.level)}">${item.levelLabel}</span></td>
+          <td class="py-4 px-2 text-[#A0A0A0] text-[13px]">${item.target}</td>
+          <td class="py-4 px-2">
+            <div class="w-16 h-10 rounded overflow-hidden cursor-pointer opacity-90 group-hover:opacity-100 transition-opacity relative shadow-sm" onclick="window.location.href='alert-details.html?id=${item.id}'">
+              <img src="${item.img}" class="w-full h-full object-cover" alt="img" />
+              <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
+            </div>
+          </td>
+          <td class="py-4 px-2 text-accent cursor-pointer hover:underline truncate max-w-[140px] text-[13px]" title="${item.task}">${item.task}</td>
+          <td class="py-4 px-2 text-[#8C8C8C] text-[13px]">${item.channel}</td>
+          <td class="py-4 px-2"><span class="flex items-center gap-1.5 text-[13px] text-textMain"><span class="w-1.5 h-1.5 rounded-full ${getStatusDot(item.status)}"></span>${item.status}</span></td>
+          <td class="py-4 px-2 text-[#8C8C8C] text-[13px]">${item.reporter}</td>
+          <td class="py-4 px-2 text-[#8C8C8C] text-[13px]">${item.time}</td>
+          <td class="py-4 px-2 text-[13px]">${getEventStatusHTML(item.eventStatus)}</td>
+          <td class="py-4 px-2 text-[13px] font-medium">${getActionsHTML(item)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('gridView');
+      grid.innerHTML = alerts.map(item => `
+        <div class="bg-bgPanel rounded-md overflow-hidden flex flex-col transition-colors border border-transparent hover:border-borderDark hover:shadow-lg group/card">
+          <!-- Image Container with Overlays -->
+          <div class="aspect-video relative overflow-hidden cursor-pointer" onclick="window.location.href='alert-details.html?id=${item.id}'">
+            <img src="${item.img}" class="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105" alt="img" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
+            
+            <!-- Top Tags -->
+            <div class="absolute top-2 left-2 flex gap-1">
+              <span class="px-1.5 py-0.5 border rounded backdrop-blur-sm ${getLevelClasses(item.level).replace('bg-', 'bg-black/40 ')}">${item.levelLabel}</span>
+            </div>
+            <div class="absolute top-2 right-2">
+              <span class="px-2 py-0.5 rounded backdrop-blur-md bg-black/50 text-xs flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${getStatusDot(item.status)}"></span><span class="text-white">${item.status}</span>
+              </span>
+            </div>
+          </div>
+          
+          <!-- Content Body -->
+          <div class="p-3 flex flex-col flex-1">
+            <!-- Header: Title & Time -->
+            <div class="flex justify-between items-start mb-2.5">
+              <h3 class="text-[14px] font-medium text-textMain leading-tight truncate pr-2" title="${item.name}">${item.name}</h3>
+              <span class="text-[11px] text-textSub shrink-0 mt-0.5">${item.time}</span>
+            </div>
+            
+            <!-- Key Info List -->
+            <div class="space-y-1.5 mb-2 text-xs">
+              <div class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-textSub shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                <span class="text-accent hover:underline cursor-pointer truncate flex-1" title="${item.task}">${item.task}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-textSub shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                <span class="text-textMain truncate" title="${item.channel}">${item.channel}</span>
+              </div>
+              
+              <!-- Event Status Highlight -->
+              <div class="flex items-center gap-1.5 pt-1.5 mt-1.5 border-t border-borderDark/50">
+                <span class="text-textSub">处置状态：</span>
+                ${getEventStatusHTML(item.eventStatus)}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actions Footer -->
+          <div class="px-3 py-2 bg-[#1A1A1A] border-t border-borderDark flex flex-wrap gap-x-3 gap-y-1.5 text-xs mt-auto">
+            ${getActionsHTML(item)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setView(view) {
+      document.getElementById('listView').className = view === 'list' ? 'block' : 'hidden';
+      document.getElementById('gridView').className = view === 'grid' ? 'grid grid-cols-4 xl:grid-cols-5 gap-5 pt-6 pb-6' : 'hidden';
+      
+      document.getElementById('btnList').className = view === 'list' ? 'btn-toggle active p-2 rounded transition-colors bg-[rgba(24,144,255,0.15)] text-accent' : 'btn-toggle p-2 rounded hover:text-white hover:bg-borderDark transition-colors';
+      document.getElementById('btnGrid').className = view === 'grid' ? 'btn-toggle active p-2 rounded transition-colors bg-[rgba(24,144,255,0.15)] text-accent' : 'btn-toggle p-2 rounded hover:text-white hover:bg-borderDark transition-colors';
+    }
+
+    function toggleDatePicker() {
+      const dropdown = document.getElementById('dateRangeDropdown');
+      dropdown.classList.toggle('hidden');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const trigger = document.getElementById('dateRangeTrigger');
+      const dropdown = document.getElementById('dateRangeDropdown');
+      if (trigger && dropdown && !trigger.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      
+      toast.classList.remove('-translate-y-full', 'opacity-0');
+      toast.classList.add('translate-y-4', 'opacity-100'); // Use translate-y-4 to show it below the top edge
+      
+      setTimeout(() => {
+        toast.classList.add('-translate-y-full', 'opacity-0');
+        toast.classList.remove('translate-y-4', 'opacity-100');
+      }, 3000);
+    }
+
+    let pendingInvalidId = null;
+
+    function openInvalidModal(id) {
+      pendingInvalidId = id;
+      const modal = document.getElementById('invalidModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeInvalidModal() {
+      pendingInvalidId = null;
+      const modal = document.getElementById('invalidModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function confirmInvalid() {
+      const item = alerts.find(a => a.id === pendingInvalidId);
+      if (item) {
+        item.status = '无效告警';
+        showToast('已标记为无效告警');
+        renderList();
+        renderGrid();
+      }
+      closeInvalidModal();
+    }
+
+    /** 模拟：按事件类型匹配已启用且勾选告警触发的工作流 */
+    function findRetryWorkflow(item) {
+      if (item.retryWorkflowAvailable === false) return null;
+      return { enabled: true, alertTrigger: true };
+    }
+
+    function handleRetry(id) {
+      const item = alerts.find(a => a.id === id);
+      if (!item) return;
+
+      if (!findRetryWorkflow(item)) {
+        showToast('未找到可用的自动化工作流配置，请检查配置后重试！');
+        return;
+      }
+
+      if (!confirm('将按工作流配置重新触发事件处置，是否确认？')) return;
+
+      item.eventStatus = '调度中';
+      item.status = '已确认';
+      showToast('重新处置触发成功，等待调度');
+      renderList();
+      renderGrid();
+    }
+
+    function handleAction(action, id) {
+      const item = alerts.find(a => a.id === id);
+      if (!item) return;
+
+      if (action === 'confirm') {
+        item.status = '已确认';
+        // Auto sync per PRD: wait, PRD says if confirm manually, event status does not change.
+        showToast('确认告警成功');
+      } else if (action === 'invalid') {
+        openInvalidModal(id);
+        return;
+      } else if (action === 'cancelConfirm') {
+        item.status = '待确认';
+        showToast('已取消确认，告警退回待确认');
+      } else if (action === 'process') {
+        item.status = '已处理';
+        showToast('告警处理结果已提交');
+      } else if (action === 'push') {
+        showToast('消息推送成功');
+      }
+      
+      renderList();
+      renderGrid();
+    }
+
+    // Init
+    renderList();
+    renderGrid();
+
+    function switchAlertTab(tab) {
+      if (tab === 'camera') {
+        location.href = '../camera-alarm-list.html';
+        return;
+      }
+      document.querySelectorAll('#alertCenterTabs [data-tab]').forEach(el => {
+        const on = el.dataset.tab === tab;
+        el.className = on
+          ? 'pb-3 border-b-2 border-accent text-accent font-medium cursor-pointer -mb-px'
+          : 'pb-3 text-textSub hover:text-textMain cursor-pointer -mb-px';
+      });
+      document.getElementById('panel-drone').classList.toggle('hidden', tab !== 'drone');
+      document.getElementById('panel-drone').classList.toggle('flex', tab === 'drone');
+      document.getElementById('panel-fiber').classList.toggle('hidden', tab !== 'fiber');
+      document.getElementById('panel-blackflight').classList.toggle('hidden', tab !== 'blackflight');
+      const url = new URL(location.href);
+      url.searchParams.set('tab', tab);
+      history.replaceState(null, '', url);
+    }
+
+    (function initTabFromQuery() {
+      const tab = new URLSearchParams(location.search).get('tab') || 'drone';
+      if (tab === 'camera') location.replace('../camera-alarm-list.html');
+      else if (tab === 'fiber' || tab === 'blackflight') switchAlertTab(tab);
+    })();
+  </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="../custom-select.js"></script>
+</body>
+</html>

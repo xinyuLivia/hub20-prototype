@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备详情 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .field-label { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+        .field-value { font-size: 13px; color: #e6edf3; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-[#141414]" data-platform-home="home-dashboard.html">
+
+    <!-- 顶部面包屑导航 -->
+    <header class="h-12 flex items-center justify-between px-4 shrink-0 z-20 border-b border-[#1f1f1f]">
+        <div class="flex items-center space-x-2 text-xs text-gray-400">
+            <a id="bc-back" href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-sm"></i>
+            </a>
+            <!-- 项目级面包屑 -->
+            <div id="bc-project" class="flex items-center space-x-2">
+                <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+                <span>/</span>
+                <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-gray-400" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                        <span>设备管理</span>
+                        <i class="fas fa-chevron-down text-[10px] ml-1"></i>
+                    </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                        <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                            <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                            <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                            <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        </div>
+                    </div>
+                </div>
+                <span>/</span>
+                <span class="text-gray-200">设备详情</span>
+            </div>
+            <!-- 系统级面包屑：◀ 全局首页/设备管理/设备详情 -->
+            <div id="bc-platform" class="hidden flex items-center space-x-2">
+                <a id="bc-platform-home" href="home-dashboard.html" class="hover:text-white transition-colors">全局首页</a>
+                <span>/</span>
+                <a href="platform-device-management.html" class="hover:text-white transition-colors">设备管理</a>
+                <span>/</span>
+                <span class="text-white">设备详情</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="w-6 h-6 rounded-full bg-[#1f6feb] flex items-center justify-center text-xs text-white">A</div>
+            <i id="btn-close" class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="history.back()" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 设备标题行 -->
+    <div class="px-6 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center">
+            <a id="title-back" href="javascript:history.back()" class="text-gray-400 hover:text-white mr-3"><i class="fas fa-chevron-left"></i></a>
+            <h1 class="text-base font-medium text-white mr-3">EVO Nest_SIMU20260720143447NEST</h1>
+            <span class="text-xs text-[#3fb950] flex items-center mr-3"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>空闲中</span>
+            <i class="fas fa-signal text-[#3fb950] text-xs mr-2" title="信号良好"></i>
+            <i class="fas fa-satellite-dish text-[#58a6ff] text-xs" title="已连接"></i>
+        </div>
+        <!-- 停用/启用仅项目设备页可操作 -->
+        <button id="btn-disable" class="text-xs text-gray-300 border border-[#444] px-3 py-1.5 rounded hover:bg-[#2d2d2d] transition-colors flex items-center">
+            <i class="fas fa-power-off mr-1.5"></i> 停用
+        </button>
+    </div>
+
+    <!-- Tab 栏 -->
+    <div class="px-6 border-b border-[#2d2d2d] flex items-center justify-between shrink-0">
+        <div class="flex space-x-6 text-sm">
+            <div id="tab-basic" class="py-3 border-b-2 border-[#58a6ff] text-[#58a6ff] font-medium cursor-pointer" onclick="switchTab('basic')">基本信息</div>
+            <div id="tab-location" class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchTab('location')">位置与数据</div>
+            <div id="tab-agent" class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchTab('agent')">Agent Tools</div>
+            <div id="tab-fault" class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchTab('fault')">设备故障</div>
+            <div id="tab-log" class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchTab('log')">日志信息</div>
+        </div>
+        <button id="editBtn" class="text-xs text-[#58a6ff] hover:underline flex items-center"><i class="fas fa-edit mr-1"></i>编辑</button>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <!-- 基本信息 -->
+        <div id="content-basic">
+            <h2 class="text-lg font-medium text-white mb-6">基本信息</h2>
+            <div class="grid grid-cols-2 gap-x-16 gap-y-6 max-w-4xl">
+                <div>
+                    <div class="field-label">设备ID</div>
+                    <div class="field-value">2079092652980559874</div>
+                </div>
+                <div>
+                    <div class="field-label">设备名称</div>
+                    <div class="field-value">EVO Nest_SIMU20260720143447NEST</div>
+                </div>
+                <div>
+                    <div class="field-label">设备SN</div>
+                    <div class="field-value">SIMU20260720143447NEST</div>
+                </div>
+                <div>
+                    <div class="field-label">配对载体</div>
+                    <div class="field-value text-gray-500">--</div>
+                </div>
+                <div>
+                    <div class="field-label">产品型号</div>
+                    <div class="field-value">EVO Nest</div>
+                </div>
+                <div>
+                    <div class="field-label">设备状态</div>
+                    <div class="field-value flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</div>
+                </div>
+                <div>
+                    <div class="field-label">设备负责人</div>
+                    <div class="field-value text-gray-500">--</div>
+                </div>
+                <div>
+                    <div class="field-label">挂载设备</div>
+                    <div class="field-value text-gray-500">--</div>
+                </div>
+                <div class="col-span-2">
+                    <div class="field-label">设备描述</div>
+                    <div class="field-value text-gray-400">暂无描述</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 位置与数据 -->
+        <div id="content-location" class="hidden">
+            <h2 class="text-lg font-medium text-white mb-6">位置与数据</h2>
+            <div class="text-sm text-gray-500 border border-dashed border-[#2d2d2d] rounded-lg h-64 flex items-center justify-center">设备位置地图与遥测数据（占位）</div>
+        </div>
+
+        <!-- Agent Tools -->
+        <div id="content-agent" class="hidden">
+            <h2 class="text-lg font-medium text-white mb-6">Agent Tools</h2>
+            <div class="text-sm text-gray-500 border border-dashed border-[#2d2d2d] rounded-lg h-64 flex items-center justify-center">Agent 工具能力配置（占位）</div>
+        </div>
+
+        <!-- 设备故障 -->
+        <div id="content-fault" class="hidden">
+            <h2 class="text-lg font-medium text-white mb-6">设备故障</h2>
+            <div class="text-sm text-gray-500 border border-dashed border-[#2d2d2d] rounded-lg h-64 flex items-center justify-center">暂无故障记录</div>
+        </div>
+
+        <!-- 日志信息 -->
+        <div id="content-log" class="hidden">
+            <h2 class="text-lg font-medium text-white mb-6">日志信息</h2>
+            <div class="text-sm text-gray-500 border border-dashed border-[#2d2d2d] rounded-lg h-64 flex items-center justify-center">设备运行日志（占位）</div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            const tabs = ['basic', 'location', 'agent', 'fault', 'log'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById('tab-' + t);
+                const contentEl = document.getElementById('content-' + t);
+                const active = t === tab;
+                contentEl.classList.toggle('hidden', !active);
+                tabEl.className = active
+                    ? 'py-3 border-b-2 border-[#58a6ff] text-[#58a6ff] font-medium cursor-pointer'
+                    : 'py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors';
+            });
+        }
+
+        (function applyContext() {
+            const isPlatform = new URLSearchParams(location.search).get('from') === 'platform';
+            const homeHref = document.body.getAttribute('data-platform-home') || 'home-dashboard.html';
+            if (!isPlatform) return;
+
+            document.getElementById('bc-project').classList.add('hidden');
+            document.getElementById('bc-platform').classList.remove('hidden');
+            document.getElementById('bc-platform').classList.add('flex');
+            document.getElementById('bc-platform-home').href = homeHref;
+            document.getElementById('bc-back').href = 'platform-device-management.html';
+            document.getElementById('btn-close').onclick = function () { location.href = 'platform-device-management.html'; };
+            // 系统级详情：无停用/启用；标题行不再重复返回箭头
+            document.getElementById('btn-disable').classList.add('hidden');
+            document.getElementById('title-back').classList.add('hidden');
+        })();
+
+        document.addEventListener('click', function() {
+            var m = document.getElementById('breadcrumbMenu');
+            if (m) m.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

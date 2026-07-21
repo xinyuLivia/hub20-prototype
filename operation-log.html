@@ -1,0 +1,653 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>操作日志 - 系统设置 | Avant Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body {
+      background: #141414;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .form-ctl {
+      background: #1a1a1a;
+      border: 1px solid #30363d;
+      color: #e6e6e6;
+      border-radius: 4px;
+      padding: 7px 12px;
+      font-size: 13px;
+      min-width: 160px;
+    }
+    .form-ctl:focus { outline: none; border-color: #58a6ff; }
+    .form-ctl::placeholder { color: #6b7280; }
+    table th { white-space: nowrap; font-weight: 500; color: #9ca3af; }
+    table td { white-space: nowrap; }
+    .dropdown { position: relative; min-width: 200px; }
+    .dropdown-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 40;
+      background: #1e1e1e;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      width: 100%;
+      min-width: 240px;
+    }
+    .dropdown.open .dropdown-panel { display: block; }
+    .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      color: #d1d5db;
+    }
+    .dropdown-item:hover, .dropdown-item.active {
+      background: #252525;
+      color: #fff;
+    }
+    .cascader { position: relative; min-width: 200px; }
+    .cascader-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 40;
+      background: #1e1e1e;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      min-width: 320px;
+    }
+    .cascader.open .cascader-panel { display: block; }
+    .cascader-col {
+      min-width: 120px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-right: 1px solid #2d2d2d;
+    }
+    .cascader-col:last-child { border-right: none; min-width: 180px; }
+    .cascader-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      color: #d1d5db;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cascader-item:hover, .cascader-item.active {
+      background: #252525;
+      color: #fff;
+    }
+    .nav-item.active {
+      background: rgba(88, 166, 255, 0.12);
+      color: #58a6ff;
+      border-right: 2px solid #58a6ff;
+    }
+    .modal-mask {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-mask.show { display: flex; }
+    .muted-label { color: #6b7280; }
+    .active-label { color: #fff; }
+    .filter-wrap { position: relative; display: inline-flex; }
+    .filter-wrap .form-ctl { padding-right: 28px; }
+    .filter-clear {
+      display: none;
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      line-height: 1;
+      z-index: 2;
+    }
+    .filter-clear:hover { color: #e5e7eb; background: #333; }
+    .filter-wrap.has-value .filter-clear { display: inline-flex; }
+    .filter-wrap.dropdown .filter-clear,
+    .filter-wrap.cascader .filter-clear { right: 22px; }
+    .dropdown-item.clear-option {
+      color: #9ca3af;
+      border-bottom: 1px solid #2d2d2d;
+    }
+    .dropdown-item.clear-option:hover { color: #f87171; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- 贯穿的顶栏 -->
+  <header class="h-12 shrink-0 flex items-center justify-between px-5 border-b border-[#2d2d2d] bg-[#141414] w-full">
+    <div class="text-xs text-gray-400">
+      <span class="hover:text-white cursor-pointer" onclick="location.href='home-dashboard.html'">全局首页</span>
+      <span class="mx-1">/</span>
+      <span class="text-white">系统设置</span>
+      <span class="mx-1">/</span>
+      <span class="text-white">操作日志</span>
+    </div>
+    <i class="fas fa-times cursor-pointer hover:text-white text-lg" onclick="location.href='home-dashboard.html'" title="关闭"></i>
+  </header>
+
+  <!-- 主体区域：左侧栏 + 内容 -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- 左侧栏 -->
+    <aside class="w-48 shrink-0 bg-[#1a1a1a] border-r border-[#2d2d2d] flex flex-col">
+      <nav class="flex-1 py-2 text-sm text-gray-400">
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">用户管理</a>
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">角色管理</a>
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">告警设置</a>
+        <a class="nav-item active block px-4 py-2.5" href="javascript:;">操作日志</a>
+      </nav>
+    </aside>
+
+    <!-- 主区 -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- 筛选：默认均为未选择态 -->
+    <div class="px-5 py-3 shrink-0 flex flex-wrap items-center gap-3 border-b border-[#2d2d2d]">
+      <div id="kwWrap" class="filter-wrap">
+        <input id="kw" class="form-ctl w-56" type="text"
+          placeholder="账号 / 姓名 / 操作说明"
+          title="模糊搜索：操作人员账号、操作人员姓名、操作说明"
+          oninput="updateClearButtons(); debounceApplyFilter()" />
+        <button type="button" class="filter-clear" title="清空" onclick="clearKw(event)"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- 所属项目：可搜索单选 -->
+      <div id="projectWrap" class="filter-wrap dropdown w-56">
+        <button type="button" class="form-ctl w-full text-left flex items-center justify-between gap-2" onclick="toggleProject(event)">
+          <span id="projectLabel" class="muted-label truncate flex-1">请选择所属项目</span>
+          <i class="fas fa-chevron-down text-[10px] text-gray-500 shrink-0"></i>
+        </button>
+        <button type="button" id="projectClear" class="filter-clear" title="清空" onclick="clearProject(event)"><i class="fas fa-times"></i></button>
+        <div class="dropdown-panel">
+          <div id="projectClearRow" class="dropdown-item clear-option hidden" onclick="event.stopPropagation(); clearProject(event)">清空</div>
+          <div class="p-2 border-b border-[#2d2d2d]">
+            <input id="projectSearch" class="form-ctl w-full min-w-0" type="text" placeholder="搜索项目名称 / 编号"
+              onclick="event.stopPropagation()" oninput="renderProjectOptions()" />
+          </div>
+          <div id="projectOptions" class="max-h-56 overflow-y-auto custom-scrollbar"></div>
+        </div>
+      </div>
+
+      <!-- 操作域 + 操作模块 级联 -->
+      <div id="moduleWrap" class="filter-wrap cascader">
+        <button type="button" class="form-ctl w-full text-left flex items-center justify-between gap-2 min-w-[200px]" onclick="toggleCascader(event)">
+          <span id="moduleLabel" class="muted-label truncate flex-1">请选择操作模块</span>
+          <i class="fas fa-chevron-down text-[10px] text-gray-500 shrink-0"></i>
+        </button>
+        <button type="button" id="moduleClear" class="filter-clear" title="清空" onclick="clearModule(event)"><i class="fas fa-times"></i></button>
+        <div class="cascader-panel">
+          <div id="moduleClearRow" class="cascader-item clear-option hidden" style="width:100%;border-right:none;border-bottom:1px solid #2d2d2d;" onclick="event.stopPropagation(); clearModule(event)">清空</div>
+          <div class="flex w-full">
+            <div class="cascader-col custom-scrollbar" id="moduleL1"></div>
+            <div class="cascader-col custom-scrollbar" id="moduleL2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="statusWrap" class="filter-wrap">
+        <select id="status" class="form-ctl text-gray-500" onchange="this.classList.toggle('text-gray-500', this.value===''); applyFilter(); updateClearButtons();">
+          <option value="" selected disabled hidden>请选择操作状态</option>
+          <option value="" class="text-gray-500">请选择操作状态</option>
+          <option value="成功" class="text-gray-200">成功</option>
+          <option value="失败" class="text-gray-200">失败</option>
+        </select>
+        <button type="button" id="statusClear" class="filter-clear" title="清空" onclick="clearStatus(event)"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div id="dateWrap" class="filter-wrap">
+        <input id="dateRange" class="form-ctl w-52" type="text" placeholder="选择日期范围" readonly
+          onclick="if(!this.value){this.value='2026-07-01 ~ 2026-07-08'; applyFilter(); updateClearButtons();}" />
+        <button type="button" id="dateClear" class="filter-clear" title="清空" onclick="clearDate(event)"><i class="fas fa-times"></i></button>
+      </div>
+
+      <button type="button" class="form-ctl flex items-center gap-1.5 hover:border-gray-500" onclick="resetFilter()">
+        <i class="fas fa-rotate-right text-xs text-gray-400"></i>清空筛选
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-auto custom-scrollbar px-5 py-3">
+      <table class="w-full text-left border-collapse">
+        <thead class="sticky top-0 bg-[#1a1a1a] z-10">
+          <tr class="border-b border-[#2d2d2d]">
+            <th class="py-2.5 px-2">序号</th>
+            <th class="py-2.5 px-2">操作人员账号</th>
+            <th class="py-2.5 px-2">操作人员姓名</th>
+            <th class="py-2.5 px-2">操作域</th>
+            <th class="py-2.5 px-2">所属项目名称</th>
+            <th class="py-2.5 px-2">所属项目编号</th>
+            <th class="py-2.5 px-2">操作模块</th>
+            <th class="py-2.5 px-2">操作类型</th>
+            <th class="py-2.5 px-2">操作说明</th>
+            <th class="py-2.5 px-2">操作时间</th>
+            <th class="py-2.5 px-2">请求方法</th>
+            <th class="py-2.5 px-2">IP地址</th>
+            <th class="py-2.5 px-2">操作状态</th>
+            <th class="py-2.5 px-2">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="empty" class="hidden py-16 text-center text-gray-500">暂无符合条件的操作日志</div>
+    </div>
+
+    <div class="px-5 py-3 shrink-0 border-t border-[#2d2d2d] flex items-center justify-end gap-3 text-xs text-gray-400">
+      <span id="totalLabel">共 0 条记录</span>
+      <div class="flex items-center gap-1">
+        <button class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500" onclick="gotoPage(page-1)">‹</button>
+        <span id="pageNums" class="flex gap-1"></span>
+        <button class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500" onclick="gotoPage(page+1)">›</button>
+      </div>
+      <select id="pageSize" class="form-ctl min-w-0 py-1" onchange="pageSize=+this.value; page=1; render();">
+        <option value="10">10/页</option>
+        <option value="20">20/页</option>
+        <option value="50">50/页</option>
+      </select>
+    </div>
+  </div>
+  </div>
+
+  <div id="detailModal" class="modal-mask" onclick="if(event.target===this)closeDetail()">
+    <div class="bg-[#1e1e1e] border border-[#30363d] rounded-lg w-[720px] max-w-[92vw] shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#2d2d2d]">
+        <h2 class="text-white text-base font-medium">操作日志详情</h2>
+        <button class="text-gray-400 hover:text-white text-lg" onclick="closeDetail()">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-3 text-sm" id="detailHeader"></div>
+      <div class="px-5 border-b border-[#2d2d2d] flex gap-6 text-sm">
+        <button id="tabBasic" class="py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]" onclick="switchTab('basic')">基本信息</button>
+        <button id="tabExc" class="py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200" onclick="switchTab('exc')">异常信息</button>
+      </div>
+      <div class="px-5 py-5 min-h-[120px]" id="detailBody"></div>
+    </div>
+  </div>
+
+<script>
+const MODULES = {
+  系统: ['用户管理', '角色管理', '告警配置', '操作日志', '登录模块', '全局驾驶舱'],
+  项目: ['航线管理', '计划管理', '巡检任务', '建模任务', '设备管理', '告警中心', '媒体库', '项目设置', '自动化工作流', '任务实况']
+};
+
+const PROJECTS = [
+  { name: '深圳东部巡检', code: 'PRJ-SZD-001' },
+  { name: '国家电网机场', code: 'PRJ-GD-008' },
+  { name: '智慧城管混合巡检', code: 'PRJ-CG-003' },
+];
+
+const LOGS = [
+  { id:1, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'巡检任务', type:'新增', desc:'新增巡检任务', time:'2026-07-08 16:24:15', method:'POST', ip:'10.42.0.244', status:'成功' },
+  { id:2, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-08 16:20:42', method:'POST', ip:'10.42.0.244', status:'成功' },
+  { id:3, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登录', desc:'用户登录', time:'2026-07-08 15:58:01', method:'POST', ip:'10.42.0.1', status:'成功' },
+  { id:4, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-08 15:45:18', method:'POST', ip:'10.42.0.244', status:'成功' },
+  { id:5, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'巡检任务', type:'新增', desc:'新增巡检任务-临时补充', time:'2026-07-08 14:12:33', method:'POST', ip:'10.42.1.88', status:'成功' },
+  { id:6, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'修改', desc:'编辑用户数据权限', time:'2026-07-08 13:05:09', method:'POST', ip:'10.42.0.1', status:'成功' },
+  { id:7, account:'admin', name:'系统管理员', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-07 12:26:59', method:'POST', ip:'10.42.0.1', status:'失败', error:'资源不存在，请刷新页面后重试' },
+  { id:8, account:'wang.fang', name:'王芳', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'计划管理', type:'新增', desc:'新增巡检计划', time:'2026-07-07 11:18:22', method:'POST', ip:'10.42.2.15', status:'成功' },
+  { id:9, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'设备管理', type:'修改', desc:'更新设备所属信息', time:'2026-07-07 10:02:44', method:'POST', ip:'10.42.0.244', status:'成功' },
+  { id:10, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'角色管理', type:'新增', desc:'新增项目角色', time:'2026-07-07 09:30:11', method:'POST', ip:'10.42.0.1', status:'成功' },
+  { id:11, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'告警中心', type:'修改', desc:'处理巡检告警', time:'2026-07-06 18:41:07', method:'POST', ip:'10.42.1.88', status:'成功' },
+  { id:12, account:'wang.fang', name:'王芳', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登出', desc:'用户登出', time:'2026-07-06 17:55:00', method:'POST', ip:'10.42.2.15', status:'成功' },
+  { id:13, account:'chen.hao', name:'陈浩', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'自动化工作流', type:'修改', desc:'启用事件联动工作流', time:'2026-07-06 16:20:31', method:'POST', ip:'10.42.3.41', status:'失败', error:'工作流校验失败：触发条件未配置' },
+  { id:14, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'新增', desc:'新增用户', time:'2026-07-06 15:01:19', method:'POST', ip:'10.42.0.1', status:'成功' },
+  { id:15, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'删除', desc:'删除航线草稿', time:'2026-07-06 14:11:08', method:'DELETE', ip:'10.42.0.244', status:'成功' },
+];
+
+let filter = { kw:'', projectCode:'', domain:'', module:'', status:'', date:'' };
+let page = 1, pageSize = 10;
+let currentDetail = null;
+let selectedL1 = '';
+
+function closeAllPanels() {
+  document.getElementById('projectWrap').classList.remove('open');
+  document.getElementById('moduleWrap').classList.remove('open');
+}
+document.addEventListener('click', closeAllPanels);
+
+function updateClearButtons() {
+  const kw = document.getElementById('kw').value.trim();
+  document.getElementById('kwWrap').classList.toggle('has-value', !!kw);
+
+  const hasProject = !!filter.projectCode;
+  document.getElementById('projectWrap').classList.toggle('has-value', hasProject);
+  document.getElementById('projectClearRow').classList.toggle('hidden', !hasProject);
+
+  const hasModule = !!filter.domain;
+  document.getElementById('moduleWrap').classList.toggle('has-value', hasModule);
+  document.getElementById('moduleClearRow').classList.toggle('hidden', !hasModule);
+
+  const hasStatus = !!document.getElementById('status').value;
+  document.getElementById('statusWrap').classList.toggle('has-value', hasStatus);
+
+  const hasDate = !!document.getElementById('dateRange').value;
+  document.getElementById('dateWrap').classList.toggle('has-value', hasDate);
+}
+
+function clearKw(e) {
+  e.stopPropagation();
+  document.getElementById('kw').value = '';
+  applyFilter();
+  updateClearButtons();
+}
+
+function clearProject(e) {
+  e.stopPropagation();
+  filter.projectCode = '';
+  document.getElementById('projectLabel').textContent = '请选择所属项目';
+  document.getElementById('projectLabel').className = 'muted-label truncate flex-1';
+  document.getElementById('projectSearch').value = '';
+  closeAllPanels();
+  applyFilter();
+  updateClearButtons();
+}
+
+function clearModule(e) {
+  e.stopPropagation();
+  filter.domain = '';
+  filter.module = '';
+  selectedL1 = '';
+  document.getElementById('moduleLabel').textContent = '请选择操作模块';
+  document.getElementById('moduleLabel').className = 'muted-label truncate flex-1';
+  closeAllPanels();
+  applyFilter();
+  updateClearButtons();
+}
+
+function clearStatus(e) {
+  e.stopPropagation();
+  document.getElementById('status').value = '';
+  applyFilter();
+  updateClearButtons();
+}
+
+function clearDate(e) {
+  e.stopPropagation();
+  document.getElementById('dateRange').value = '';
+  applyFilter();
+  updateClearButtons();
+}
+
+function toggleProject(e) {
+  e.stopPropagation();
+  const el = document.getElementById('projectWrap');
+  const wasOpen = el.classList.contains('open');
+  closeAllPanels();
+  if (!wasOpen) {
+    el.classList.add('open');
+    document.getElementById('projectSearch').value = '';
+    renderProjectOptions();
+    setTimeout(() => document.getElementById('projectSearch').focus(), 0);
+  }
+}
+
+function renderProjectOptions() {
+  const q = (document.getElementById('projectSearch').value || '').trim().toLowerCase();
+  const box = document.getElementById('projectOptions');
+  const list = PROJECTS.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)
+  );
+  if (!list.length) {
+    box.innerHTML = '<div class="px-3 py-4 text-gray-500 text-xs">无匹配项目</div>';
+    return;
+  }
+  box.innerHTML = list.map(p => {
+    const active = filter.projectCode === p.code ? 'active' : '';
+    return `<div class="dropdown-item ${active}" onclick="event.stopPropagation(); selectProject('${p.code}')">
+      <div class="text-gray-200">${p.name}</div>
+      <div class="text-xs text-gray-500 mt-0.5">${p.code}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectProject(code) {
+  filter.projectCode = code;
+  const p = PROJECTS.find(x => x.code === code);
+  const label = document.getElementById('projectLabel');
+  label.textContent = p ? p.name : '请选择所属项目';
+  label.className = p ? 'active-label truncate flex-1' : 'muted-label truncate flex-1';
+  closeAllPanels();
+  applyFilter();
+  updateClearButtons();
+}
+
+function toggleCascader(e) {
+  e.stopPropagation();
+  const el = document.getElementById('moduleWrap');
+  const wasOpen = el.classList.contains('open');
+  closeAllPanels();
+  if (!wasOpen) {
+    el.classList.add('open');
+    renderCascaderL1();
+  }
+}
+
+function renderCascaderL1() {
+  const el = document.getElementById('moduleL1');
+  el.innerHTML = Object.keys(MODULES).map(k =>
+    `<div class="cascader-item ${selectedL1===k?'active':''}" onclick="event.stopPropagation(); selectL1('${k}')">
+      ${k}<i class="fas fa-chevron-right text-[10px] text-gray-500"></i>
+    </div>`
+  ).join('');
+  if (selectedL1) renderCascaderL2();
+  else document.getElementById('moduleL2').innerHTML = '<div class="px-3 py-4 text-gray-500 text-xs">请先选择操作域</div>';
+}
+
+function selectL1(k) {
+  selectedL1 = k;
+  // filter.domain = k; // 移除：不再直接改变过滤条件
+  // filter.module = '';
+  // const label = document.getElementById('moduleLabel');
+  // label.textContent = k + ' / 全部';
+  // label.className = 'active-label truncate flex-1';
+  renderCascaderL1();
+  renderCascaderL2(); // 确保二级菜单渲染
+  // applyFilter(); // 移除：不再触发查询
+  // updateClearButtons();
+}
+
+function renderCascaderL2() {
+  const el = document.getElementById('moduleL2');
+  const mods = MODULES[selectedL1] || [];
+  el.innerHTML = [
+    `<div class="cascader-item ${!filter.module?'active':''}" onclick="event.stopPropagation(); selectL2('')">全部</div>`,
+    ...mods.map(m =>
+      `<div class="cascader-item ${filter.module===m?'active':''}" onclick="event.stopPropagation(); selectL2('${m}')">${m}</div>`
+    )
+  ].join('');
+}
+
+function selectL2(m) {
+  filter.domain = selectedL1; // 此时才确定一级
+  filter.module = m;
+  const label = document.getElementById('moduleLabel');
+  label.textContent = m ? `${selectedL1} / ${m}` : `${selectedL1} / 全部`;
+  label.className = 'active-label truncate flex-1';
+  closeAllPanels();
+  applyFilter();
+  updateClearButtons();
+}
+
+function applyFilter() {
+  filter.kw = document.getElementById('kw').value.trim();
+  filter.status = document.getElementById('status').value;
+  filter.date = document.getElementById('dateRange').value;
+  page = 1;
+  render();
+}
+
+let applyTimer = null;
+function debounceApplyFilter() {
+  clearTimeout(applyTimer);
+  applyTimer = setTimeout(applyFilter, 300);
+}
+
+function resetFilter() {
+  filter = { kw:'', projectCode:'', domain:'', module:'', status:'', date:'' };
+  selectedL1 = '';
+  document.getElementById('kw').value = '';
+  document.getElementById('status').value = '';
+  document.getElementById('dateRange').value = '';
+  document.getElementById('projectLabel').textContent = '请选择所属项目';
+  document.getElementById('projectLabel').className = 'muted-label truncate flex-1';
+  document.getElementById('moduleLabel').textContent = '请选择操作模块';
+  document.getElementById('moduleLabel').className = 'muted-label truncate flex-1';
+  document.getElementById('projectSearch').value = '';
+  page = 1;
+  render();
+  updateClearButtons();
+}
+
+function filtered() {
+  return LOGS.filter(r => {
+    if (filter.kw) {
+      const k = filter.kw.toLowerCase();
+      const hit = (r.account||'').toLowerCase().includes(k)
+        || (r.name||'').toLowerCase().includes(k)
+        || (r.desc||'').toLowerCase().includes(k);
+      if (!hit) return false;
+    }
+    if (filter.projectCode && r.projectCode !== filter.projectCode) return false;
+    if (filter.domain && r.domain !== filter.domain) return false;
+    if (filter.module && r.module !== filter.module) return false;
+    if (filter.status && r.status !== filter.status) return false;
+    return true;
+  });
+}
+
+function render() {
+  const rows = filtered();
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > pages) page = pages;
+  const start = (page - 1) * pageSize;
+  const slice = rows.slice(start, start + pageSize);
+
+  document.getElementById('totalLabel').textContent = `共 ${total} 条记录`;
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+  if (!slice.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    tbody.innerHTML = slice.map((r, i) => {
+      const statusDot = r.status === '成功'
+        ? `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>成功</span>`
+        : `<span class="inline-flex items-center gap-1.5 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>失败</span>`;
+      return `<tr class="border-b border-[#222] hover:bg-[#1a1a1a]">
+        <td class="py-2.5 px-2 text-gray-500">${start + i + 1}</td>
+        <td class="py-2.5 px-2 text-gray-200">${r.account}</td>
+        <td class="py-2.5 px-2">${r.name || '—'}</td>
+        <td class="py-2.5 px-2">${r.domain}</td>
+        <td class="py-2.5 px-2 max-w-[140px] truncate" title="${r.projectName}">${r.projectName}</td>
+        <td class="py-2.5 px-2 text-gray-400">${r.projectCode}</td>
+        <td class="py-2.5 px-2">${r.module}</td>
+        <td class="py-2.5 px-2">${r.type}</td>
+        <td class="py-2.5 px-2 max-w-[180px] truncate" title="${r.desc}">${r.desc}</td>
+        <td class="py-2.5 px-2 text-gray-400">${r.time}</td>
+        <td class="py-2.5 px-2"><span class="text-[#58a6ff]">${r.method}</span></td>
+        <td class="py-2.5 px-2 text-gray-400">${r.ip}</td>
+        <td class="py-2.5 px-2">${statusDot}</td>
+        <td class="py-2.5 px-2"><a href="javascript:;" class="text-[#58a6ff] hover:underline" onclick="openDetail(${r.id})">查看详情</a></td>
+      </tr>`;
+    }).join('');
+  }
+
+  const pageNums = document.getElementById('pageNums');
+  let html = '';
+  for (let p = 1; p <= pages; p++) {
+    if (pages > 7 && p > 3 && p < pages - 1 && Math.abs(p - page) > 1) {
+      if (p === 4 || p === pages - 2) html += `<span class="px-1">…</span>`;
+      continue;
+    }
+    html += `<button class="min-w-[28px] px-2 py-1 rounded border ${p===page?'border-[#58a6ff] text-[#58a6ff]':'border-[#30363d] hover:border-gray-500'}" onclick="gotoPage(${p})">${p}</button>`;
+  }
+  pageNums.innerHTML = html;
+}
+
+function gotoPage(p) {
+  const pages = Math.max(1, Math.ceil(filtered().length / pageSize));
+  page = Math.min(Math.max(1, p), pages);
+  render();
+}
+
+function openDetail(id) {
+  currentDetail = LOGS.find(r => r.id === id);
+  if (!currentDetail) return;
+  const r = currentDetail;
+  document.getElementById('detailHeader').innerHTML = `
+    <div class="grid grid-cols-2 gap-x-8 gap-y-3">
+      <div><span class="text-gray-500">操作人员账号：</span><span class="text-gray-200">${r.account}</span></div>
+      <div><span class="text-gray-500">操作人员姓名：</span><span class="text-gray-200">${r.name || '—'}</span></div>
+      <div><span class="text-gray-500">操作域：</span><span class="text-gray-200">${r.domain}</span></div>
+      <div><span class="text-gray-500">操作模块：</span><span class="text-gray-200">${r.module}</span></div>
+      <div><span class="text-gray-500">所属项目名称：</span><span class="text-gray-200">${r.projectName}</span></div>
+      <div><span class="text-gray-500">所属项目编号：</span><span class="text-gray-200">${r.projectCode}</span></div>
+      <div><span class="text-gray-500">操作时间：</span><span class="text-gray-200">${r.time}</span></div>
+      <div><span class="text-gray-500">IP地址：</span><span class="text-gray-200">${r.ip}</span></div>
+      <div class="col-span-2"><span class="text-gray-500">操作类型：</span><span class="text-gray-200">${r.type}</span></div>
+      <div class="col-span-2"><span class="text-gray-500">操作说明：</span><span class="text-gray-200">${r.desc}</span></div>
+    </div>`;
+  switchTab(r.status === '失败' ? 'exc' : 'basic');
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+function switchTab(tab) {
+  const r = currentDetail;
+  const basicBtn = document.getElementById('tabBasic');
+  const excBtn = document.getElementById('tabExc');
+  const body = document.getElementById('detailBody');
+  if (tab === 'basic') {
+    basicBtn.className = 'py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]';
+    excBtn.className = 'py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200';
+    const status = r.status === '成功'
+      ? `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>成功</span>`
+      : `<span class="inline-flex items-center gap-1.5 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>失败</span>`;
+    body.innerHTML = `
+      <div class="flex flex-wrap gap-10 text-sm">
+        <div><div class="text-gray-500 mb-1">请求方法</div><span class="inline-block px-2 py-0.5 rounded bg-[#0c2d48] text-[#58a6ff] border border-[#1a4a6e]">${r.method}</span></div>
+        <div><div class="text-gray-500 mb-1">操作状态</div>${status}</div>
+        <div><div class="text-gray-500 mb-1">操作域</div><span class="text-gray-200">${r.domain}</span></div>
+      </div>`;
+  } else {
+    basicBtn.className = 'py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200';
+    excBtn.className = 'py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]';
+    if (r.error) {
+      body.innerHTML = `<div class="rounded border border-red-900/60 bg-red-950/40 text-red-300 px-4 py-3 text-sm">${r.error}</div>`;
+    } else {
+      body.innerHTML = `<div class="text-gray-500 text-sm py-6 text-center">无异常信息</div>`;
+    }
+  }
+}
+
+document.getElementById('kw').addEventListener('keydown', e => { if (e.key === 'Enter') applyFilter(); });
+render();
+updateClearButtons();
+</script>
+<script src="custom-select.js"></script>
+</body>
+</html>

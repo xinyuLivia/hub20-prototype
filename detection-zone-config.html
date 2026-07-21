@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>检测区域配置 · 高保真原型</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#141a22; --panel2:#1b232e; --line:#26303c;
+    --text:#e6edf3; --sub:#8b98a8; --muted:#5b6b7c;
+    --blue:#2f7dff; --blue-d:#245fc0;
+    --alarm:#f5484a; --alarm-fill:rgba(245,72,74,.20);
+    --allow:#5bd07a; --allow-fill:rgba(91,208,122,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* 顶栏 */
+  .topbar{height:44px;flex:0 0 44px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#0e141b;border-bottom:1px solid var(--line);font-size:13px;z-index:30}
+  .topbar .back{color:var(--sub);cursor:pointer}
+  .crumb{color:var(--sub);display:flex;align-items:center;gap:8px}
+  .crumb b{color:var(--text);font-weight:600}
+  .crumb .nav-dd{position:relative}
+  .crumb .nav-dd > .trigger{display:flex;align-items:center;cursor:pointer;gap:4px}
+  .crumb .nav-dd > .trigger:hover{color:#fff}
+  .crumb .nav-dd .panel-wrap{display:none;position:absolute;left:0;top:100%;padding-top:4px;z-index:50;width:144px}
+  .crumb .nav-dd.open .panel-wrap{display:block}
+  .crumb .nav-dd .panel{background:var(--panel2);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.45);padding:4px 0}
+  .crumb .nav-dd .panel div{padding:8px 16px;cursor:pointer;color:var(--sub)}
+  .crumb .nav-dd .panel div:hover{background:rgba(255,255,255,.08);color:#fff}
+  .crumb .nav-dd .panel div.active{background:rgba(47,125,255,.1);color:var(--blue)}
+  .topbar .spacer{flex:1}
+
+  /* 主体 */
+  .body{flex:1;display:flex;min-height:0;position:relative}
+
+  /* 左侧列表 */
+  .left{width:296px;flex:0 0 296px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .left .filters{padding:12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .selrow{display:flex;gap:8px}
+  select,.searchbox input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;height:32px;font-size:12.5px;outline:none}
+  select{flex:1;padding:0 8px}
+  select:focus,.searchbox input:focus{border-color:var(--blue)}
+  .searchbox{position:relative}
+  .searchbox input{width:100%;padding:0 10px 0 30px}
+  .searchbox svg{position:absolute;left:9px;top:9px;opacity:.6}
+  .list{flex:1;overflow:auto;padding:8px}
+  .list::-webkit-scrollbar{width:8px}.list::-webkit-scrollbar-thumb{background:#2a3542;border-radius:4px}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 10px 9px;margin-bottom:8px;cursor:pointer;transition:.15s}
+  .card:hover{border-color:#39485a}
+  .card.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+  .card .name{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+  .card .name .dot{width:9px;height:9px;border-radius:2px;flex:0 0 9px}
+  .card .name .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card .meta{margin:6px 0 8px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:2px 7px;border-radius:4px;background:#222c38;color:var(--sub);border:1px solid var(--line)}
+  .tag.alarm{color:#ff8f90;border-color:#5a2224;background:#2a1416}
+  .tag.allow{color:#8fe6a6;border-color:#22502f;background:#132419}
+  .tag.on{color:#7ee2a0;border-color:#2c6b3f;background:#14301f;font-weight:600}
+  .tag.off{color:var(--muted)}
+  .card .ops{display:flex;gap:4px;justify-content:flex-end}
+  .iconbtn{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--sub);cursor:pointer;background:transparent;border:1px solid transparent}
+  .iconbtn:hover{background:#222c38;color:var(--text)}
+  .empty{color:var(--muted);text-align:center;font-size:12.5px;padding:30px 10px}
+  .zone-count{padding:8px 12px 4px;font-size:12px;color:var(--sub)}
+  .zone-count b{color:var(--text)}
+  .zone-count.full b{color:var(--alarm)}
+
+  /* 地图 */
+  .map-wrap{flex:1;position:relative;min-width:0}
+  #mapCanvas{position:absolute;inset:0;width:100%;height:100%}
+  #svg{position:absolute;inset:0;width:100%;height:100%}
+  #svg.drawing{cursor:crosshair}
+
+  /* 地图工具条 */
+  .maptools{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;gap:8px;z-index:10;pointer-events:none}
+  .maptools>*{pointer-events:auto}
+  .tool-search{position:relative;width:280px}
+  .tool-search input{width:100%;height:34px;border-radius:7px;background:rgba(20,26,34,.92);border:1px solid var(--line);color:var(--text);padding:0 10px 0 32px;font-size:12.5px;outline:none}
+  .tool-search svg{position:absolute;left:9px;top:9px;opacity:.6}
+  .toolgroup{display:flex;gap:2px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:3px}
+  .tool{height:28px;padding:0 10px;border-radius:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);cursor:pointer;border:1px solid transparent;white-space:nowrap}
+  .tool:hover{background:#222c38;color:var(--text)}
+  .tool.active{background:#223247;color:#fff;border-color:var(--blue)}
+  .tool .sw{width:11px;height:11px;border-radius:3px;border:1.5px solid}
+  .tool.alarm .sw{border-color:var(--alarm);background:var(--alarm-fill)}
+  .tool.allow .sw{border-color:var(--allow);background:var(--allow-fill)}
+
+  .draw-hint{position:absolute;top:58px;left:50%;transform:translateX(-50%);background:rgba(20,26,34,.95);border:1px solid var(--blue);color:#cfe0ff;font-size:12.5px;padding:7px 14px;border-radius:20px;z-index:12;display:none}
+  .draw-hint.show{display:block}
+
+  .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,26,34,.96);border:1px solid #5a2224;color:#ffb4b5;font-size:13px;padding:12px 20px;border-radius:10px;z-index:40;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .toast.show{opacity:1}
+
+  /* 图例 */
+  .legend{position:absolute;left:12px;bottom:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px;z-index:10}
+  .legend h4{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:7px;letter-spacing:.5px}
+  .legend .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .legend .row:last-child{margin-bottom:0}
+  .legend .sw{width:16px;height:11px;border-radius:2px;border:1.5px solid}
+  .legend .sw.alarm{border-color:var(--alarm);background:var(--alarm-fill)}
+  .legend .sw.allow{border-color:var(--allow);background:var(--allow-fill)}
+
+  .scalebar{position:absolute;right:14px;bottom:14px;font-size:11px;color:#cfd8e2;z-index:10;text-align:right;text-shadow:0 1px 2px #000}
+  .scalebar .bar{width:90px;height:5px;border:1px solid #cfd8e2;border-top:none;margin-top:3px;margin-left:auto}
+
+  /* 右侧属性 */
+  .right{width:300px;flex:0 0 300px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s;position:absolute;right:0;top:0;bottom:0;z-index:20}
+  .right.open{transform:translateX(0)}
+  .right .rh{height:46px;flex:0 0 46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--line);font-size:14px;font-weight:600}
+  .right .rh .x{cursor:pointer;color:var(--sub)}
+  .rbody{flex:1;overflow:auto;padding:14px}
+  .field{margin-bottom:16px}
+  .field>label{display:block;font-size:12px;color:var(--sub);margin-bottom:7px}
+  .field .req{color:var(--alarm);margin-left:2px}
+  .field input[type=text]{width:100%;height:34px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:0 10px;font-size:13px;outline:none}
+  .field input[type=text]:focus{border-color:var(--blue)}
+  .seg{display:flex;gap:8px}
+  .seg .opt{flex:1;border:1px solid var(--line);border-radius:7px;padding:9px;cursor:pointer;text-align:center;font-size:12.5px;color:var(--sub);background:var(--panel2)}
+  .seg .opt .t{font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
+  .seg .opt .d{font-size:11px;margin-top:3px;color:var(--muted)}
+  .seg .opt.sel.alarm{border-color:var(--alarm);color:#ff8f90}
+  .seg .opt.sel.allow{border-color:var(--allow);color:#8fe6a6}
+  .seg .opt .sw{width:10px;height:10px;border-radius:2px;border:1.5px solid}
+  .seg .opt.alarm .sw{border-color:var(--alarm);background:var(--alarm-fill)}
+  .seg .opt.allow .sw{border-color:var(--allow);background:var(--allow-fill)}
+  .ruletip{font-size:12px;line-height:1.5;color:var(--sub);background:#10161e;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:16px}
+  .more{border-top:1px solid var(--line);padding-top:12px}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0}
+  .kv .k{color:var(--sub)}
+  .switch{width:38px;height:20px;border-radius:12px;background:#33414f;position:relative;cursor:pointer;transition:.15s}
+  .switch.on{background:var(--allow)}
+  .switch i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+  .switch.on i{left:20px}
+  .switch.readonly{pointer-events:none;opacity:.85}
+  .rfoot{flex:0 0 auto;display:flex;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+  .btn{flex:1;height:36px;border-radius:7px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  .btn.primary:hover{background:var(--blue-d)}
+
+  /* SVG 元素样式 */
+  .edge-label{fill:#111;font-size:11px;font-weight:600}
+  .edge-label-bg{fill:#fff;rx:3}
+  .vertex{fill:#fff;stroke:#0b0f14;stroke-width:1.5;cursor:move}
+  .zone-name{font-size:12px;font-weight:600;paint-order:stroke;stroke:#000;stroke-width:3px;stroke-linejoin:round}
+  .gps-chip{fill:rgba(20,26,34,.9)}
+  .gps-text{fill:#cfd8e2;font-size:10.5px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <span class="back" onclick="location.href='alert/alert-list.html'">← 返回</span>
+    <div class="crumb">
+        <div class="nav-dd" id="breadcrumbDropdown">
+            <div class="trigger" onclick="event.stopPropagation(); this.closest('.nav-dd').classList.toggle('open');">
+                <span>告警中心</span>
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div class="panel-wrap">
+                <div class="panel">
+                    <div onclick="window.location.href='drone-list.html'">设备管理</div>
+                    <div onclick="window.location.href='task-live.html'">任务实况</div>
+                    <div onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                    <div onclick="window.location.href='task-list.html'">任务管理</div>
+                    <div class="active" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                    <div onclick="window.location.href='resource-list.html'">资源库</div>
+                    <div onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                </div>
+            </div>
+        </div>
+        <span>/</span>
+        <span style="cursor:pointer" onclick="location.href='alert/alert-list.html'">无人机告警</span>
+        <span>/</span>
+        <b>检测区域配置</b>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- 左侧列表 -->
+    <aside class="left">
+      <div class="filters">
+        <div class="selrow">
+          <select id="fAlgo" style="color:var(--muted)" onchange="this.style.color=this.value===''?'var(--muted)':'var(--text)'">
+            <option value="" selected disabled hidden>全部告警类型</option>
+            <option value="" style="color:var(--muted)">全部告警类型</option>
+            <option value="车辆违停" style="color:var(--text)">车辆违停</option>
+            <option value="非法经营" style="color:var(--text)">非法经营</option>
+          </select>
+          <select id="fType" style="color:var(--muted)" onchange="this.style.color=this.value===''?'var(--muted)':'var(--text)'">
+            <option value="" selected disabled hidden>全部类型</option>
+            <option value="" style="color:var(--muted)">全部类型</option>
+            <option value="alarm" style="color:var(--text)">告警区</option>
+            <option value="allow" style="color:var(--text)">豁免区</option>
+          </select>
+        </div>
+        <div class="searchbox">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b98a8" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="fSearch" placeholder="搜索区域名称" />
+        </div>
+      </div>
+      <div class="zone-count" id="zoneCount"></div>
+      <div class="list" id="list"></div>
+    </aside>
+
+    <!-- 地图 -->
+    <div class="map-wrap">
+      <canvas id="mapCanvas"></canvas>
+      <svg id="svg"></svg>
+
+      <div class="maptools">
+        <div class="tool-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b98a8" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input placeholder="搜索地址" />
+        </div>
+        <div class="toolgroup">
+          <div class="tool active" data-tool="select" id="toolSelect">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3l16 7-7 2-2 7z"/></svg>选择
+          </div>
+          <div class="tool alarm" data-tool="alarm"><span class="sw"></span>画告警区</div>
+          <div class="tool allow" data-tool="allow"><span class="sw"></span>画豁免区</div>
+        </div>
+        <div class="toolgroup" id="shapeGroup">
+          <div class="tool active" data-shape="polygon" title="多边形">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 6-3 10H7L4 9z"/></svg>多边形
+          </div>
+          <div class="tool" data-shape="circle" title="圆形">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>圆形
+          </div>
+        </div>
+      </div>
+
+      <div class="draw-hint" id="drawHint">单击添加顶点 · 双击或点击起点闭合 · Esc 取消</div>
+      <div class="toast" id="toast"></div>
+
+      <div class="legend">
+        <h4>图例</h4>
+        <div class="row"><span class="sw alarm"></span>告警区 · 命中即告警</div>
+        <div class="row"><span class="sw allow"></span>豁免区 · 命中即豁免</div>
+      </div>
+
+      <div class="scalebar">100 m<div class="bar"></div></div>
+    </div>
+
+    <!-- 右侧属性 -->
+    <aside class="right" id="right">
+      <div class="rh"><span>检测区域属性</span><span class="x" id="rClose">✕</span></div>
+      <div class="rbody">
+        <div class="field">
+          <label>区域名称<span class="req">*</span></label>
+          <input type="text" id="pName" placeholder="请输入区域名称" />
+        </div>
+        <div class="field">
+          <label>所属告警类型<span class="req">*</span>（一个区域绑定一个告警类型）</label>
+          <select id="pAlgo" style="width:100%">
+            <option value="车辆违停">车辆违停</option>
+            <option value="非法经营">非法经营</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>区域类型<span class="req">*</span></label>
+          <div class="seg">
+            <div class="opt alarm" data-pol="alarm"><div class="t"><span class="sw"></span>告警区</div><div class="d">命中即告警</div></div>
+            <div class="opt allow" data-pol="allow"><div class="t"><span class="sw"></span>豁免区</div><div class="d">命中即豁免</div></div>
+          </div>
+        </div>
+        <div class="ruletip" id="ruleTip">告警区绘制后，该告警类型在区域内检出目标将<b>生成告警</b>。</div>
+        <div class="more">
+          <div class="kv"><span class="k">启用状态<span style="color:var(--muted);font-size:11px">（在列表中切换）</span></span><span class="switch on readonly" id="pEnable"><i></i></span></div>
+          <div class="kv"><span class="k">水平面积</span><span id="pArea">—</span></div>
+          <div class="kv"><span class="k">绘制者</span><span id="pAuthor">肖昕昱</span></div>
+          <div class="kv"><span class="k">创建时间</span><span id="pTime">—</span></div>
+        </div>
+      </div>
+      <div class="rfoot">
+        <button class="btn" id="pCancel">取消</button>
+        <button class="btn primary" id="pSave">确定</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const SVGNS="http://www.w3.org/2000/svg";
+const svg=document.getElementById("svg");
+const canvas=document.getElementById("mapCanvas");
+const PX_TO_M=0.55; // 像素->米（缩放示意）
+
+let zones=[];          // 多边形:{shape:"polygon",pts:[{x,y}]} / 圆形:{shape:"circle",center:{x,y},radius}
+let selectedId=null;
+let tool="select";
+let drawShape="polygon"; // 当前绘制形状：polygon | circle
+let draft=null;        // 绘制中的草稿
+let editing=null;      // 右侧面板当前编辑对象（可为草稿或已存在）
+let uid=1;
+
+/* ---------- 仿卫星底图 ---------- */
+function drawMap(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  canvas.width=w;canvas.height=h;
+  const c=canvas.getContext("2d");
+  c.fillStyle="#2d3b32";c.fillRect(0,0,w,h);
+  // 大片绿地/地块
+  const blobs=[["#33463a",0.14],["#3a4a3d",0.10],["#2b3a44",0.09],["#414a37",0.08]];
+  let seed=42;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+  for(let i=0;i<70;i++){
+    const b=blobs[i%blobs.length];
+    c.fillStyle=b[0];c.globalAlpha=.55;
+    const x=rnd()*w,y=rnd()*h,r=30+rnd()*90;
+    c.beginPath();c.ellipse(x,y,r,r*(.6+rnd()*.5),rnd()*6,0,7);c.fill();
+  }
+  c.globalAlpha=1;
+  // 水体
+  c.fillStyle="#22323f";
+  c.beginPath();c.moveTo(0,h*.72);
+  for(let x=0;x<=w;x+=40)c.lineTo(x,h*.72+Math.sin(x/70)*14);
+  c.lineTo(w,h);c.lineTo(0,h);c.fill();
+  // 路网
+  c.strokeStyle="#6b7480";c.globalAlpha=.5;
+  for(let i=0;i<7;i++){c.lineWidth=1+rnd()*2;c.beginPath();c.moveTo(rnd()*w,0);c.lineTo(rnd()*w,h);c.stroke();}
+  for(let i=0;i<6;i++){c.lineWidth=1+rnd()*2;c.beginPath();c.moveTo(0,rnd()*h);c.lineTo(w,rnd()*h);c.stroke();}
+  c.globalAlpha=1;
+  // 楼块
+  for(let i=0;i<140;i++){
+    c.fillStyle=rnd()>.5?"#3b444d":"#454e57";c.globalAlpha=.4+rnd()*.3;
+    const x=rnd()*w,y=rnd()*h*.72,bw=6+rnd()*20,bh=6+rnd()*20;
+    c.fillRect(x,y,bw,bh);
+  }
+  c.globalAlpha=1;
+  // 地名
+  c.fillStyle="rgba(210,220,230,.55)";c.font="12px sans-serif";
+  ["福田口岸","市民广场","中心公园","景田","梅林关","滨河大道","彩田路"].forEach((t,i)=>{
+    c.fillText(t,40+((i*180)%(w-120)),60+((i*97)%(h-120)));
+  });
+}
+
+/* ---------- 几何 ---------- */
+function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p.x*q.y-q.x*p.y;}return Math.abs(a)/2*PX_TO_M*PX_TO_M;}
+function circleArea(r){return Math.PI*r*r*PX_TO_M*PX_TO_M;}
+function zoneArea(z){return z.shape==="circle"?circleArea(z.radius):polyArea(z.pts);}
+function centroid(pts){let x=0,y=0;pts.forEach(p=>{x+=p.x;y+=p.y;});return{x:x/pts.length,y:y/pts.length};}
+function zoneCenter(z){return z.shape==="circle"?z.center:centroid(z.pts);}
+function pointInPoly(p,pts){let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;if(((yi>p.y)!=(yj>p.y))&&(p.x<(xj-xi)*(p.y-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+const COL={alarm:{stroke:"#f5484a",fill:"rgba(245,72,74,.20)"},allow:{stroke:"#5bd07a",fill:"rgba(91,208,122,.18)"}};
+
+function fakeGPS(p){
+  const lat=(22.5205+ (canvas.clientHeight-p.y)/canvas.clientHeight*0.06).toFixed(6);
+  const lon=(114.0250+ p.x/canvas.clientWidth*0.08).toFixed(6);
+  return `${lat}°N  ${lon}°E`;
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  while(svg.firstChild)svg.removeChild(svg.firstChild);
+  const fAlgo=document.getElementById("fAlgo").value;
+  const fType=document.getElementById("fType").value;
+  const fSearch=document.getElementById("fSearch").value.trim();
+
+  zones.forEach(z=>{
+    if(fAlgo && z.algo!==fAlgo) return;
+    if(fType && z.pol!==fType) return;
+    if(fSearch && !z.name.includes(fSearch)) return;
+    drawZone(z, z.id===selectedId);
+  });
+
+  if(draft){ drawDraft(); }
+  renderList();
+}
+
+function drawZone(z,active){
+  const col=COL[z.pol];
+  const g=el("g",{});
+  const fill=z.enabled?col.fill:"rgba(120,130,140,.12)";
+  const stroke=z.enabled?col.stroke:"#7a8794";
+  const dash=z.pol==="alarm"?"none":"8 4";
+
+  if(z.shape==="circle"){
+    const shape=el("circle",{cx:z.center.x,cy:z.center.y,r:z.radius,fill,stroke,"stroke-width":active?3:2,"stroke-dasharray":dash,style:"cursor:pointer"});
+    shape.addEventListener("mousedown",e=>{if(tool==="select"){e.stopPropagation();selectZone(z.id);}});
+    g.appendChild(shape);
+    // 半径标注
+    const rlabel=(z.radius*PX_TO_M).toFixed(1)+" m";
+    const tw=rlabel.length*6.4+10;
+    g.appendChild(el("rect",{x:z.center.x-tw/2,y:z.center.y-z.radius/2-8,width:tw,height:16,rx:3,fill:"#fff"}));
+    const rt=el("text",{x:z.center.x,y:z.center.y-z.radius/2+3.5,"text-anchor":"middle",class:"edge-label"});rt.textContent="R "+rlabel;g.appendChild(rt);
+    // 名称
+    const nm=el("text",{x:z.center.x,y:z.center.y+4,"text-anchor":"middle",class:"zone-name",fill:col.stroke});nm.textContent=z.name;g.appendChild(nm);
+    if(active){
+      // 半径红线
+      g.appendChild(el("line",{x1:z.center.x,y1:z.center.y,x2:z.center.x+z.radius,y2:z.center.y,stroke:"#f5484a","stroke-width":1.5}));
+      // 圆心 + 半径把手
+      const ctr=el("circle",{cx:z.center.x,cy:z.center.y,r:5,class:"vertex"});enableDragCenter(ctr,z);g.appendChild(ctr);
+      const handle=el("circle",{cx:z.center.x+z.radius,cy:z.center.y,r:5,class:"vertex"});enableDragRadius(handle,z);g.appendChild(handle);
+      gpsChip(g,z.center);
+    }
+    svg.appendChild(g);return;
+  }
+
+  const path=el("polygon",{
+    points:z.pts.map(p=>`${p.x},${p.y}`).join(" "),
+    fill,stroke,"stroke-width":active?3:2,"stroke-dasharray":dash,style:"cursor:pointer"
+  });
+  path.addEventListener("mousedown",e=>{if(tool==="select"){e.stopPropagation();selectZone(z.id);}});
+  g.appendChild(path);
+
+  // 边长
+  for(let i=0;i<z.pts.length;i++){
+    const p=z.pts[i],q=z.pts[(i+1)%z.pts.length];
+    const mx=(p.x+q.x)/2,my=(p.y+q.y)/2;
+    const len=(Math.hypot(q.x-p.x,q.y-p.y)*PX_TO_M).toFixed(1)+" m";
+    const tw=len.length*6.4+8;
+    g.appendChild(el("rect",{x:mx-tw/2,y:my-9,width:tw,height:16,rx:3,fill:"#fff"}));
+    const t=el("text",{x:mx,y:my+2.5,"text-anchor":"middle",class:"edge-label"});t.textContent=len;g.appendChild(t);
+  }
+  // 名称
+  const ct=centroid(z.pts);
+  const nm=el("text",{x:ct.x,y:ct.y,"text-anchor":"middle",class:"zone-name",fill:col.stroke});
+  nm.textContent=z.name;g.appendChild(nm);
+
+  // 顶点（选中时可见）
+  if(active){
+    z.pts.forEach((p,idx)=>{
+      const v=el("circle",{cx:p.x,cy:p.y,r:5,class:"vertex"});
+      enableDrag(v,z,idx);
+      g.appendChild(v);
+    });
+    gpsChip(g,z.pts[z.pts.length-1]);
+  }
+  svg.appendChild(g);
+}
+
+function gpsChip(g,p){
+  const txt=fakeGPS(p);
+  g.appendChild(el("rect",{x:p.x+8,y:p.y+8,width:txt.length*6+16,height:20,rx:4,class:"gps-chip"}));
+  const gt=el("text",{x:p.x+16,y:p.y+22,class:"gps-text"});gt.textContent="GPS "+txt;g.appendChild(gt);
+}
+
+function drawDraft(){
+  const col=COL[draft.pol];
+  const g=el("g",{});
+
+  if(draft.shape==="circle"){
+    if(draft.center){
+      const r=mouse?Math.hypot(mouse.x-draft.center.x,mouse.y-draft.center.y):(draft.radius||0);
+      g.appendChild(el("circle",{cx:draft.center.x,cy:draft.center.y,r:Math.max(r,1),fill:col.fill,stroke:col.stroke,"stroke-width":2,"stroke-dasharray":"6 4"}));
+      const tip=mouse||{x:draft.center.x+r,y:draft.center.y};
+      g.appendChild(el("line",{x1:draft.center.x,y1:draft.center.y,x2:tip.x,y2:tip.y,stroke:"#f5484a","stroke-width":1.5}));
+      const len="R "+(r*PX_TO_M).toFixed(1)+" m";
+      const tw=len.length*6.4+8,mx=(draft.center.x+tip.x)/2,my=(draft.center.y+tip.y)/2;
+      g.appendChild(el("rect",{x:mx-tw/2,y:my-9,width:tw,height:16,rx:3,fill:"#fff",opacity:.95}));
+      const t=el("text",{x:mx,y:my+2.5,"text-anchor":"middle",class:"edge-label"});t.textContent=len;g.appendChild(t);
+      g.appendChild(el("circle",{cx:draft.center.x,cy:draft.center.y,r:4,fill:"#fff",stroke:"#0b0f14","stroke-width":1.5}));
+    }
+    svg.appendChild(g);return;
+  }
+
+  if(draft.pts.length>=2){
+    g.appendChild(el("polyline",{points:draft.pts.map(p=>`${p.x},${p.y}`).join(" "),fill:"none",stroke:col.stroke,"stroke-width":2,"stroke-dasharray":"6 4"}));
+  }
+  // 跟随线
+  if(mouse && draft.pts.length){
+    const l=draft.pts[draft.pts.length-1];
+    g.appendChild(el("line",{x1:l.x,y1:l.y,x2:mouse.x,y2:mouse.y,stroke:col.stroke,"stroke-width":1.5,"stroke-dasharray":"3 3",opacity:.7}));
+    const len=(Math.hypot(mouse.x-l.x,mouse.y-l.y)*PX_TO_M).toFixed(1)+" m";
+    const tw=len.length*6.4+8,mx=(l.x+mouse.x)/2,my=(l.y+mouse.y)/2;
+    g.appendChild(el("rect",{x:mx-tw/2,y:my-9,width:tw,height:16,rx:3,fill:"#fff",opacity:.9}));
+    const t=el("text",{x:mx,y:my+2.5,"text-anchor":"middle",class:"edge-label"});t.textContent=len;g.appendChild(t);
+  }
+  draft.pts.forEach((p,i)=>{
+    const v=el("circle",{cx:p.x,cy:p.y,r:i===0?6:4,fill:i===0?"#fff":col.stroke,stroke:"#0b0f14","stroke-width":1.5,style:"cursor:pointer"});
+    if(i===0)v.addEventListener("mousedown",e=>{e.stopPropagation();if(draft.pts.length>=3)finishDraft();});
+    g.appendChild(v);
+  });
+  svg.appendChild(g);
+}
+
+function el(tag,attrs){const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+
+/* ---------- 顶点拖拽 ---------- */
+function enableDrag(node,z,idx){
+  node.addEventListener("mousedown",e=>{
+    e.stopPropagation();
+    const move=ev=>{const r=svg.getBoundingClientRect();z.pts[idx]={x:ev.clientX-r.left,y:ev.clientY-r.top};z.area=polyArea(z.pts);render();if(editing&&editing.id===z.id)fillArea(z);};
+    const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);};
+    document.addEventListener("mousemove",move);document.addEventListener("mouseup",up);
+  });
+}
+function enableDragCenter(node,z){
+  node.addEventListener("mousedown",e=>{
+    e.stopPropagation();
+    const move=ev=>{const r=svg.getBoundingClientRect();z.center={x:ev.clientX-r.left,y:ev.clientY-r.top};render();};
+    const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);};
+    document.addEventListener("mousemove",move);document.addEventListener("mouseup",up);
+  });
+}
+function enableDragRadius(node,z){
+  node.addEventListener("mousedown",e=>{
+    e.stopPropagation();
+    const move=ev=>{const r=svg.getBoundingClientRect();z.radius=Math.max(Math.hypot(ev.clientX-r.left-z.center.x,ev.clientY-r.top-z.center.y),5);z.area=circleArea(z.radius);render();if(editing&&editing.id===z.id)fillArea(z);};
+    const up=()=>{document.removeEventListener("mousemove",move);document.removeEventListener("mouseup",up);};
+    document.addEventListener("mousemove",move);document.addEventListener("mouseup",up);
+  });
+}
+
+/* ---------- 绘制交互 ---------- */
+let mouse=null;
+svg.addEventListener("mousemove",e=>{const r=svg.getBoundingClientRect();mouse={x:e.clientX-r.left,y:e.clientY-r.top};if(draft)render();});
+svg.addEventListener("click",e=>{
+  if(!draft)return;
+  const r=svg.getBoundingClientRect();
+  const p={x:e.clientX-r.left,y:e.clientY-r.top};
+  if(draft.shape==="circle"){
+    if(!draft.center){draft.center=p;render();}
+    else{const rad=Math.hypot(p.x-draft.center.x,p.y-draft.center.y);if(rad>5){draft.radius=rad;finishDraft();}}
+    return;
+  }
+  // 靠近起点则闭合
+  if(draft.pts.length>=3){const f=draft.pts[0];if(Math.hypot(p.x-f.x,p.y-f.y)<12){finishDraft();return;}}
+  draft.pts.push(p);render();
+});
+svg.addEventListener("dblclick",e=>{if(draft&&draft.shape==="polygon"&&draft.pts.length>=3)finishDraft();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){draft=null;setTool("select");render();}});
+
+const MAX_ZONES=100;
+let toastTimer=null;
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2600);
+}
+
+/* 区域包围盒（用于重叠粗判） */
+function zoneBBox(z){
+  if(z.shape==="circle"){return {x1:z.center.x-z.radius,y1:z.center.y-z.radius,x2:z.center.x+z.radius,y2:z.center.y+z.radius};}
+  const xs=z.pts.map(p=>p.x),ys=z.pts.map(p=>p.y);
+  return {x1:Math.min(...xs),y1:Math.min(...ys),x2:Math.max(...xs),y2:Math.max(...ys)};
+}
+function bboxOverlap(a,b){return a.x1<b.x2&&b.x1<a.x2&&a.y1<b.y2&&b.y1<a.y2;}
+/* 同算法 · 异极性重叠 → 提示「豁免优先」（R-DZ-09） */
+function checkOverlapTip(z){
+  const bb=zoneBBox(z);
+  const hit=zones.some(o=>o.id!==z.id && o.algo===z.algo && o.pol!==z.pol && bboxOverlap(bb,zoneBBox(o)));
+  if(hit)showToast("检测区域重叠：重叠处按「豁免优先」，不告警");
+}
+
+function setTool(t){
+  if((t==="alarm"||t==="allow") && zones.length>=MAX_ZONES){
+    showToast(`最多可新增 ${MAX_ZONES} 个检测区域，请先删除部分区域`);
+    return;
+  }
+  tool=t;
+  document.querySelectorAll(".tool[data-tool]").forEach(x=>x.classList.toggle("active",x.dataset.tool===t));
+  const drawing=(t==="alarm"||t==="allow");
+  svg.classList.toggle("drawing",drawing);
+  const hint=document.getElementById("drawHint");
+  hint.classList.toggle("show",drawing);
+  if(drawing){
+    hint.textContent= drawShape==="circle"
+      ? "单击定圆心 · 移动确定半径 · 再次单击完成 · Esc 取消"
+      : "单击添加顶点 · 双击或点击起点闭合 · Esc 取消";
+    draft= drawShape==="circle" ? {pol:t,shape:"circle",center:null,radius:0} : {pol:t,shape:"polygon",pts:[]};
+    selectedId=null;closeRight();
+  } else {draft=null;}
+  render();
+}
+document.querySelectorAll(".tool[data-tool]").forEach(x=>x.addEventListener("click",()=>setTool(x.dataset.tool)));
+// 形状切换
+document.querySelectorAll(".tool[data-shape]").forEach(x=>x.addEventListener("click",()=>{
+  drawShape=x.dataset.shape;
+  document.querySelectorAll(".tool[data-shape]").forEach(y=>y.classList.toggle("active",y===x));
+  if(tool==="alarm"||tool==="allow")setTool(tool); // 重开当前绘制以应用新形状
+}));
+
+function finishDraft(){
+  const pol=draft.pol;
+  const now=new Date();
+  const stamp=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  const z={
+    id:uid++,pol,shape:draft.shape,
+    algo: document.getElementById("fAlgo").value || "车辆违停",
+    name:(pol==="alarm"?"告警区":"豁免区")+"-"+stamp.slice(5,16),
+    enabled:true,author:"肖昕昱",time:stamp
+  };
+  if(draft.shape==="circle"){z.center=draft.center;z.radius=draft.radius;z.area=circleArea(draft.radius);}
+  else{z.pts=draft.pts.slice();z.area=polyArea(draft.pts);}
+  zones.push(z);draft=null;setTool("select");
+  selectZone(z.id);
+  checkOverlapTip(z);
+}
+
+/* ---------- 列表 ---------- */
+function renderList(){
+  const cnt=document.getElementById("zoneCount");
+  cnt.innerHTML=`共 <b>${zones.length}</b> / ${MAX_ZONES} 个区域`;
+  cnt.classList.toggle("full",zones.length>=MAX_ZONES);
+  const box=document.getElementById("list");
+  const fAlgo=document.getElementById("fAlgo").value;
+  const fType=document.getElementById("fType").value;
+  const fSearch=document.getElementById("fSearch").value.trim();
+  const arr=zones.filter(z=>(!fAlgo||z.algo===fAlgo)&&(!fType||z.pol===fType)&&(!fSearch||z.name.includes(fSearch)));
+  if(!arr.length){box.innerHTML='<div class="empty">暂无检测区域<br/>选择「多边形 / 圆形」后，用「画告警区 / 画豁免区」在地图上绘制</div>';return;}
+  box.innerHTML="";
+  arr.forEach(z=>{
+    const c=document.createElement("div");
+    c.className="card"+(z.id===selectedId?" active":"");
+    c.innerHTML=`
+      <div class="name"><span class="dot" style="background:${COL[z.pol].stroke}"></span><span class="txt">${z.name}</span></div>
+      <div class="meta">
+        <span class="tag ${z.pol}">${z.pol==="alarm"?"告警区":"豁免区"}</span>
+        <span class="tag">${z.algo}</span>
+        <span class="tag">${z.shape==="circle"?"圆形":"多边形"}</span>
+        <span class="tag ${z.enabled?"on":"off"}">${z.enabled?"● 生效中":"○ 已停用"}</span>
+      </div>
+      <div class="ops">
+        <span class="iconbtn" title="定位" data-a="locate">${icon("locate")}</span>
+        <span class="iconbtn" title="显示/隐藏" data-a="toggle">${icon("eye")}</span>
+        <span class="iconbtn" title="删除" data-a="del">${icon("del")}</span>
+      </div>`;
+    c.addEventListener("click",e=>{if(e.target.closest(".iconbtn"))return;selectZone(z.id);});
+    c.querySelectorAll(".iconbtn").forEach(b=>b.addEventListener("click",e=>{
+      e.stopPropagation();const a=b.dataset.a;
+      if(a==="del"){zones=zones.filter(x=>x.id!==z.id);if(selectedId===z.id){selectedId=null;closeRight();}render();}
+      if(a==="edit"||a==="locate"){selectZone(z.id);}
+      if(a==="toggle"){z.enabled=!z.enabled;render();}
+    }));
+    box.appendChild(c);
+  });
+}
+function icon(n){
+  const s='width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"';
+  if(n==="locate")return `<svg ${s}><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
+  if(n==="eye")return `<svg ${s}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  if(n==="edit")return `<svg ${s}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`;
+  if(n==="del")return `<svg ${s}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>`;
+  return "";
+}
+
+/* ---------- 右侧面板 ---------- */
+function selectZone(id){
+  selectedId=id;tool="select";setToolButtons();
+  const z=zones.find(x=>x.id===id);editing=z;
+  openRight(z);render();
+}
+function setToolButtons(){document.querySelectorAll(".tool").forEach(x=>x.classList.toggle("active",x.dataset.tool==="select"));svg.classList.remove("drawing");document.getElementById("drawHint").classList.remove("show");}
+function openRight(z){
+  document.getElementById("right").classList.add("open");
+  document.getElementById("pName").value=z.name;
+  document.getElementById("pAlgo").value=z.algo;
+  setPolarity(z.pol);
+  document.getElementById("pEnable").classList.toggle("on",z.enabled);
+  fillArea(z);
+  document.getElementById("pAuthor").textContent=z.author;
+  document.getElementById("pTime").textContent=z.time;
+}
+function fillArea(z){document.getElementById("pArea").textContent=z.area.toLocaleString("zh-CN",{maximumFractionDigits:2})+" ㎡";}
+function closeRight(){document.getElementById("right").classList.remove("open");editing=null;}
+let curPol="alarm";
+function setPolarity(pol){
+  curPol=pol;
+  document.querySelectorAll(".seg .opt").forEach(o=>o.classList.toggle("sel",o.dataset.pol===pol));
+  document.getElementById("ruleTip").innerHTML= pol==="alarm"
+    ? '告警区绘制后，该告警类型在区域内检出目标将<b>生成告警</b>。'
+    : '豁免区绘制后，该告警类型在区域内检出目标将被<b>抑制（不告警）</b>。';
+}
+document.querySelectorAll(".seg .opt").forEach(o=>o.addEventListener("click",()=>setPolarity(o.dataset.pol)));
+document.getElementById("rClose").addEventListener("click",()=>{selectedId=null;closeRight();render();});
+document.getElementById("pCancel").addEventListener("click",()=>{selectedId=null;closeRight();render();});
+document.getElementById("pSave").addEventListener("click",()=>{
+  if(!editing)return;
+  editing.name=document.getElementById("pName").value.trim()||editing.name;
+  editing.algo=document.getElementById("pAlgo").value;
+  editing.pol=curPol;
+  const saved=editing;
+  closeRight();selectedId=null;render();
+  checkOverlapTip(saved);
+});
+
+/* ---------- 筛选联动 ---------- */
+["fAlgo","fType","fSearch"].forEach(id=>document.getElementById(id).addEventListener("input",render));
+
+/* ---------- 种子数据 ---------- */
+function seed(){
+  const W=canvas.clientWidth,H=canvas.clientHeight;
+  zones=[
+    {id:uid++,pol:"alarm",shape:"polygon",algo:"车辆违停",name:"告警区-桥下违停带",enabled:true,author:"肖昕昱",time:"2026-07-08 14:20",
+     pts:[{x:W*0.30,y:H*0.30},{x:W*0.46,y:H*0.28},{x:W*0.50,y:H*0.44},{x:W*0.33,y:H*0.47}]},
+    {id:uid++,pol:"allow",shape:"circle",algo:"车辆违停",name:"豁免区-环岛停车场",enabled:true,author:"肖昕昱",time:"2026-07-08 14:25",
+     center:{x:W*0.63,y:H*0.40},radius:Math.min(W,H)*0.085},
+    {id:uid++,pol:"alarm",shape:"polygon",algo:"非法经营",name:"告警区-站前禁营区",enabled:true,author:"肖昕昱",time:"2026-07-08 15:02",
+     pts:[{x:W*0.36,y:H*0.58},{x:W*0.52,y:H*0.57},{x:W*0.55,y:H*0.72},{x:W*0.34,y:H*0.73}]},
+    {id:uid++,pol:"allow",shape:"circle",algo:"非法经营",name:"豁免区-便民市集",enabled:false,author:"肖昕昱",time:"2026-07-08 15:10",
+     center:{x:W*0.70,y:H*0.66},radius:Math.min(W,H)*0.06},
+  ];
+  zones.forEach(z=>z.area=zoneArea(z));
+}
+
+function boot(){drawMap();seed();render();}
+window.addEventListener("resize",()=>{drawMap();render();});
+boot();
+</script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    if (!dd) return;
+    if (!dd.contains(e.target)) dd.classList.remove('open');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摄像头监控 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        .ptz-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ptz-btn:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #8b949e;
+            color: #fff;
+        }
+        .ptz-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .video-cell {
+            border: 1px solid #30363d;
+            background: #000;
+            position: relative;
+        }
+        .video-cell.active {
+            border-color: #58a6ff;
+        }
+        
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: #58a6ff;
+            border-bottom-color: #58a6ff;
+        }
+
+        /* 模拟视频噪点/背景 */
+        .video-placeholder {
+            background: repeating-linear-gradient(
+                45deg,
+                #161b22,
+                #161b22 10px,
+                #0d1117 10px,
+                #0d1117 20px
+            );
+        }
+        
+        /* 时间轴样式 */
+        .timeline-container {
+            position: relative;
+            height: 40px;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            border-bottom: 1px solid #30363d;
+        }
+        .timeline-ruler {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(to right, #30363d 1px, transparent 1px);
+            background-size: 4.166% 100%; /* 24小时 */
+        }
+        .timeline-event {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: #f85149;
+            cursor: pointer;
+        }
+        .timeline-progress {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 2px;
+            background-color: #58a6ff;
+            left: 45%; /* 模拟当前进度 */
+            z-index: 10;
+        }
+        .timeline-progress::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #58a6ff;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>监控中心</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='drone-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 监控中心 Tab（仅实况类页面，不含录像回放） -->
+    <div id="monitor-tabs" class="bg-[#1e1e1e] border-b border-[#2d2d2d] px-4 flex space-x-8 text-sm shrink-0">
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer flex items-center" onclick="location.href='drone-monitor.html'">
+            <i class="fas fa-plane mr-2"></i> 无人机/机巢实况
+        </div>
+        <div class="py-3 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer flex items-center">
+            <i class="fas fa-video mr-2"></i> 摄像头监控
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧设备通道树 -->
+        <div class="w-72 bg-[#161b22] border-r border-[#30363d] flex flex-col shrink-0">
+            <div class="p-2">
+                <div class="relative">
+                    <input type="text" id="tree-search" placeholder="搜索名称 / 国标编码" oninput="filterDeviceTree(this.value)" class="w-full bg-[#0d1117] border border-[#30363d] text-sm rounded pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#58a6ff]">
+                    <i class="fas fa-search absolute left-2.5 top-2 text-gray-500 text-sm"></i>
+                </div>
+            </div>
+            <div id="device-tree" class="p-2 flex-1 overflow-y-auto custom-scrollbar">
+                <!-- 设备节点 1 -->
+                <div class="mb-2 device-group" data-name="海康双光谱球机-北门" data-gb="44030000001320000001">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-300 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node1')">
+                        <i id="icon-node1" class="fas fa-caret-down w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <span class="truncate font-medium" title="海康双光谱球机-北门">海康双光谱球机-北门</span>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000001">44030000001320000001</span>
+                        </div>
+                    </div>
+                    <!-- 通道节点 -->
+                    <div id="node1" class="pl-6 pr-2 mt-1 space-y-1">
+                        <!-- 通道1 -->
+                        <div class="channel-item flex items-center justify-between px-2 py-1.5 text-sm bg-[#58a6ff]/10 text-[#58a6ff] rounded cursor-pointer group border border-[#58a6ff]/30" data-name="通道1: 可见光" data-gb="44030000001310000001" onclick="selectChannel('海康双光谱球机-北门', '通道1: 可见光')">
+                            <div class="flex items-center overflow-hidden min-w-0 flex-1">
+                                <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                                <div class="flex flex-col min-w-0">
+                                    <span class="truncate">通道1: 可见光</span>
+                                    <span class="text-[10px] text-[#58a6ff]/70 font-mono truncate" title="44030000001310000001">44030000001310000001</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity items-center shrink-0 ml-1">
+                                <i class="fas fa-history text-xs hover:text-white" title="查看回放" onclick="event.stopPropagation(); openPlayback('海康双光谱球机-北门', '通道1: 可见光')"></i>
+                            </div>
+                        </div>
+                        <!-- 通道2 -->
+                        <div class="channel-item flex items-center justify-between px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer group" data-name="通道2: 红外" data-gb="44030000001310000002" onclick="selectChannel('海康双光谱球机-北门', '通道2: 红外')">
+                            <div class="flex items-center overflow-hidden min-w-0 flex-1">
+                                <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                                <div class="flex flex-col min-w-0">
+                                    <span class="truncate">通道2: 红外</span>
+                                    <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000002">44030000001310000002</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity items-center shrink-0 ml-1">
+                                <i class="fas fa-history text-xs hover:text-white" title="查看回放" onclick="event.stopPropagation(); openPlayback('海康双光谱球机-北门', '通道2: 红外')"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设备节点 2 -->
+                <div class="mb-2 device-group" data-name="大华枪机-东侧围墙" data-gb="44030000001320000002">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-300 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node2')">
+                        <i id="icon-node2" class="fas fa-caret-right w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <span class="truncate font-medium" title="大华枪机-东侧围墙">大华枪机-东侧围墙</span>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000002">44030000001320000002</span>
+                        </div>
+                    </div>
+                    <!-- 通道节点 -->
+                    <div id="node2" class="pl-6 pr-2 mt-1 space-y-1 hidden">
+                        <!-- 通道1 -->
+                        <div class="channel-item flex items-center justify-between px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer group" data-name="通道1" data-gb="44030000001310000003" onclick="selectChannel('大华枪机-东侧围墙', '通道1')">
+                            <div class="flex items-center overflow-hidden min-w-0 flex-1">
+                                <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                                <div class="flex flex-col min-w-0">
+                                    <span class="truncate">通道1</span>
+                                    <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000003">44030000001310000003</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity items-center shrink-0 ml-1">
+                                <i class="fas fa-history text-xs hover:text-white" title="查看回放" onclick="event.stopPropagation(); openPlayback('大华枪机-东侧围墙', '通道1')"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设备节点 3 (离线) -->
+                <div class="mb-2 opacity-75 device-group" data-name="海康全景-料场全景" data-gb="44030000001320000003">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node3')">
+                        <i id="icon-node3" class="fas fa-caret-down w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-server text-gray-500 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center min-w-0">
+                                <span class="truncate font-medium" title="海康全景-料场全景">海康全景-料场全景</span>
+                                <span class="ml-1 text-[10px] text-gray-500 bg-gray-800 px-1 py-0.5 rounded border border-gray-600 shrink-0">离线</span>
+                            </div>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000003">44030000001320000003</span>
+                        </div>
+                    </div>
+                    <div id="node3" class="pl-6 pr-2 mt-1 space-y-1">
+                        <div class="channel-item flex items-center justify-between px-2 py-1.5 text-sm text-gray-500 hover:bg-[#21262d] rounded cursor-pointer group" data-name="通道1" data-gb="44030000001310000004" onclick="showToast('设备离线，无法播放实况', 'warning')">
+                            <div class="flex items-center overflow-hidden min-w-0 flex-1">
+                                <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                                <div class="flex flex-col min-w-0">
+                                    <span class="truncate">通道1</span>
+                                    <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000004">44030000001310000004</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity items-center shrink-0 ml-1">
+                                <i class="fas fa-history text-xs text-gray-600 cursor-not-allowed" title="设备离线，无法拉取设备端录像" onclick="event.stopPropagation(); showToast('设备离线，无法拉取设备端录像', 'warning')"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tree-empty" class="hidden text-center text-xs text-gray-500 py-8">无匹配设备或通道</div>
+            </div>
+        </div>
+
+        <!-- 右侧主监控区 -->
+        <div class="flex-1 flex flex-col bg-[#0d1117] min-w-0 relative">
+            
+            <!-- 分屏实况 -->
+            <div id="view-live" class="flex-1 flex overflow-hidden">
+                <!-- 视频分屏区 -->
+                <div class="flex-1 flex flex-col p-2 min-w-0">
+                    <!-- 工具栏 -->
+                    <div class="flex justify-between items-center mb-2 px-1 shrink-0">
+                        <div class="flex space-x-1 bg-[#1e1e1e] rounded border border-[#2d2d2d] p-0.5">
+                            <button class="w-8 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" title="单屏" onclick="setSplitScreen(1)"><i class="fas fa-square"></i></button>
+                            <button class="w-8 h-7 flex items-center justify-center rounded bg-[#333] text-white transition-colors" title="四分屏" onclick="setSplitScreen(4)"><i class="fas fa-th-large"></i></button>
+                            <button class="w-8 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" title="六分屏" onclick="setSplitScreen(6)">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M2 2h6v9H2V2zm8 0h6v9h-6V2zm8 0h6v9h-6V2zM2 13h6v9H2v-9zm8 0h6v9h-6v-9zm8 0h6v9h-6v-9z"/>
+                                </svg>
+                            </button>
+                            <button class="w-8 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" title="九分屏" onclick="setSplitScreen(9)">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M2 2h5v5H2V2zm7 0h6v5H9V2zm8 0h5v5h-5V2zM2 9h5v6H2V9zm7 0h6v6H9V9zm8 0h5v6h-5V9zM2 17h5v5H2v-5zm7 0h6v5H9v-5zm8 0h5v5h-5v-5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1.5 bg-[#1e1e1e] border border-[#2d2d2d] rounded text-xs text-gray-300 hover:text-white hover:bg-[#252525] transition-colors">
+                                <i class="fas fa-expand mr-1"></i> 全屏
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 分屏网格 -->
+                    <div id="video-grid" class="flex-1 grid grid-cols-2 grid-rows-2 gap-1 min-h-0">
+                        <!-- 窗口1 (播放中, 选中) -->
+                        <div id="cell-1" class="video-cell active flex flex-col cursor-pointer" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>
+                                    海康双光谱球机-北门 - 通道1: 可见光
+                                </div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('海康双光谱球机-北门', '通道1: 可见光')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder flex items-center justify-center relative overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-60" alt="监控画面">
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+
+                        <!-- 窗口2 (播放中) -->
+                        <div id="cell-2" class="video-cell flex flex-col cursor-pointer" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>
+                                    海康双光谱球机-北门 - 通道2: 红外
+                                </div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('海康双光谱球机-北门', '通道2: 红外')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+                                <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 filter grayscale contrast-150"></div>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+
+                        <!-- 窗口3 (空) -->
+                        <div id="cell-3" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+
+                        <!-- 窗口4 (空) -->
+                        <div id="cell-4" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 隐藏窗口 5-9 -->
+                        <div id="cell-5" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer hidden" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                        <div id="cell-6" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer hidden" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                        <div id="cell-7" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer hidden" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                        <div id="cell-8" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer hidden" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                        <div id="cell-9" class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer hidden" onclick="selectCell(this)">
+                            <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 hidden flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                                <div class="flex items-center text-white font-medium channel-title"></div>
+                                <div class="flex items-center space-x-3 text-gray-400">
+                                    <i class="fas fa-history hover:text-[#58a6ff] cursor-pointer" title="查看此通道回放" onclick="event.stopPropagation(); openPlayback('未知设备', '未知通道')"></i>
+                                    <i class="fas fa-sync-alt hover:text-white cursor-pointer" title="刷新" onclick="event.stopPropagation(); showToast('已刷新视频流', 'info')"></i>
+                                    <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); closeCell(this)"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                                <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧云台控制 (PTZ) -->
+                <div class="w-64 bg-[#141414] border-l border-[#2d2d2d] flex flex-col shrink-0">
+                    <div class="p-3 border-b border-[#2d2d2d] font-medium text-white flex justify-between items-center">
+                        <span>云台控制</span>
+                        <span class="text-[10px] bg-[#58a6ff]/20 text-[#58a6ff] px-1.5 py-0.5 rounded border border-[#58a6ff]/30">当前: 通道1</span>
+                    </div>
+                    
+                    <div class="p-4 flex-1 overflow-y-auto custom-scrollbar">
+                        <!-- 方向盘 -->
+                        <div class="relative w-40 h-40 mx-auto mb-6 rounded-full bg-[#0d1117] border border-[#2d2d2d] shadow-inner">
+                            <!-- 上 -->
+                            <button class="absolute top-1 left-1/2 transform -translate-x-1/2 w-10 h-10 rounded text-gray-400 hover:text-white hover:bg-[#1e1e1e] transition-colors flex items-center justify-center"><i class="fas fa-caret-up text-2xl"></i></button>
+                            <!-- 下 -->
+                            <button class="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-10 rounded text-gray-400 hover:text-white hover:bg-[#1e1e1e] transition-colors flex items-center justify-center"><i class="fas fa-caret-down text-2xl"></i></button>
+                            <!-- 左 -->
+                            <button class="absolute left-1 top-1/2 transform -translate-y-1/2 w-10 h-10 rounded text-gray-400 hover:text-white hover:bg-[#1e1e1e] transition-colors flex items-center justify-center"><i class="fas fa-caret-left text-2xl"></i></button>
+                            <!-- 右 -->
+                            <button class="absolute right-1 top-1/2 transform -translate-y-1/2 w-10 h-10 rounded text-gray-400 hover:text-white hover:bg-[#1e1e1e] transition-colors flex items-center justify-center"><i class="fas fa-caret-right text-2xl"></i></button>
+                            <!-- 中心复位 -->
+                            <button class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#1e1e1e] border border-[#2d2d2d] text-gray-300 hover:text-white hover:border-[#58a6ff] transition-colors flex items-center justify-center shadow-md" title="云台回中">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                            </button>
+                        </div>
+
+                        <!-- 变倍/聚焦 -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between bg-[#0d1117] rounded border border-[#2d2d2d] overflow-hidden">
+                                <div class="px-3 py-1.5 text-xs text-gray-400 border-r border-[#2d2d2d] w-14 text-center">变倍</div>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors border-r border-[#2d2d2d]"><i class="fas fa-minus text-xs"></i></button>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors"><i class="fas fa-plus text-xs"></i></button>
+                            </div>
+                            <div class="flex items-center justify-between bg-[#0d1117] rounded border border-[#2d2d2d] overflow-hidden">
+                                <div class="px-3 py-1.5 text-xs text-gray-400 border-r border-[#2d2d2d] w-14 text-center">聚焦</div>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors border-r border-[#2d2d2d]"><i class="fas fa-minus text-xs"></i></button>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors"><i class="fas fa-plus text-xs"></i></button>
+                            </div>
+                            <div class="flex items-center justify-between bg-[#0d1117] rounded border border-[#2d2d2d] overflow-hidden">
+                                <div class="px-3 py-1.5 text-xs text-gray-400 border-r border-[#2d2d2d] w-14 text-center">光圈</div>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors border-r border-[#2d2d2d]"><i class="fas fa-minus text-xs"></i></button>
+                                <button class="flex-1 py-1.5 hover:bg-[#1e1e1e] text-gray-300 hover:text-white transition-colors"><i class="fas fa-plus text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- 步长设置 -->
+                        <div class="mt-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-gray-400">慢</span>
+                                <span class="text-xs text-gray-400">快</span>
+                            </div>
+                            <input type="range" min="1" max="10" value="5" class="w-full h-1 bg-[#2d2d2d] rounded-lg appearance-none cursor-pointer accent-[#f85149]">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>
+
+    <script>
+        // Toast 系统
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-[#238636]/90 border-[#2ea043]' : 
+                            type === 'error' ? 'bg-[#f85149]/90 border-[#ff6a69]' : 
+                            type === 'warning' ? 'bg-[#5a3a00]/90 border-[#d29922]' :
+                            'bg-[#1f6feb]/90 border-[#388bfd]';
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                         type === 'error' ? 'fa-exclamation-circle' : 
+                         type === 'warning' ? 'fa-exclamation-triangle' :
+                         'fa-info-circle';
+            
+            toast.className = `flex items-center px-4 py-2 rounded text-white text-sm shadow-lg border ${bgColor} transform transition-all duration-300 translate-y-[-100%] opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i> ${message}`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.remove('translate-y-[-100%]', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function openPlayback(device, channel) {
+            const params = new URLSearchParams({ device, channel });
+            location.href = `camera-playback.html?${params.toString()}`;
+        }
+
+        function toggleNode(nodeId) {
+            const node = document.getElementById(nodeId);
+            const icon = document.getElementById('icon-' + nodeId);
+            if (node.classList.contains('hidden')) {
+                node.classList.remove('hidden');
+                icon.classList.remove('fa-caret-right');
+                icon.classList.add('fa-caret-down');
+            } else {
+                node.classList.add('hidden');
+                icon.classList.remove('fa-caret-down');
+                icon.classList.add('fa-caret-right');
+            }
+        }
+
+        function filterDeviceTree(keyword) {
+            const q = keyword.trim().toLowerCase();
+            let visibleCount = 0;
+
+            document.querySelectorAll('.device-group').forEach(group => {
+                const deviceName = (group.dataset.name || '').toLowerCase();
+                const deviceGb = (group.dataset.gb || '').toLowerCase();
+                const deviceMatch = !q || deviceName.includes(q) || deviceGb.includes(q);
+
+                let anyChannelVisible = false;
+                group.querySelectorAll('.channel-item').forEach(ch => {
+                    const chName = (ch.dataset.name || '').toLowerCase();
+                    const chGb = (ch.dataset.gb || '').toLowerCase();
+                    const chMatch = !q || deviceMatch || chName.includes(q) || chGb.includes(q);
+                    ch.classList.toggle('hidden', !chMatch);
+                    if (chMatch) anyChannelVisible = true;
+                });
+
+                const showGroup = !q || deviceMatch || anyChannelVisible;
+                group.classList.toggle('hidden', !showGroup);
+                if (showGroup) visibleCount++;
+
+                if (q && showGroup) {
+                    const channels = group.querySelector('[id^="node"]');
+                    const icon = group.querySelector('[id^="icon-node"]');
+                    if (channels) channels.classList.remove('hidden');
+                    if (icon) {
+                        icon.classList.remove('fa-caret-right');
+                        icon.classList.add('fa-caret-down');
+                    }
+                }
+            });
+
+            const empty = document.getElementById('tree-empty');
+            if (empty) empty.classList.toggle('hidden', !q || visibleCount > 0);
+        }
+
+        function selectCell(cell) {
+            // Remove active from all
+            document.querySelectorAll('.video-cell').forEach(c => c.classList.remove('active'));
+            // Add active to clicked
+            cell.classList.add('active');
+        }
+
+        function closeCell(btn) {
+            const cell = btn.closest('.video-cell');
+            cell.querySelector('.h-7').classList.add('hidden');
+            cell.querySelector('.video-placeholder').classList.remove('hidden');
+            cell.querySelector('.video-placeholder').innerHTML = `
+                <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
+                <span class="text-xs placeholder-text">点击左侧通道播放</span>
+                <div class="absolute inset-0 border-[3px] border-transparent cell-border"></div>
+            `;
+            cell.classList.remove('bg-black');
+        }
+
+        function setSplitScreen(num) {
+            const grid = document.getElementById('video-grid');
+            grid.className = 'flex-1 grid gap-1 min-h-0';
+            
+            if (num === 1) grid.classList.add('grid-cols-1', 'grid-rows-1');
+            if (num === 4) grid.classList.add('grid-cols-2', 'grid-rows-2');
+            if (num === 6) grid.classList.add('grid-cols-3', 'grid-rows-2');
+            if (num === 9) grid.classList.add('grid-cols-3', 'grid-rows-3');
+
+            // Update button styles
+            const btns = grid.previousElementSibling.firstElementChild.querySelectorAll('button');
+            btns.forEach(b => {
+                b.classList.remove('bg-[#30363d]', 'text-white');
+                b.classList.add('text-gray-400');
+            });
+            event.currentTarget.classList.remove('text-gray-400');
+            event.currentTarget.classList.add('bg-[#30363d]', 'text-white');
+
+            // Show/Hide cells
+            for (let i = 1; i <= 9; i++) {
+                const cell = document.getElementById('cell-' + i);
+                if (i <= num) {
+                    cell.classList.remove('hidden');
+                } else {
+                    cell.classList.add('hidden');
+                }
+            }
+        }
+
+        function selectChannel(deviceName, channelName) {
+            const activeCell = document.querySelector('.video-cell.active');
+            if (activeCell) {
+                activeCell.querySelector('.h-7').classList.remove('hidden');
+                activeCell.querySelector('.channel-title').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>${deviceName} - ${channelName}`;
+                
+                const historyBtn = activeCell.querySelector('.fa-history');
+                if (historyBtn) {
+                    historyBtn.setAttribute('onclick', `event.stopPropagation(); openPlayback('${deviceName}', '${channelName}')`);
+                }
+
+                activeCell.querySelector('.video-placeholder').innerHTML = `
+                    <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-60" alt="监控画面">
+                    <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
+                `;
+                activeCell.classList.add('bg-black');
+                showToast(`已将 ${channelName} 分配至当前窗口`, 'success');
+            } else {
+                showToast('请先选中一个视频窗口', 'error');
+            }
+        }
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

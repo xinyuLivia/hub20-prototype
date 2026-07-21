@@ -1,0 +1,488 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目首页 - Avant 智慧巡检</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+        .map-bg {
+            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
+            position: relative;
+        }
+        .map-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(20, 20, 20, 0.4);
+            z-index: 0;
+        }
+        .panel-bg {
+            background-color: #1e1e1e;
+            border: 1px solid #2d2d2d;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .stat-box {
+            background: #252525;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+        .stat-num {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-50 relative">
+        <div class="flex items-center space-x-4">
+            <!-- 全局应用导航 (App Launcher) -->
+            <div class="relative group" id="appLauncherDropdown">
+                <i class="fas fa-th text-gray-400 cursor-pointer hover:text-white text-lg" title="应用中心" onclick="document.getElementById('appLauncherMenu').classList.toggle('hidden')"></i>
+                <!-- 巨型菜单 (Mega Menu) -->
+                <div id="appLauncherMenu" class="absolute top-full left-0 pt-3 w-[600px] hidden cursor-default z-50">
+                    <div class="relative bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl p-6">
+                    <div class="absolute -top-2 left-1.5 w-4 h-4 bg-[#1e1e1e] border-t border-l border-[#333] transform rotate-45"></div>
+                    <h3 class="text-white font-medium mb-4 text-sm border-b border-[#333] pb-2">应用中心</h3>
+                    <div class="grid grid-cols-4 gap-6">
+                        <!-- 列 1 -->
+                        <div>
+                            <div class="text-white text-xs font-medium mb-2">任务实况</div>
+                            <a href="task-live.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">任务实况</a>
+                            
+                            <div class="text-white text-xs font-medium mb-2">监控中心</div>
+                            <a href="drone-monitor.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">无人机/机巢实况</a>
+                            <a href="camera-monitor.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">摄像头监控</a>
+                            <a href="camera-playback.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">录像回放</a>
+                        </div>
+                        <!-- 列 2 -->
+                        <div>
+                            <div class="text-white text-xs font-medium mb-2">任务管理</div>
+                            <a href="task-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">航线管理</a>
+                            <a href="task-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">计划管理</a>
+                            <a href="task-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">巡检任务</a>
+                            <a href="task-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">建模任务</a>
+                            
+                            <div class="text-white text-xs font-medium mb-2">自动化工作流</div>
+                            <a href="workflow-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">自动化工作流</a>
+                        </div>
+                        <!-- 列 3 -->
+                        <div>
+                            <div class="text-white text-xs font-medium mb-2">设备管理</div>
+                            <a href="drone-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">无人机/机巢</a>
+                            <a href="camera-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">摄像头</a>
+                            
+                            <div class="text-white text-xs font-medium mb-2">告警中心</div>
+                            <a href="alert/alert-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">无人机告警</a>
+                            <a href="camera-alarm-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">摄像头告警</a>
+                            <a href="alert/alert-list.html?tab=fiber" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">震动光纤告警</a>
+                            <a href="alert/alert-list.html?tab=blackflight" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">黑飞告警</a>
+                        </div>
+                        <!-- 列 4 -->
+                        <div>
+                            <div class="text-white text-xs font-medium mb-2">资源库</div>
+                            <a href="resource-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-1.5 transition-colors">媒体库</a>
+                            <a href="resource-list.html" class="block text-gray-400 hover:text-[#58a6ff] text-xs mb-3 transition-colors">模型库</a>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-[#58a6ff] font-bold text-lg italic tracking-wide">Avant <span class="text-white not-italic text-base">智慧巡检</span></div>
+        </div>
+        
+        <!-- 项目选择器 -->
+            <div class="relative group" id="projectHomeDropdown">
+                <div class="flex items-center bg-[#252525] hover:bg-[#2d2d2d] transition-colors px-4 py-1.5 rounded cursor-pointer border border-[#333]" onclick="document.getElementById('projectHomeMenu').classList.toggle('hidden')">
+                    <span class="text-sm text-white mr-2">青海油田管道巡检项目</span>
+                    <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                </div>
+                <!-- 下拉菜单 (Hover显示) -->
+                <div id="projectHomeMenu" class="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 w-64 bg-[#1e1e1e] border border-[#333] rounded shadow-xl hidden z-50">
+                <div class="p-2">
+                    <div class="flex items-center bg-[#252525] rounded px-2 py-1 mb-2">
+                        <span class="text-xs text-gray-400 mr-2">全部</span>
+                        <i class="fas fa-caret-down text-xs text-gray-500 mr-2"></i>
+                        <input type="text" placeholder="请搜索" class="bg-transparent border-none outline-none text-xs w-full text-white">
+                    </div>
+                    <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                        <div class="px-2 py-1.5 text-xs text-white bg-[#2d2d2d] rounded flex justify-between items-center cursor-pointer">
+                            <span>青海油田管道巡检项目</span>
+                            <i class="fas fa-check text-[#58a6ff]"></i>
+                        </div>
+                        <div class="px-2 py-1.5 text-xs text-gray-400 hover:bg-[#252525] hover:text-white rounded cursor-pointer">福建油田管道巡检项目</div>
+                        <div class="px-2 py-1.5 text-xs text-gray-400 hover:bg-[#252525] hover:text-white rounded cursor-pointer">青岛公安应急智慧巡检项目</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <i class="fas fa-bell text-gray-400 hover:text-white cursor-pointer"></i>
+            <div class="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs text-white cursor-pointer">
+                <i class="fas fa-user"></i>
+            </div>
+            <button onclick="location.href='home-dashboard.html'" class="text-xs text-gray-300 border border-[#444] px-3 py-1.5 rounded hover:bg-[#2d2d2d] transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-1"></i> 返回驾驶舱
+            </button>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧面板 -->
+        <div class="w-[320px] bg-[#141414] flex flex-col overflow-y-auto custom-scrollbar shrink-0 z-10 border-r border-[#2d2d2d] relative">
+
+            <!-- 任务实况（对齐高保真：标题 + Live 画面） -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='task-live.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">任务实况</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="relative rounded overflow-hidden cursor-pointer border border-transparent hover:border-[#58a6ff] transition-colors" onclick="location.href='task-live.html'">
+                    <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=800&auto=format&fit=crop" alt="任务实况画面" class="w-full aspect-video object-cover block">
+                    <div class="absolute top-2 left-2 flex items-center bg-[#1f6feb] text-white text-[11px] leading-none px-1.5 py-1 rounded">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white mr-1.5"></span>Live
+                    </div>
+                </div>
+            </div>
+
+            <!-- 告警 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='alert/alert-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">告警中心</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <div class="stat-box"><div class="stat-num text-white">12</div><div class="stat-label">已确认</div></div>
+                    <div class="stat-box"><div class="stat-num text-[#d29922]">7</div><div class="stat-label">待确认</div></div>
+                    <div class="stat-box"><div class="stat-num text-white">2</div><div class="stat-label">已处置</div></div>
+                    <div class="stat-box"><div class="stat-num text-[#58a6ff]">31</div><div class="stat-label">监控中</div></div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-center justify-between text-gray-400 hover:text-white cursor-pointer">
+                        <div class="flex items-center truncate"><span class="w-1.5 h-1.5 rounded-full bg-[#f85149] mr-2 shrink-0"></span><span class="truncate">施工车辆 高速巡检任务20260114153...</span></div>
+                        <span class="text-[#58a6ff] shrink-0 ml-2">3分钟前</span>
+                    </div>
+                    <div class="flex items-center justify-between text-gray-400 hover:text-white cursor-pointer">
+                        <div class="flex items-center truncate"><span class="w-1.5 h-1.5 rounded-full bg-[#f85149] mr-2 shrink-0"></span><span class="truncate">施工车辆 高速巡检任务20260114153...</span></div>
+                        <span class="text-[#58a6ff] shrink-0 ml-2">3分钟前</span>
+                    </div>
+                    <div class="flex items-center justify-between text-gray-400 hover:text-white cursor-pointer">
+                        <div class="flex items-center truncate"><span class="w-1.5 h-1.5 rounded-full bg-[#f85149] mr-2 shrink-0"></span><span class="truncate">施工车辆 高速巡检任务20260114153...</span></div>
+                        <span class="text-[#58a6ff] shrink-0 ml-2">3分钟前</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='task-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">任务</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-white font-medium">0</div>
+                        <div class="text-[10px] text-gray-500 mt-1">待开始</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#58a6ff] font-medium">2</div>
+                        <div class="text-[10px] text-gray-500 mt-1">执行中</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#f85149] font-medium">0</div>
+                        <div class="text-[10px] text-gray-500 mt-1">延误中</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#f85149] font-medium">2</div>
+                        <div class="text-[10px] text-gray-500 mt-1">已终止</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-white font-medium">84</div>
+                        <div class="text-[10px] text-gray-500 mt-1">已完成</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#f85149] font-medium">1</div>
+                        <div class="text-[10px] text-gray-500 mt-1">巡检异常</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 计划 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='task-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">计划</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-white font-medium">35</div>
+                        <div class="text-[10px] text-gray-500 mt-1">手动创建</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#58a6ff] font-medium">86</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Agent创建</div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                            <span>进行中</span>
+                            <span class="text-white">26</span>
+                        </div>
+                        <div class="w-full bg-[#333] rounded-full h-1.5">
+                            <div class="bg-[#58a6ff] h-1.5 rounded-full" style="width: 70%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                            <span>待启用</span>
+                            <span class="text-white">15</span>
+                        </div>
+                        <div class="w-full bg-[#333] rounded-full h-1.5">
+                            <div class="bg-[#3fb950] h-1.5 rounded-full" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 中间地图区 -->
+        <div class="flex-1 map-bg relative z-0">
+            <!-- 顶部悬浮工具 -->
+            <div class="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+                <div class="flex bg-[#1e1e1e]/90 backdrop-blur border border-[#333] rounded p-1 space-x-1">
+                    <button class="px-3 py-1 text-xs text-white bg-[#333] rounded">全部 <i class="fas fa-caret-down ml-1"></i></button>
+                    <div class="relative flex items-center">
+                        <input type="text" placeholder="请搜索巡检对象/位置/机巢/观测点/模型" class="bg-transparent border-none text-xs text-white w-64 px-2 outline-none">
+                        <i class="fas fa-search text-gray-500 text-xs mr-2"></i>
+                    </div>
+                    <button class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#58a6ff]"><i class="fas fa-filter"></i></button>
+                    <button class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#58a6ff]"><i class="fas fa-layer-group"></i></button>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button class="bg-[#1e1e1e]/90 backdrop-blur border border-[#333] text-white text-xs px-4 py-1.5 rounded hover:bg-[#2d2d2d] transition-colors"><i class="fas fa-download mr-1"></i> 导入</button>
+                    <button class="bg-[#1f6feb] text-white text-xs px-4 py-1.5 rounded hover:bg-[#388bfd] transition-colors flex items-center">新建 <i class="fas fa-chevron-down ml-2"></i></button>
+                </div>
+            </div>
+
+            <!-- 底部状态栏 -->
+            <div class="absolute bottom-0 left-0 right-0 h-8 bg-[#141414]/80 backdrop-blur border-t border-[#2d2d2d] flex items-center justify-between px-4 text-[10px] text-gray-400 z-10">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-crosshairs cursor-pointer hover:text-white"></i>
+                    <span>100%</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <span>100 m <div class="inline-block w-16 h-px bg-gray-500 align-middle mx-1"></div></span>
+                    <span>22.524734038° N</span>
+                    <span>113.965810092° E</span>
+                    <span>ASL: 72.3 m</span>
+                    <span>HAE: 69.8 m</span>
+                    <i class="fas fa-location-arrow"></i>
+                    <span>WGS 84</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="w-[320px] bg-[#141414] flex flex-col overflow-y-auto custom-scrollbar shrink-0 z-10 border-l border-[#2d2d2d]">
+            
+            <!-- AI 助手 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="bg-[#1e1e1e] border border-[#333] rounded-full px-3 py-2 flex items-center cursor-text">
+                    <div class="w-5 h-5 rounded-full bg-gradient-to-r from-[#58a6ff] to-[#8957e5] flex items-center justify-center mr-2 shrink-0">
+                        <i class="fas fa-sparkles text-white text-[10px]"></i>
+                    </div>
+                    <input type="text" placeholder="我是你的巡检助手" class="bg-transparent border-none text-xs text-white w-full outline-none">
+                    <i class="fas fa-microphone text-gray-500 hover:text-white cursor-pointer ml-2"></i>
+                </div>
+            </div>
+
+            <!-- 监控中心 (紧凑型卡片) -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='drone-monitor.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">监控中心</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="location.href='drone-monitor.html'" class="flex-1 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] rounded py-2 flex flex-col items-center justify-center text-xs text-gray-300 hover:text-white transition-colors group/btn relative">
+                        <div class="absolute top-1.5 right-2 flex items-center text-[10px] font-bold text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1 animate-pulse"></span>3
+                        </div>
+                        <i class="fas fa-plane text-[#58a6ff] mb-1 text-lg group-hover/btn:scale-110 transition-transform"></i>
+                        <span>无人机/机巢实况</span>
+                    </button>
+                    <button onclick="location.href='camera-monitor.html'" class="flex-1 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] rounded py-2 flex flex-col items-center justify-center text-xs text-gray-300 hover:text-white transition-colors group/btn relative">
+                        <div class="absolute top-1.5 right-2 flex items-center text-[10px] font-bold text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1 animate-pulse"></span>1
+                        </div>
+                        <i class="fas fa-video text-[#58a6ff] mb-1 text-lg group-hover/btn:scale-110 transition-transform"></i>
+                        <span>摄像头监控</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 设备 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='drone-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">设备</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col cursor-pointer hover:border-[#555]" onclick="location.href='drone-list.html'">
+                        <div class="flex items-center text-xs text-gray-400 mb-1"><i class="fas fa-plane w-4 text-center mr-1"></i> 无人机</div>
+                        <div class="flex items-end justify-between">
+                            <div class="flex items-baseline"><span class="text-lg text-white font-medium leading-none">12</span><span class="text-[10px] text-gray-500 ml-1">总数</span></div>
+                            <div class="flex space-x-2 text-[10px]">
+                                <span class="text-[#58a6ff]" title="飞行中">2 飞行</span>
+                                <span class="text-[#3fb950]" title="在线">8 在线</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col cursor-pointer hover:border-[#555]" onclick="location.href='drone-list.html'">
+                        <div class="flex items-center text-xs text-gray-400 mb-1"><i class="fas fa-box w-4 text-center mr-1"></i> 机巢</div>
+                        <div class="flex items-end justify-between">
+                            <div class="flex items-baseline"><span class="text-lg text-white font-medium leading-none">4</span><span class="text-[10px] text-gray-500 ml-1">总数</span></div>
+                            <div class="flex space-x-2 text-[10px]">
+                                <span class="text-[#3fb950]" title="在线">3 在线</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col cursor-pointer hover:border-[#555]" onclick="location.href='camera-list.html'">
+                        <div class="flex items-center text-xs text-gray-400 mb-1"><i class="fas fa-video w-4 text-center mr-1"></i> 摄像头</div>
+                        <div class="flex items-end justify-between">
+                            <div class="flex items-baseline"><span class="text-lg text-white font-medium leading-none">47</span><span class="text-[10px] text-gray-500 ml-1">总数</span></div>
+                            <div class="flex space-x-2 text-[10px]">
+                                <span class="text-[#3fb950]" title="在线">45 在线</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col cursor-pointer hover:border-[#555]">
+                        <div class="flex items-center text-xs text-gray-400 mb-1"><i class="fas fa-robot w-4 text-center mr-1"></i> 地面机器人</div>
+                        <div class="flex items-end justify-between">
+                            <div class="flex items-baseline"><span class="text-lg text-white font-medium leading-none">0</span><span class="text-[10px] text-gray-500 ml-1">总数</span></div>
+                            <div class="flex space-x-2 text-[10px]">
+                                <span class="text-gray-500" title="离线">0 在线</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自动化工作流 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='workflow-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">自动化工作流</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="text-center"><div class="text-lg text-white font-medium">34</div><div class="text-[10px] text-gray-500">工作流数量</div></div>
+                    <div class="text-center"><div class="text-lg text-white font-medium">79</div><div class="text-[10px] text-gray-500">执行次数</div></div>
+                    <div class="text-center"><div class="text-lg text-white font-medium">97<span class="text-xs">%</span></div><div class="text-[10px] text-gray-500">执行成功率</div></div>
+                </div>
+            </div>
+
+            <!-- 航线 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='task-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">航线</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-white font-medium">148</div>
+                        <div class="text-[10px] text-gray-500 mt-1">总航线</div>
+                    </div>
+                    <div class="bg-[#1e1e1e] border border-[#333] rounded p-2 flex flex-col items-center cursor-pointer hover:border-[#555]">
+                        <div class="text-lg text-[#58a6ff] font-medium">24</div>
+                        <div class="text-[10px] text-gray-500 mt-1">建模航线</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据成果 -->
+            <div class="p-4 border-b border-[#2d2d2d]">
+                <div class="section-title cursor-pointer group" onclick="location.href='resource-list.html'">
+                    <span class="group-hover:text-[#58a6ff] transition-colors">数据成果</span>
+                    <i class="fas fa-chevron-right text-gray-500 text-xs group-hover:text-[#58a6ff] transition-colors"></i>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                    <div class="flex flex-col">
+                        <div class="text-lg text-white font-medium">1245</div>
+                        <div class="text-[10px] text-gray-500">巡检数据</div>
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="text-lg text-white font-medium">328</div>
+                        <div class="text-[10px] text-gray-500">模型数</div>
+                    </div>
+                </div>
+                <!-- 模拟柱状图 -->
+                <div class="flex items-end space-x-2 h-12 mt-2">
+                    <div class="w-full bg-[#f85149] rounded-t" style="height: 60%;"></div>
+                    <div class="w-full bg-[#58a6ff] rounded-t" style="height: 80%;"></div>
+                    <div class="w-full bg-[#3fb950] rounded-t" style="height: 40%;"></div>
+                    <div class="w-full bg-[#f85149] rounded-t" style="height: 90%;"></div>
+                    <div class="w-full bg-[#58a6ff] rounded-t" style="height: 50%;"></div>
+                    <div class="w-full bg-[#3fb950] rounded-t" style="height: 70%;"></div>
+                    <div class="w-full bg-[#58a6ff] rounded-t" style="height: 30%;"></div>
+                </div>
+            </div>
+
+            <!-- 飞行数据 (无二级页面) -->
+            <div class="p-4">
+                <div class="section-title">
+                    <span>飞行数据</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="text-center"><div class="text-lg text-white font-medium">34</div><div class="text-[10px] text-gray-500">架次</div></div>
+                    <div class="text-center"><div class="text-lg text-white font-medium">79</div><div class="text-[10px] text-gray-500">里程/Km</div></div>
+                    <div class="text-center"><div class="text-lg text-white font-medium">567</div><div class="text-[10px] text-gray-500">时长/小时</div></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

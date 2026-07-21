@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUB 2.0 原型导航门户 - Avant 智慧巡检</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background:#0a0e14; color:#d4d4d4; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+        .card { background:#141a24; border:1px solid #22304a; transition:.15s; }
+        .card:hover { border-color:#3b82f6; transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+        .grp-title { font-size:14px; font-weight:600; color:#cfe0ff; display:flex; align-items:center; gap:8px; }
+        .grp-title::before { content:''; width:3px; height:15px; background:#3b82f6; border-radius:2px; }
+        .badge { font-size:10px; padding:1px 7px; border-radius:10px; background:#1a2740; color:#7fb0ff; }
+        .badge.new { background:#12331f; color:#5bd07a; }
+        ::-webkit-scrollbar { width:8px; }
+        ::-webkit-scrollbar-thumb { background:#22304a; border-radius:4px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 顶栏 -->
+    <header class="h-14 flex items-center justify-between px-8 border-b border-[#1a2740] bg-[#0c1220] sticky top-0 z-10">
+        <div class="flex items-center gap-2">
+            <span class="text-[#58a6ff] font-bold text-xl italic tracking-wide">Avant</span>
+            <span class="text-white text-lg">智慧巡检</span>
+            <span class="text-gray-500 text-sm ml-3 border-l border-[#22304a] pl-3">HUB 2.0 原型导航门户</span>
+        </div>
+        <a href="home-dashboard.html" class="bg-[#1f5fd6] text-white text-sm px-4 py-1.5 rounded hover:bg-[#2f6fe6] flex items-center gap-2">
+            <i class="fas fa-desktop"></i> 进入巡检驾驶舱
+        </a>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-8 py-8">
+
+        <!-- 说明 -->
+        <div class="card rounded-lg p-5 mb-8">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-circle-info text-[#58a6ff] mt-0.5"></i>
+                <div class="text-sm text-gray-400 leading-relaxed">
+                    本门户汇集 HUB 2.0 五大原型模块，均可点击跳转、相互串联。<span class="text-gray-200">驾驶舱（Figma 1:1 重建）为唯一全局首页</span>，其余页面回链均指向驾驶舱。
+                    如某屏 Figma 与飞书 PRD 文案冲突，以飞书 PRD 为准。
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. 全局驾驶舱 -->
+        <section class="mb-8">
+            <div class="grp-title mb-4">全局驾驶舱 <span class="badge new">Figma 1:1 重建</span></div>
+            <div class="grid grid-cols-3 gap-4">
+                <a href="home-dashboard.html" class="card rounded-lg p-5 block">
+                    <div class="flex items-center justify-between mb-2"><i class="fas fa-desktop text-2xl text-[#58a6ff]"></i></div>
+                    <div class="text-white font-medium mb-1">巡检驾驶舱</div>
+                    <div class="text-xs text-gray-500 leading-relaxed">巡检大屏（今日巡检 / 数据统计）+ 项目总览 + 右栏无人机队列 / 巡检告警 + 地图落点聚合</div>
+                </a>
+                <a href="project-home.html" class="card rounded-lg p-5 block">
+                    <div class="flex items-center justify-between mb-2"><i class="fas fa-house text-2xl text-[#3fb950]"></i></div>
+                    <div class="text-white font-medium mb-1">项目首页</div>
+                    <div class="text-xs text-gray-500 leading-relaxed">单项目工作台：告警 / 任务 / 计划 / 设备 / 监控中心 / 数据成果</div>
+                </a>
+            </div>
+        </section>
+
+        <!-- 2. 摄像头接入 -->
+        <section class="mb-8">
+            <div class="grp-title mb-4">摄像头接入 <span class="badge">9 页</span></div>
+            <div class="grid grid-cols-3 gap-4">
+                <a href="camera-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-video text-[#58a6ff] mr-2"></i>摄像头列表</div><div class="text-xs text-gray-500">设备清单与状态管理</div></a>
+                <a href="camera-detail.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-circle-info text-[#58a6ff] mr-2"></i>摄像头详情</div><div class="text-xs text-gray-500">单台设备参数与信息</div></a>
+                <a href="camera-monitor.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-tv text-[#58a6ff] mr-2"></i>摄像头监控</div><div class="text-xs text-gray-500">实时多路画面监控</div></a>
+                <a href="camera-playback.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-clock-rotate-left text-[#58a6ff] mr-2"></i>录像回放</div><div class="text-xs text-gray-500">设备端历史录像检索回放</div></a>
+                <a href="camera-alarm-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-bell text-[#d29922] mr-2"></i>摄像头告警</div><div class="text-xs text-gray-500">摄像头告警列表</div></a>
+                <a href="drone-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-plane text-[#58a6ff] mr-2"></i>无人机/机巢列表</div><div class="text-xs text-gray-500">无人机与机巢设备</div></a>
+                <a href="drone-monitor.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-satellite-dish text-[#58a6ff] mr-2"></i>无人机/机巢实况</div><div class="text-xs text-gray-500">飞行实况与画面</div></a>
+                <a href="platform-device-management.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-microchip text-[#58a6ff] mr-2"></i>平台设备管理</div><div class="text-xs text-gray-500">设备接入与故障总览</div></a>
+            </div>
+        </section>
+
+        <!-- 3. 事件联动处置二期（2.0） -->
+        <section class="mb-8">
+            <div class="grp-title mb-4">事件联动处置二期（2.0） <span class="badge">工作流 + 告警</span> <span class="badge new">含机器狗处置</span></div>
+            <div class="grid grid-cols-3 gap-4">
+                <a href="workflow-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-diagram-project text-[#8957e5] mr-2"></i>工作流列表</div><div class="text-xs text-gray-500">分设备（无人机/地面机器人）+ 新增配置弹窗</div></a>
+                <a href="workflow-create.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-plus text-[#8957e5] mr-2"></i>工作流创建（无人机）</div><div class="text-xs text-gray-500">编排触发条件与处置动作</div></a>
+                <a href="workflow-create.html?device=dog" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-robot text-[#3fb950] mr-2"></i>工作流创建（机器狗）</div><div class="text-xs text-gray-500">单点导航 + 机器狗动作库</div></a>
+                <a href="workflow-event-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-list-ul text-[#8957e5] mr-2"></i>工作流事件列表</div><div class="text-xs text-gray-500">分设备事件 + 失败/过期原因 + 经纬度看地图</div></a>
+                <a href="manual-trigger-dispatch-modal.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-bolt text-[#8957e5] mr-2"></i>手动触发调度</div><div class="text-xs text-gray-500">手动调度处置弹窗</div></a>
+                <a href="alert/alert-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-triangle-exclamation text-[#f85149] mr-2"></i>告警中心</div><div class="text-xs text-gray-500">无人机 / 摄像头 / 震动光纤 / 黑飞</div></a>
+                <a href="camera-alarm-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-bell text-[#d29922] mr-2"></i>摄像头告警（Tab）</div><div class="text-xs text-gray-500">告警中心 · 摄像头 Tab 落地页</div></a>
+                <a href="alert/alert-details.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-file-lines text-[#f85149] mr-2"></i>告警详情</div><div class="text-xs text-gray-500">联动处置记录 + 重新处置</div></a>
+            </div>
+        </section>
+
+        <!-- 4. 其他需求 -->
+        <section class="mb-8">
+            <div class="grp-title mb-4">2.0 其他需求 <span class="badge new">本期新增</span></div>
+            <div class="grid grid-cols-3 gap-4">
+                <a href="operation-log.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-list-check text-[#3fb950] mr-2"></i>操作日志优化</div><div class="text-xs text-gray-500">项目数据范围管控 + 级联操作模块 + 模糊搜索</div></a>
+                <a href="detection-zone-config.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-draw-polygon text-[#3fb950] mr-2"></i>检测区域配置</div><div class="text-xs text-gray-500">无人机告警的检测/放行区域绘制</div></a>
+            </div>
+        </section>
+
+        <!-- 导航关系图 -->
+        <section class="mb-8">
+            <div class="grp-title mb-4">页面导航关系</div>
+            <div class="card rounded-lg p-6 text-xs text-gray-400 leading-loose">
+                <div class="font-mono whitespace-pre-wrap">
+<span class="text-[#58a6ff]">index 导航门户</span>
+ └─ <span class="text-white">home-dashboard 驾驶舱</span>（唯一全局首页）
+     ├─ 进入项目 / 项目落点气泡 → <span class="text-[#3fb950]">project-home 项目首页</span>
+     │    ├─ 应用中心 → camera-list / camera-monitor / drone-list / drone-monitor / camera-playback
+     │    ├─ 告警中心 → <span class="text-[#f85149]">alert/alert-list</span>（无人机 / 光纤 / 黑飞）⇄ <span class="text-[#d29922]">camera-alarm-list</span>（摄像头）
+     │    ├─ 摄像头告警 Tab → camera-alarm-list
+     │    └─ 无人机告警 Tab → <span class="text-[#f85149]">alert/alert-list</span>
+     ├─ 巡检告警卡片 → <span class="text-[#f85149]">alert/alert-list</span> → alert-details / <span class="text-[#3fb950]">detection-zone-config</span>
+     └─ 设备故障 → platform-device-management
+
+camera-list → camera-detail → camera-monitor → camera-playback
+drone-list → drone-monitor
+workflow-list（新增配置弹窗：无人机/机器狗）→ workflow-create[?device=dog] / manual-trigger-dispatch-modal
+workflow-list（查看详情 / 统计卡片）→ workflow-event-list（工作流事件列表，分设备）
+operation-log → 全局首页(home-dashboard)
+alert/alert-list ⇄ detection-zone-config（无人机告警 ↔ 检测区域配置 互链）
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-xs text-gray-600 py-6 border-t border-[#1a2740]">
+            HUB 2.0 原型汇集 · 驾驶舱真源：飞书 PRD + Figma 267-3036 · 其余模块复用已定稿原型
+        </footer>
+    </main>
+<script src="custom-select.js"></script>
+</body>
+</html>

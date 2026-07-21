@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警中心 - 摄像头告警 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .tab-active {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+        }
+        .level-1 { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.35); }
+        .level-2 { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.35); }
+        .level-3 { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>告警中心</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <div class="bg-[#141414] border-b border-[#2d2d2d] px-4 flex space-x-8 text-sm shrink-0" id="alertCenterTabs">
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer" onclick="location.href='alert/alert-list.html'">无人机告警</div>
+        <div class="py-3 tab-active font-medium cursor-pointer">摄像头告警</div>
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer" onclick="location.href='alert/alert-list.html?tab=fiber'">震动光纤告警</div>
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer" onclick="location.href='alert/alert-list.html?tab=blackflight'">黑飞告警</div>
+    </div>
+
+    <div class="px-4 py-3 border-b border-[#2d2d2d] flex items-center gap-3 shrink-0 flex-wrap">
+        <div class="relative w-72">
+            <input type="text" placeholder="请输入告警ID/摄像头名称/国标编码" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-3 pr-8 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
+            <i class="fas fa-search absolute right-3 top-2.5 text-gray-500 text-xs"></i>
+        </div>
+        <div class="w-28 bg-[#1e1e1e] border border-[#333] rounded px-3 py-2 flex items-center justify-between cursor-pointer hover:border-[#555]">
+            <span class="text-xs text-gray-300">全部状态</span>
+            <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+        </div>
+        <div class="w-28 bg-[#1e1e1e] border border-[#333] rounded px-3 py-2 flex items-center justify-between cursor-pointer hover:border-[#555]">
+            <span class="text-xs text-gray-300">全部等级</span>
+            <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+        </div>
+        <div class="w-36 bg-[#1e1e1e] border border-[#333] rounded px-3 py-2 flex items-center justify-between cursor-pointer hover:border-[#555]">
+            <span class="text-xs text-gray-400">选择时间</span>
+            <i class="far fa-calendar text-xs text-gray-500"></i>
+        </div>
+        <button class="flex items-center gap-1.5 text-xs text-gray-300 bg-[#2d2d2d] border border-[#333] px-3 py-2 rounded hover:bg-[#333] transition-colors">
+            <i class="fas fa-redo text-[10px]"></i> 重置
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-auto px-4">
+        <table class="w-full text-left border-collapse min-w-[1280px]">
+            <thead class="text-gray-500 border-b border-[#2d2d2d] sticky top-0 bg-[#141414] z-10">
+                <tr>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">告警ID</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">告警名称</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">摄像头名称</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">告警图片</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">摄像头坐标</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">上报时间</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">告警等级</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">处置状态</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">操作</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">处置任务</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">处置过程照片</th>
+                </tr>
+            </thead>
+            <tbody id="alarmBody" class="divide-y divide-[#2d2d2d]/60"></tbody>
+        </table>
+    </div>
+
+    <div class="h-12 shrink-0 border-t border-[#2d2d2d] flex items-center justify-end px-4 gap-4 text-xs text-gray-500">
+        <div class="flex items-center gap-1">
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">&lt;</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">1</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">2</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded bg-[#1f6feb] text-white font-medium">3</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">4</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">5</button>
+            <span class="px-1">...</span>
+            <button class="w-8 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">50</button>
+            <button class="w-7 h-7 flex items-center justify-center rounded hover:bg-[#2d2d2d] text-gray-400">&gt;</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <select class="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1 text-gray-300 cursor-pointer">
+                <option>10/页</option>
+                <option>20/页</option>
+                <option>50/页</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 查看告警弹窗 -->
+    <div id="alarm-detail-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg shadow-2xl w-[640px] max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b border-[#2d2d2d] flex justify-between items-center shrink-0">
+                <h3 class="text-sm font-medium text-white">查看告警</h3>
+                <button onclick="closeAlarmDetail()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto custom-scrollbar space-y-5">
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div><div class="text-gray-500 mb-1">告警ID</div><div class="text-white font-mono" id="detail-id">—</div></div>
+                    <div><div class="text-gray-500 mb-1">告警名称</div><div class="text-white" id="detail-name">—</div></div>
+                    <div><div class="text-gray-500 mb-1">摄像头名称</div><div class="text-white" id="detail-camera">—</div></div>
+                    <div><div class="text-gray-500 mb-1">通道名称</div><div class="text-white" id="detail-channel">—</div></div>
+                    <div><div class="text-gray-500 mb-1">上报时间</div><div class="text-gray-300" id="detail-time">—</div></div>
+                    <div><div class="text-gray-500 mb-1">告警等级</div><div id="detail-level">—</div></div>
+                    <div><div class="text-gray-500 mb-1">处置状态</div><div class="text-gray-200" id="detail-status">—</div></div>
+                    <div><div class="text-gray-500 mb-1">摄像头坐标</div><div class="text-gray-300 text-[11px]" id="detail-coord">—</div></div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs mb-2">告警图片</div>
+                    <div class="rounded overflow-hidden border border-[#333] cursor-pointer hover:border-[#58a6ff] transition-colors" id="detail-image-wrap" onclick="goPlaybackFromDetail()">
+                        <img id="detail-image" src="" alt="告警截图" class="w-full max-h-48 object-cover">
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-1.5">点击图片可跳转录像回放并定位至告警时刻</p>
+                </div>
+            </div>
+            <div class="px-5 py-3 border-t border-[#2d2d2d] flex justify-end gap-3 shrink-0">
+                <button onclick="goPlaybackFromDetail()" class="px-4 py-1.5 bg-transparent text-[#58a6ff] border border-[#30363d] rounded hover:bg-[#252525] transition-colors text-xs">查看录像回放</button>
+                <button onclick="closeAlarmDetail()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-white shadow-lg"></div>
+
+    <script>
+        const imgUrl = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=120&q=80';
+        const coord = '22.658217° N, 114.498008° E';
+        const camera = '海康双光谱球机-北门';
+        const taskName = '翼飞事件联动处置临时任务2026-01-15-12:50:00';
+
+        const alerts = [
+            { id: 'A001', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', statusDot: 'bg-[#f85149]', action: '立即处置', task: '-', evidence: false },
+            { id: 'A002', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', statusDot: 'bg-[#f85149]', action: '立即处置', task: '-', evidence: false },
+            { id: 'A003', name: '行人闯入', channel: '通道2: 红外', level: 3, levelLabel: '三级', status: '处置中', statusDot: 'bg-[#58a6ff]', action: '', task: taskName, evidence: false },
+            { id: 'A004', name: '行人闯入', channel: '通道1: 可见光', level: 3, levelLabel: '三级', status: '处置中', statusDot: 'bg-[#58a6ff]', action: '', task: taskName, evidence: false },
+            { id: 'A005', name: '行人闯入', channel: '通道1: 可见光', level: 1, levelLabel: '一级', status: '已处置', statusDot: 'bg-[#3fb950]', action: '', task: taskName, evidence: true },
+            { id: 'A006', name: '行人闯入', channel: '通道2: 红外', level: 1, levelLabel: '一级', status: '已取消', statusDot: 'bg-gray-500', action: '重新处置', task: '-', evidence: false },
+            { id: 'A007', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '处置失败', statusDot: 'bg-[#f85149]', action: '重新处置', task: taskName, evidence: true },
+        ];
+
+        let currentDetailAlarmId = '';
+
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 2500);
+        }
+
+        function openAlarmDetail(id) {
+            const a = alerts.find(x => x.id === id);
+            if (!a) return;
+            currentDetailAlarmId = id;
+            document.getElementById('detail-id').textContent = a.id;
+            document.getElementById('detail-name').textContent = a.name;
+            document.getElementById('detail-camera').textContent = camera;
+            document.getElementById('detail-channel').textContent = a.channel;
+            document.getElementById('detail-time').textContent = '2023-07-10 15:30';
+            document.getElementById('detail-level').innerHTML = `<span class="px-2 py-0.5 rounded text-xs ${levelClass(a.level)}">${a.levelLabel}</span>`;
+            document.getElementById('detail-status').innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${a.statusDot}"></span>${a.status}</span>`;
+            document.getElementById('detail-coord').textContent = coord;
+            document.getElementById('detail-image').src = imgUrl;
+            document.getElementById('alarm-detail-modal').classList.remove('hidden');
+        }
+
+        function closeAlarmDetail() {
+            document.getElementById('alarm-detail-modal').classList.add('hidden');
+            currentDetailAlarmId = '';
+        }
+
+        function goPlaybackFromDetail() {
+            if (!currentDetailAlarmId) return;
+            location.href = `camera-playback.html?alarm=${currentDetailAlarmId}`;
+        }
+
+        function handleDispose(action) {
+            if (action === '立即处置') {
+                showToast('未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试');
+            } else if (action === '重新处置') {
+                showToast('提交成功');
+            }
+        }
+
+        function levelClass(level) {
+            return level === 1 ? 'level-1' : level === 2 ? 'level-2' : 'level-3';
+        }
+
+        function thumb(onclick) {
+            return `<div class="w-14 h-9 rounded overflow-hidden cursor-pointer border border-[#333] hover:border-[#58a6ff] transition-colors" onclick="${onclick}">
+                <img src="${imgUrl}" class="w-full h-full object-cover" alt="告警截图">
+            </div>`;
+        }
+
+        function renderActions(a) {
+            let html = `<button class="text-[#58a6ff] hover:underline text-xs mr-3" onclick="openAlarmDetail('${a.id}')">查看告警</button>`;
+            if (a.action) {
+                html += `<button class="text-[#58a6ff] hover:underline text-xs" onclick="handleDispose('${a.action}')">${a.action}</button>`;
+            }
+            return html;
+        }
+
+        document.getElementById('alarmBody').innerHTML = alerts.map(a => `
+            <tr class="hover:bg-[#1a1a1a] transition-colors group">
+                <td class="py-3 px-2 font-mono text-gray-400">${a.id}</td>
+                <td class="py-3 px-2 text-white font-medium">${a.name}</td>
+                <td class="py-3 px-2 text-gray-300 whitespace-nowrap">${camera}</td>
+                <td class="py-3 px-2">${thumb(`location.href='camera-playback.html?alarm=${a.id}'`)}</td>
+                <td class="py-3 px-2 text-gray-400 text-xs whitespace-nowrap">${coord}</td>
+                <td class="py-3 px-2 text-gray-400 whitespace-nowrap">2023-07-10 15:30</td>
+                <td class="py-3 px-2"><span class="px-2 py-0.5 rounded text-xs ${levelClass(a.level)}">${a.levelLabel}</span></td>
+                <td class="py-3 px-2">
+                    <span class="flex items-center gap-1.5 text-gray-200" ${a.status === '待处置' ? 'title="未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试"' : ''}>
+                        <span class="w-1.5 h-1.5 rounded-full ${a.statusDot}"></span>${a.status}
+                    </span>
+                </td>
+                <td class="py-3 px-2 whitespace-nowrap">${renderActions(a)}</td>
+                <td class="py-3 px-2 max-w-[200px]">
+                    ${a.task === '-' ? '<span class="text-gray-500">-</span>' : `<a href="#" class="text-[#58a6ff] hover:underline truncate block" title="${a.task}">${a.task}</a>`}
+                </td>
+                <td class="py-3 px-2">
+                    ${a.evidence ? thumb(`location.href='camera-playback.html?alarm=${a.id}&evidence=1'`) : '<span class="text-gray-500">-</span>'}
+                </td>
+            </tr>
+        `).join('');
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

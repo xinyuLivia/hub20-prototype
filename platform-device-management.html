@@ -1,0 +1,1634 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理（平台级·设备池） - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .form-input {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            color: #fff;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 13px;
+            width: 100%;
+        }
+        .form-input:focus { outline: none; border-color: #58a6ff; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-[#141414]">
+
+        <!-- 顶部导航栏 (轻量级) -->
+        <div class="h-12 flex items-center justify-between px-6 shrink-0 z-50 border-b border-[#2d2d2d] bg-[#141414]">
+            <div class="flex items-center text-xs text-gray-400">
+                <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                    <i class="fas fa-arrow-left mr-3 text-sm"></i>
+                </a>
+                <a href="home-dashboard.html" class="hover:text-white transition-colors">全局首页</a>
+                <span class="mx-1">/</span>
+                <span class="text-white">设备管理</span>
+            </div>
+        <i class="fas fa-times cursor-pointer hover:text-white text-lg" onclick="location.href='home-dashboard.html'"></i>
+    </div>
+
+    <!-- 标题区 -->
+    <div class="px-6 pt-4 pb-2 shrink-0">
+        <h1 class="text-xl font-medium text-white mb-1">设备管理</h1>
+        <p class="text-xs text-gray-500">全局设备池：统一接入与管理全平台设备，并分配至具体项目使用。</p>
+    </div>
+
+    <!-- 设备类型 Tab -->
+    <div class="px-6 border-b border-[#2d2d2d] flex space-x-8 text-sm shrink-0 mb-4">
+        <div id="tab-drone" class="py-2.5 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer" onclick="switchMainTab('drone')">无人机及机巢</div>
+        <div id="tab-camera" class="py-2.5 text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchMainTab('camera')">摄像头</div>
+        <div class="py-2.5 text-gray-600 cursor-not-allowed" title="规划中">地面机器人 <span class="ml-1 text-[10px] bg-[#333] text-gray-400 px-1 rounded">规划中</span></div>
+    </div>
+
+    <!-- 摄像头内容区 -->
+    <div id="tab-content-camera" class="flex-1 flex flex-col overflow-hidden hidden">
+        <!-- 统计条 -->
+        <div class="px-6 py-3 flex space-x-3 shrink-0">
+        <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3">
+            <div class="text-xs text-gray-500 mb-1">摄像头总数</div>
+            <div class="text-2xl font-bold text-white mb-1">128</div>
+            <div class="text-xs text-gray-500">96 在线 / 32 离线</div>
+        </div>
+        <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3">
+            <div class="text-xs text-gray-500 mb-1">通道总数</div>
+            <div class="text-2xl font-bold text-white mb-1">384</div>
+            <div class="text-xs text-gray-500">18 路正在播放</div>
+        </div>
+        <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3 flex flex-col justify-center">
+            <div class="text-xs text-gray-500">未注册</div>
+            <div class="text-xl font-semibold text-[#d29922] mt-0.5">2</div>
+        </div>
+        <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3 flex flex-col justify-center">
+            <div class="text-xs text-gray-500">未分配项目</div>
+            <div class="text-xl font-semibold text-[#58a6ff] mt-0.5">1</div>
+        </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="px-6 pb-3 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-2">
+            <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 flex items-center space-x-2 cursor-pointer hover:border-[#555]">
+                <span class="text-xs text-gray-400">接入状态</span>
+                <span class="text-xs text-white">全部</span>
+                <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+            </div>
+            <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 flex items-center space-x-2 cursor-pointer hover:border-[#555]">
+                <span class="text-xs text-gray-400">所属项目</span>
+                <span class="text-xs text-white">全部</span>
+                <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+            </div>
+            <div class="relative w-64">
+                <input type="text" placeholder="搜索设备名称 / 国标编码 / IP" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-3 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                <i class="fas fa-search absolute right-2.5 top-2 text-gray-500 text-xs"></i>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="showToast('正在批量同步...', 'info')" class="px-3 py-1.5 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-xs flex items-center">
+                <i class="fas fa-sync-alt mr-1.5 text-[10px]"></i> 批量同步
+            </button>
+            <button onclick="openGuideModal()" class="px-3 py-1.5 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-xs flex items-center">
+                <i class="fas fa-book-open mr-1.5 text-[10px]"></i> 摄像头接入指南
+            </button>
+            <button onclick="openAddModal()" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center">
+                <i class="fas fa-plus mr-1.5 text-[10px]"></i> 添加摄像头
+            </button>
+        </div>
+    </div>
+
+    <!-- 设备表格 -->
+    <div class="flex-1 overflow-auto px-6 pb-6 custom-scrollbar">
+        <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-[#252525] border-b border-[#333] text-xs text-gray-400">
+                        <th class="py-3 px-4 font-normal">序号</th>
+                        <th class="py-3 px-4 font-normal">设备名称</th>
+                        <th class="py-3 px-4 font-normal">国标编码</th>
+                        <th class="py-3 px-4 font-normal">IP地址</th>
+                        <th class="py-3 px-4 font-normal">传输协议</th>
+                        <th class="py-3 px-4 font-normal">厂商 / 型号</th>
+                        <th class="py-3 px-4 font-normal">状态</th>
+                        <th class="py-3 px-4 font-normal">所属项目</th>
+                        <th class="py-3 px-4 font-normal">通道</th>
+                        <th class="py-3 px-4 font-normal">创建时间</th>
+                        <th class="py-3 px-4 font-normal text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm divide-y divide-[#2d2d2d]">
+                    <!-- 行 1: 在线 + 单项目 -->
+                    <tr class="hover:bg-[#252525] transition-colors">
+                        <td class="py-3 px-4 text-gray-400">1</td>
+                        <td class="py-3 px-4">
+                            <span class="text-white">海康双光谱球机-北门</span>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001320000001</td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">192.168.1.100</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">UDP</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">海康威视 / DS-2TD4136-25</td>
+                        <td class="py-3 px-4">
+                            <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">-</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">2</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
+                        <td class="py-3 px-4 text-right whitespace-nowrap">
+                            <a href="#" onclick="openDetailModal('海康双光谱球机-北门', '在线')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="#" onclick="openAssignModal('海康双光谱球机-北门')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                            <a href="#" onclick="openDeleteModal('海康双光谱球机-北门', '44030000001320000001')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                        </td>
+                    </tr>
+                    <!-- 行 2: 未注册 + 深圳铁路公安 -->
+                    <tr class="hover:bg-[#252525] transition-colors">
+                        <td class="py-3 px-4 text-gray-400">2</td>
+                        <td class="py-3 px-4">
+                            <span class="text-white">大华枪机-东侧围墙</span>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001310000002</td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">-</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">-</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">大华 / DH-IPC-HFW5442</td>
+                        <td class="py-3 px-4">
+                            <span class="text-[#d29922] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#d29922] mr-1.5"></span>未注册</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">深圳铁路公安</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">1</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
+                        <td class="py-3 px-4 text-right whitespace-nowrap">
+                            <a href="#" onclick="openDetailModal('大华枪机-东侧围墙', '未注册')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="#" onclick="openAssignModal('大华枪机-东侧围墙')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                            <a href="#" onclick="openDeleteModal('大华枪机-东侧围墙', '44030000001310000002')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                        </td>
+                    </tr>
+                    <!-- 行 3: 离线 + 深圳铁路公安 -->
+                    <tr class="hover:bg-[#252525] transition-colors">
+                        <td class="py-3 px-4 text-gray-400">3</td>
+                        <td class="py-3 px-4">
+                            <span class="text-white">宇视球机-停车场入口</span>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001320000004</td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">172.16.0.20</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">TCP</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">宇视 / IPC6253-X33</td>
+                        <td class="py-3 px-4">
+                            <span class="text-gray-400 text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>离线</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">深圳铁路公安</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">1</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
+                        <td class="py-3 px-4 text-right whitespace-nowrap">
+                            <a href="#" onclick="openDetailModal('宇视球机-停车场入口', '离线')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="#" onclick="openAssignModal('宇视球机-停车场入口')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                            <a href="#" onclick="openDeleteModal('宇视球机-停车场入口', '44030000001320000004')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div> <!-- end tab-content-camera -->
+
+    <!-- 无人机及机巢内容区 -->
+    <div id="tab-content-drone" class="flex-1 flex flex-col overflow-hidden">
+        <!-- 统计条 -->
+        <div class="px-6 py-3 flex space-x-3 shrink-0">
+            <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3">
+                <div class="text-xs text-gray-500 mb-1">设备总数</div>
+                <div class="text-2xl font-bold text-white mb-1">45</div>
+                <div class="text-xs text-gray-500">30 在线 / 15 离线</div>
+            </div>
+            <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3 flex flex-col justify-center">
+                <div class="text-xs text-gray-500">未分配项目</div>
+                <div class="text-xl font-semibold text-[#58a6ff] mt-0.5">3</div>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="px-6 pb-3 flex justify-between items-center shrink-0">
+            <div class="flex items-center space-x-2">
+                <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1 flex items-center space-x-1 hover:border-[#555]">
+                    <span class="text-xs text-gray-400">设备类型</span>
+                    <select class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                        <option class="bg-[#1e1e1e]">全部</option>
+                        <option class="bg-[#1e1e1e]">无人机</option>
+                        <option class="bg-[#1e1e1e]">机巢</option>
+                        <option class="bg-[#1e1e1e]">基站</option>
+                    </select>
+                </div>
+                <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1 flex items-center space-x-1 hover:border-[#555]">
+                    <span class="text-xs text-gray-400">状态</span>
+                    <select class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                        <option class="bg-[#1e1e1e]">全部</option>
+                        <option class="bg-[#1e1e1e]">在线</option>
+                        <option class="bg-[#1e1e1e]">离线</option>
+                    </select>
+                </div>
+                <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 flex items-center space-x-2 cursor-pointer hover:border-[#555]">
+                    <span class="text-xs text-gray-400">所属项目</span>
+                    <span class="text-xs text-white">全部</span>
+                    <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+                </div>
+                <div class="relative w-64">
+                    <input type="text" placeholder="搜索设备名称 / 设备SN" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-3 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                    <i class="fas fa-search absolute right-2.5 top-2 text-gray-500 text-xs"></i>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="openDroneGuideModal()" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center">
+                    <i class="fas fa-book mr-1.5 text-[10px]"></i> 无人机添加指南
+                </button>
+            </div>
+        </div>
+
+        <!-- 设备表格 -->
+        <div class="flex-1 overflow-auto px-6 pb-6 custom-scrollbar">
+            <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#252525] border-b border-[#333] text-xs text-gray-400">
+                        <th class="py-3 px-4 font-normal">序号</th>
+                            <th class="py-3 px-4 font-normal">设备名称</th>
+                            <th class="py-3 px-4 font-normal">设备类型</th>
+                            <th class="py-3 px-4 font-normal">产品型号</th>
+                            <th class="py-3 px-4 font-normal">设备SN</th>
+                            <th class="py-3 px-4 font-normal">状态</th>
+                            <th class="py-3 px-4 font-normal">所属项目</th>
+                            <th class="py-3 px-4 font-normal">创建时间</th>
+                            <th class="py-3 px-4 font-normal text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-[#2d2d2d]">
+                        <!-- 行 1 -->
+                        <tr class="hover:bg-[#252525] transition-colors">
+                            <td class="py-3 px-4 text-gray-400">1</td>
+                            <td class="py-3 px-4">
+                                <span class="text-white">007机巢576号677</span>
+                            </td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">机巢</td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">EVO Nest</td>
+                            <td class="py-3 px-4 font-mono text-gray-400 text-xs">1581F4BFC1234567</td>
+                            <td class="py-3 px-4">
+                                <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
+                            </td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">青海油田管道巡检项目</td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
+                            <td class="py-3 px-4 text-right whitespace-nowrap">
+                                <a href="drone-detail.html?from=platform" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                                <a href="#" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                                <a href="#" onclick="openDeleteModal('007机巢576号677', '1581F4BFC1234567', 'drone')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                            </td>
+                        </tr>
+                        <!-- 行 2 -->
+                        <tr class="hover:bg-[#252525] transition-colors">
+                            <td class="py-3 px-4 text-gray-400">2</td>
+                            <td class="py-3 px-4">
+                                <span class="text-white">M350 RTK - 01</span>
+                            </td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">无人机</td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">Matrice 350 RTK</td>
+                            <td class="py-3 px-4 font-mono text-gray-400 text-xs">1581F4BFC7654321</td>
+                            <td class="py-3 px-4">
+                                <span class="text-gray-400 text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>离线</span>
+                            </td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">青海油田管道巡检项目</td>
+                            <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
+                            <td class="py-3 px-4 text-right whitespace-nowrap">
+                                <a href="drone-detail.html?from=platform" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                                <a href="#" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                                <a href="#" onclick="openDeleteModal('M350 RTK - 01', '1581F4BFC7654321', 'drone')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- end tab-content-drone -->
+
+    <!-- ============ 添加摄像头 Modal ============ -->
+    <div id="modal-add-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[560px] flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
+                <h3 class="text-base font-medium text-white">添加摄像头</h3>
+                <button onclick="closeAddModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- 步骤指示 -->
+            <div class="px-4 pt-4 flex items-center text-xs shrink-0">
+                <div class="flex items-center text-[#58a6ff]">
+                    <span class="w-5 h-5 rounded-full bg-[#1f6feb] text-white flex items-center justify-center mr-1.5 text-[10px]">1</span> 录入设备信息
+                </div>
+                <div class="flex-1 h-px bg-[#30363d] mx-3"></div>
+                <div id="add-step-2-tag" class="flex items-center text-gray-500">
+                    <span id="add-step-2-num" class="w-5 h-5 rounded-full bg-[#30363d] text-gray-400 flex items-center justify-center mr-1.5 text-[10px]">2</span> 获取接入凭证
+                </div>
+            </div>
+            <!-- 步骤一 -->
+            <div id="add-step-form" class="p-4 space-y-4 overflow-y-auto custom-scrollbar">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">设备名称 <span class="text-[#f85149]">*</span></label>
+                    <input id="add-name" type="text" placeholder="如：海康双光谱球机-北门" class="form-input">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">厂商 <span class="text-[#f85149]">*</span></label>
+                        <select id="add-vendor" class="form-input">
+                            <option>Hikvision (海康威视)</option>
+                            <option>Dahua (大华)</option>
+                            <option>Uniview (宇视)</option>
+                            <option>其他 (标准 GB28181)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">型号 <span class="text-[#f85149]">*</span></label>
+                        <input id="add-model" type="text" placeholder="如：DS-2TD4136-25" class="form-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">安装位置 (经纬度)<span class="text-[#f85149]">*</span></label>
+                    <div class="flex space-x-2">
+                        <input id="add-lng" type="text" placeholder="经度" class="form-input flex-1">
+                        <input id="add-lat" type="text" placeholder="纬度" class="form-input flex-1">
+                        <button onclick="openMapPicker('add')" class="px-3 py-1.5 bg-[#0d1117] text-[#58a6ff] border border-[#30363d] hover:border-[#58a6ff] rounded transition-colors text-xs flex items-center shrink-0">
+                            <i class="fas fa-map-marker-alt mr-1.5"></i> 选点
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">分配项目 (可选，也可稍后分配)</label>
+                    <select class="form-input">
+                        <option>暂不分配（留在设备池）</option>
+                        <option>高速A标段</option>
+                        <option>变电站巡检</option>
+                        <option>露天矿巡检</option>
+                    </select>
+                </div>
+                <div class="text-xs text-gray-500 flex items-start bg-[#0d1117] border border-[#30363d] rounded p-3">
+                    <i class="fas fa-info-circle mt-0.5 mr-2 text-[#58a6ff]"></i>
+                    <span>保存后，平台将自动生成<strong class="text-gray-300">国标编码</strong>与<strong class="text-gray-300">接入密码</strong>，需在摄像头后台抄录凭证完成注册。</span>
+                </div>
+            </div>
+            <!-- 步骤二 -->
+            <div id="add-step-cred" class="p-4 space-y-4 overflow-y-auto custom-scrollbar hidden">
+                <div class="flex items-center text-sm text-[#3fb950] bg-[#238636]/10 border border-[#2ea043]/30 rounded p-3">
+                    <i class="fas fa-check-circle mr-2"></i> 设备已添加成功（状态：<span class="text-gray-300 ml-1">未注册</span>）。请抄录以下凭证至摄像头后台。
+                </div>
+                <div class="text-xs text-gray-500 flex items-center justify-between">
+                    <span>提示：后期可在设备详情的「国标配置」中再次查看此凭证。</span>
+                </div>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded divide-y divide-[#30363d]">
+                    <div class="flex justify-between items-center px-3 py-2.5">
+                        <span class="text-xs text-gray-500">SIP 服务器 ID</span>
+                        <span class="text-sm text-gray-300 font-mono">44030000002000000001</span>
+                    </div>
+                    <div class="flex justify-between items-center px-3 py-2.5">
+                        <span class="text-xs text-gray-500">SIP 服务器 IP:Port</span>
+                        <span class="text-sm text-gray-300 font-mono">10.242.40.96:5060</span>
+                    </div>
+                    <div class="flex justify-between items-center px-3 py-2.5">
+                        <span class="text-xs text-gray-500">设备国标编码</span>
+                        <span id="cred-gbid" class="text-sm text-[#58a6ff] font-mono">—</span>
+                    </div>
+                    <div class="flex justify-between items-center px-3 py-2.5">
+                        <span class="text-xs text-gray-500">设备接入密码</span>
+                        <span id="cred-pwd" class="text-sm text-[#58a6ff] font-mono">—</span>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 flex items-start">
+                    <i class="fas fa-lightbulb mt-0.5 mr-2 text-[#d29922]"></i>
+                    <span>海康路径参考：配置 → 网络 → 高级配置 → 平台接入 → 选择 GB28181，填入以上信息并保存。注册成功后状态将变为「在线」。</span>
+                </div>
+            </div>
+            <div class="p-4 border-t border-[#30363d] flex justify-end space-x-2 shrink-0">
+                <button onclick="closeAddModal()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-1.5 rounded transition-colors border border-[#30363d] text-sm">取消</button>
+                <button id="add-submit-btn" onclick="submitAddDevice()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-4 py-1.5 rounded transition-colors text-sm">生成凭证并保存</button>
+                <button id="add-done-btn" onclick="closeAddModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1.5 rounded transition-colors text-sm hidden">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 删除确认 Modal ============ -->
+    <div id="modal-delete-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[75] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[440px] flex flex-col overflow-hidden">
+            <div class="px-6 py-5">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-[#f85149]/10 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-exclamation-triangle text-[#f85149] text-lg"></i>
+                    </div>
+                    <div class="ml-4 mt-0 text-left flex-1 min-w-0">
+                        <h3 class="text-base font-medium text-white mb-2" id="delete-modal-title">确认删除该摄像头吗？</h3>
+                        <div class="text-sm text-gray-400 space-y-2">
+                            <p id="delete-desc">删除后，设备 <span id="delete-device-name" class="text-white font-medium">—</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。</p>
+                        </div>
+                        <!-- 二次确认：需输入设备名称 + 国标编码 / 设备SN -->
+                        <div id="delete-confirm-fields" class="mt-4 space-y-3">
+                            <div>
+                                <label id="delete-label-name" class="block text-xs text-gray-400 mb-1.5">请输入摄像头名称以确认删除</label>
+                                <input type="text" id="delete-input-name" autocomplete="off" placeholder="请输入摄像头名称" oninput="validateDeleteInputs()" class="w-full bg-[#0d1117] border border-[#30363d] text-sm text-white rounded px-3 py-2 focus:outline-none focus:border-[#58a6ff] placeholder:text-gray-600">
+                                <p id="delete-error-name" class="hidden text-[11px] text-[#f85149] mt-1">名称不匹配</p>
+                            </div>
+                            <div>
+                                <label id="delete-label-gb" class="block text-xs text-gray-400 mb-1.5">请输入摄像头国标编码以确认删除</label>
+                                <input type="text" id="delete-input-gb" autocomplete="off" placeholder="请输入摄像头国标编码" oninput="validateDeleteInputs()" class="w-full bg-[#0d1117] border border-[#30363d] text-sm text-white font-mono rounded px-3 py-2 focus:outline-none focus:border-[#58a6ff] placeholder:text-gray-600">
+                                <p id="delete-error-gb" class="hidden text-[11px] text-[#f85149] mt-1">不匹配</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-[#0d1117] border-t border-[#30363d] flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-sm">取消</button>
+                <button id="delete-confirm-btn" onclick="confirmDeleteAction()" disabled class="px-4 py-2 bg-[#f85149]/40 text-white/60 rounded cursor-not-allowed text-sm font-medium transition-colors">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 远程重启确认 Modal ============ -->
+    <div id="modal-restart-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[75] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[400px] flex flex-col overflow-hidden">
+            <div class="px-6 py-5">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-[#d29922]/10">
+                        <i class="fas fa-redo text-[#d29922] text-lg"></i>
+                    </div>
+                    <div class="ml-4 mt-0 text-left">
+                        <h3 class="text-base font-medium text-white mb-2">确认远程重启该摄像头？</h3>
+                        <p class="text-sm text-gray-400">将向该摄像头下发远程重启指令，设备将短暂离线并自动重新注册，期间实况中断。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-[#0d1117] border-t border-[#30363d] flex justify-end space-x-3">
+                <button onclick="closeRestartModal()" class="px-4 py-2 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-sm">取消</button>
+                <button onclick="confirmRestart()" class="px-4 py-2 bg-[#d29922] text-white rounded hover:bg-[#e3b341] transition-colors text-sm font-medium">确认重启</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 分配项目 Modal ============ -->
+    <div id="modal-assign-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[75] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[440px] flex flex-col">
+            <div class="p-4 border-b border-[#30363d] flex justify-between items-center">
+                <h3 class="text-base font-medium text-white">修改所属项目</h3>
+                <button onclick="closeAssignModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <p class="text-xs text-gray-400">为设备 <span id="assign-device-name" class="text-white font-medium">—</span> 选择所属项目（单选，一台摄像头仅可归属一个项目）。</p>
+                
+                <!-- 搜索框 -->
+                <div class="relative">
+                    <input type="text" placeholder="搜索项目名称" class="w-full bg-[#0d1117] border border-[#30363d] text-xs text-gray-300 rounded pl-8 pr-3 py-2 focus:outline-none focus:border-[#58a6ff]">
+                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-500 text-xs"></i>
+                </div>
+
+                <!-- 项目列表 -->
+                <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                    <label class="flex items-center px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <input type="radio" name="project_assign" class="mr-3 accent-[#1f6feb]"> <span class="text-sm text-gray-300">暂不分配（留在设备池）</span>
+                    </label>
+                    <label class="flex items-center px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <input type="radio" name="project_assign" class="mr-3 accent-[#1f6feb]" checked> <span class="text-sm text-gray-300">青海油田管道巡检项目</span>
+                    </label>
+                    <label class="flex items-center px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <input type="radio" name="project_assign" class="mr-3 accent-[#1f6feb]"> <span class="text-sm text-gray-300">福建油田管道巡检项目</span>
+                    </label>
+                    <label class="flex items-center px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <input type="radio" name="project_assign" class="mr-3 accent-[#1f6feb]"> <span class="text-sm text-gray-300">青岛公安应急智慧巡检项目</span>
+                    </label>
+                </div>
+            </div>
+            <div class="p-4 border-t border-[#30363d] flex justify-end space-x-2">
+                <button onclick="closeAssignModal()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-1.5 rounded transition-colors border border-[#30363d] text-sm">取消</button>
+                <button onclick="confirmAssign()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1.5 rounded transition-colors text-sm">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 摄像头接入指南 Modal ============ -->
+    <div id="modal-guide-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[720px] h-[520px] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
+                <div class="flex items-center space-x-3">
+                    <h3 class="text-base font-medium text-white">摄像头接入指南</h3>
+                    <button class="px-2 py-1 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-xs flex items-center">
+                        <i class="fas fa-download mr-1.5 text-[10px]"></i> 下载
+                    </button>
+                </div>
+                <button onclick="closeGuideModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- 步骤条 -->
+            <div class="px-8 pt-5 pb-2 shrink-0">
+                <div class="flex items-center">
+                    <button id="guide-dot-1" onclick="switchGuideStep(1)" class="guide-dot w-6 h-6 rounded-full bg-[#1f6feb] text-white text-xs flex items-center justify-center">1</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-2" onclick="switchGuideStep(2)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">2</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-3" onclick="switchGuideStep(3)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">3</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-4" onclick="switchGuideStep(4)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">4</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-5" onclick="switchGuideStep(5)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">5</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-6" onclick="switchGuideStep(6)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">6</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-7" onclick="switchGuideStep(7)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">7</button>
+                </div>
+            </div>
+
+            <!-- 步骤内容 -->
+            <div class="flex-1 flex items-center justify-center px-12 py-6">
+                <div id="guide-step-1" class="guide-step text-center">
+                    <div class="text-sm text-white mb-6">进入全局设备管理的摄像头页</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex flex-col">
+                        <div class="h-10 border-b border-[#30363d] flex items-center justify-between px-4 text-xs">
+                            <span class="text-gray-400">全局首页</span>
+                            <span class="text-[#58a6ff]"><i class="fas fa-user-circle mr-1"></i>头像下拉 / 设备管理 / 摄像头</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center text-gray-500">
+                            <i class="fas fa-route text-4xl mr-4 text-[#58a6ff]"></i>
+                            <span class="text-left text-xs leading-6">从全局首页右上角头像/设置入口进入<br>平台级设备管理，并切换到摄像头(GB28181)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-2" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">新增摄像头并生成接入凭证</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加摄像头</span></div>
+                        <div class="space-y-2 text-xs text-gray-500">
+                            <div><span class="text-gray-300">1.</span> 录入设备名称、厂商、型号、安装位置</div>
+                            <div><span class="text-gray-300">2.</span> 保存后平台自动生成设备国标编码与接入密码</div>
+                            <div><span class="text-gray-300">3.</span> 可在摄像头详情的「国标配置」中查看凭证</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-3" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">登录摄像头厂商后台</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
+                        <div class="text-left text-xs text-gray-500 leading-7">
+                            <div class="text-gray-300 mb-2"><i class="fas fa-desktop mr-2 text-[#58a6ff]"></i>通过浏览器访问摄像头 Web 后台</div>
+                            <div>海康参考路径：配置 → 网络 → 高级配置 → 平台接入</div>
+                            <div>大华/宇视路径略有差异，但均需选择 GB28181/国标协议</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-4" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">在设备后台填写 GB28181 注册信息</div>
+                    <div class="mx-auto w-[520px] border border-[#30363d] rounded-lg bg-[#0d1117] overflow-hidden text-left">
+                        <table class="w-full text-xs">
+                            <thead class="bg-[#21262d] border-b border-[#30363d] text-gray-400">
+                                <tr>
+                                    <th class="py-2 px-4 font-normal text-left w-1/2">海康后台对应字段</th>
+                                    <th class="py-2 px-4 font-normal text-left border-l border-[#30363d] w-1/2">填入平台生成的凭证</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#30363d] text-gray-300">
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务器ID</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">SIP 服务器 ID</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务域</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] text-gray-400">(取 SIP 服务器 ID 前 10 位)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务器地址 / 端口</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">SIP 服务器 IP / Port</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP用户名 <span class="text-gray-500">与</span> SIP用户认证ID</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">设备国标编码</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP用户认证密码</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">设备接入密码</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="guide-step-5" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">保存配置，等待设备注册上线</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
+                        <div class="text-center">
+                            <i class="fas fa-satellite-dish text-4xl text-[#3fb950] mb-4"></i>
+                            <div class="text-xs text-gray-500 leading-6">摄像头会主动向 HUB SIP 服务器注册<br>注册成功后平台状态从「未注册」变为「在线」</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-6" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">同步，设备进入设备池</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-500 leading-7">
+                            <div><span class="text-gray-300">1.</span> 在摄像头详情或列表中点击「同步」</div>
+                            <div><span class="text-gray-300">2.</span> 平台向设备发起目录查询，拉取通道及设备状态</div>
+                            <div><span class="text-gray-300">3.</span> 设备留在设备池，所属项目显示为「-」（未分配）</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-7" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">将摄像头分配至具体项目</div>
+                    <div class="mx-auto w-[480px] border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-400 mb-3">任选以下一种方式，将设备池中的摄像头领用至目标项目：</div>
+                        <div class="space-y-3 text-xs text-gray-500">
+                            <div class="border border-[#30363d] rounded p-3">
+                                <div class="text-gray-300 mb-1.5"><i class="fas fa-folder-open mr-2 text-[#58a6ff]"></i>方式一：项目编辑（推荐）</div>
+                                <div>全局首页 → 新增项目 / 编辑项目 → 项目设备 → <span class="text-[#58a6ff]">+ 添加设备</span>，从池中勾选摄像头</div>
+                            </div>
+                            <div class="border border-[#30363d] rounded p-3">
+                                <div class="text-gray-300 mb-1.5"><i class="fas fa-cogs mr-2 text-[#58a6ff]"></i>方式二：平台设备管理</div>
+                                <div>设备管理 → 摄像头列表 → 操作「修改项目」，选择目标项目或「暂不分配（留在设备池）」</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-[#3fb950] mt-3"><i class="fas fa-check-circle mr-1"></i>分配成功后，项目内可在「设备管理-摄像头」与「监控中心」使用该设备</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-[#30363d] flex justify-end space-x-2 shrink-0">
+                <button id="guide-prev-btn" onclick="prevGuideStep()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-1.5 rounded transition-colors border border-[#30363d] text-sm hidden">上一步</button>
+                <button id="guide-next-btn" onclick="nextGuideStep()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-4 py-1.5 rounded transition-colors text-sm">下一步</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 无人机添加指南 Modal（同已上线弹窗） ============ -->
+    <div id="modal-drone-guide-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#1a1a1a] border border-[#30363d] rounded-lg shadow-2xl w-[860px] max-h-[85vh] flex flex-col">
+            <div class="px-6 py-4 flex justify-between items-center shrink-0">
+                <div class="flex items-center">
+                    <div class="text-[#58a6ff] font-bold italic tracking-wide mr-3">Avant</div>
+                    <h3 class="text-lg font-medium text-[#f85149]">无人机添加指南</h3>
+                </div>
+                <button onclick="closeDroneGuideModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="px-6 shrink-0">
+                <div class="inline-flex bg-[#0d0d0d] border border-[#2d2d2d] rounded-lg p-1 space-x-1">
+                    <button id="dg-tab-autel" onclick="switchDroneBrand('autel')" class="px-5 py-2 rounded-md text-sm bg-[#333] text-white transition-colors">Autel道通智能</button>
+                    <button id="dg-tab-dji" onclick="switchDroneBrand('dji')" class="px-5 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">大疆无人机</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div id="dg-panel-autel" class="grid grid-cols-2 gap-6">
+                    <div class="bg-[#242424] border border-[#2d2d2d] rounded-lg overflow-hidden cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <div class="h-64 flex items-center justify-center"><i class="fas fa-helicopter text-7xl text-gray-500"></i></div>
+                        <div class="pb-5 text-center text-white text-lg">EVO Max</div>
+                    </div>
+                    <div class="bg-[#242424] border border-[#2d2d2d] rounded-lg overflow-hidden cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <div class="h-64 flex items-center justify-center"><i class="fas fa-plane text-7xl text-gray-500"></i></div>
+                        <div class="pb-5 text-center text-white text-lg">Autel Dragonfish</div>
+                    </div>
+                </div>
+                <div id="dg-panel-dji" class="grid grid-cols-2 gap-6 hidden">
+                    <div class="bg-[#242424] border border-[#2d2d2d] rounded-lg overflow-hidden cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <div class="h-64 flex items-center justify-center"><i class="fas fa-helicopter text-7xl text-gray-500"></i></div>
+                        <div class="pb-5 text-center text-white text-lg">经纬 M350 RTK</div>
+                    </div>
+                    <div class="bg-[#242424] border border-[#2d2d2d] rounded-lg overflow-hidden cursor-pointer hover:border-[#58a6ff] transition-colors">
+                        <div class="h-64 flex items-center justify-center"><i class="fas fa-warehouse text-7xl text-gray-500"></i></div>
+                        <div class="pb-5 text-center text-white text-lg">DJI Dock 2 机场</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 设备详情 Modal (平台级) ============ -->
+    <div id="modal-detail-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[720px] h-[560px] flex flex-col">
+            <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
+                <div class="flex items-center">
+                    <h3 class="text-base font-medium text-white" id="detail-device-name">海康双光谱球机-北门</h3>
+                    <span id="detail-status" class="ml-3 text-xs flex items-center text-[#3fb950] font-normal">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
+                    </span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="detail-edit-btn" class="text-xs text-[#58a6ff] hover:underline" onclick="toggleDetailEdit()"><i class="fas fa-edit mr-1"></i>编辑</button>
+                    <button class="text-xs text-[#58a6ff] hover:underline" onclick="showToast('正在同步...', 'info')"><i class="fas fa-sync-alt mr-1"></i>同步</button>
+                    <button class="text-xs text-[#58a6ff] hover:underline" onclick="openRestartModal()"><i class="fas fa-redo mr-1"></i>重启设备</button>
+                    <div class="h-4 w-px bg-[#30363d] mx-1"></div>
+                    <button onclick="closeDetailModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="px-6 border-b border-[#30363d] flex space-x-6 text-sm shrink-0">
+                <div class="py-3 border-b-2 border-[#58a6ff] text-[#58a6ff] font-medium cursor-pointer" onclick="switchDetailTab('basic')" id="detail-tab-basic">基本信息</div>
+                <div class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchDetailTab('config')" id="detail-tab-config">国标配置</div>
+                <div class="py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 cursor-pointer transition-colors" onclick="switchDetailTab('channels')" id="detail-tab-channels">通道列表 <span class="text-xs">(2)</span></div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <!-- Basic -->
+                <div id="detail-content-basic" class="space-y-6">
+                    <!-- 浏览模式 -->
+                    <div id="detail-basic-view" class="grid grid-cols-2 gap-6">
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">设备名称</div>
+                            <div class="text-sm text-white">海康双光谱球机-北门</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">国标编码</div>
+                            <div class="text-sm text-white font-mono">44030000001320000001</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
+                            <div class="text-sm text-white font-mono">192.168.1.100</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
+                            <div class="text-sm text-white">UDP</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
+                            <div class="text-sm text-white flex items-center">
+                                <span>113.945231, 22.573123</span>
+                                <button onclick="openMapView('113.945231', '22.573123')" class="ml-2 text-[#58a6ff] hover:underline text-xs inline-flex items-center"><i class="fas fa-map-marker-alt mr-1"></i>查看地图</button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">厂商</div>
+                            <div class="text-sm text-white">Hikvision (海康威视)</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">型号</div>
+                            <div class="text-sm text-white">DS-2TD4136-25</div>
+                        </div>
+                    </div>
+
+                    <!-- 编辑模式 (默认隐藏) -->
+                    <div id="detail-basic-edit" class="hidden space-y-6">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">设备名称</div>
+                                <input type="text" class="form-input" value="海康双光谱球机-北门">
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">国标编码</div>
+                                <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="44030000001320000001" disabled>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
+                                <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="192.168.1.100" disabled>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
+                                <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="UDP" disabled>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="detail-lng" class="form-input flex-1" value="113.945231">
+                                    <input type="text" id="detail-lat" class="form-input flex-1" value="22.573123">
+                                    <button class="px-3 py-1.5 bg-[#0d1117] text-[#58a6ff] border border-[#30363d] hover:border-[#58a6ff] rounded transition-colors text-xs flex items-center shrink-0" onclick="openMapPicker('detail')">
+                                        <i class="fas fa-map-marker-alt mr-1.5"></i> 选点
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">厂商</div>
+                                <select class="form-input">
+                                    <option selected>Hikvision (海康威视)</option>
+                                    <option>Dahua (大华)</option>
+                                    <option>Uniview (宇视)</option>
+                                    <option>其他 (标准 GB28181)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1.5">型号</div>
+                                <input type="text" class="form-input" value="DS-2TD4136-25">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-1.5 rounded transition-colors border border-[#30363d] text-sm" onclick="toggleDetailEdit()">取消</button>
+                            <button class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1.5 rounded transition-colors text-sm" onclick="saveDetailEdit()">保存修改</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Config -->
+                <div id="detail-content-config" class="hidden space-y-6">
+                    <div class="text-xs text-[#58a6ff] flex items-start bg-[#1f6feb]/10 border border-[#1f6feb]/30 rounded p-3">
+                        <i class="fas fa-info-circle mt-0.5 mr-2"></i>
+                        <span>以下信息由平台在设备接入时统一生成，请抄录至摄像头后台完成注册。</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-y-6 gap-x-8">
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">SIP 服务器 ID</div>
+                            <div class="text-sm text-gray-300 font-mono flex items-center group">
+                                <span id="cred-sip-id-global">44030000002000000001</span>
+                                <i class="far fa-copy ml-2 text-gray-500 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onclick="copyText('cred-sip-id-global')" title="复制"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">SIP 服务器 IP:Port</div>
+                            <div class="text-sm text-gray-300 font-mono flex items-center group">
+                                <span id="cred-sip-ip-global">10.242.40.96:5060</span>
+                                <i class="far fa-copy ml-2 text-gray-500 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onclick="copyText('cred-sip-ip-global')" title="复制"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">设备国标编码</div>
+                            <div class="text-sm text-[#58a6ff] font-mono flex items-center group">
+                                <span id="cred-gb-id-global">44030000001320000001</span>
+                                <i class="far fa-copy ml-2 text-gray-500 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onclick="copyText('cred-gb-id-global')" title="复制"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">设备接入密码</div>
+                            <div class="text-sm text-[#58a6ff] font-mono flex items-center group">
+                                <span id="cred-pwd-display-global" class="tracking-widest">••••••••</span>
+                                <span id="cred-pwd-value-global" class="hidden">admin12345</span>
+                                <i id="cred-pwd-toggle-global" class="fas fa-eye ml-3 text-gray-500 hover:text-white cursor-pointer" onclick="togglePwdVisibilityGlobal()" title="显示密码"></i>
+                                <i class="far fa-copy ml-2 text-gray-500 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onclick="copyText('cred-pwd-value-global')" title="复制"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Channels -->
+                <div id="detail-content-channels" class="hidden">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs text-gray-500">共 <span id="detail-channel-count">2</span> 路通道</span>
+                            <span class="text-xs text-gray-500" id="detail-last-sync">上次同步: 2026-06-06 10:24:12</span>
+                        </div>
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-[#21262d] border-b border-[#30363d] text-xs text-gray-400">
+                                    <th class="py-2 px-4 font-normal">通道名称</th>
+                                    <th class="py-2 px-4 font-normal">通道编码</th>
+                                    <th class="py-2 px-4 font-normal">状态</th>
+                                    <th class="py-2 px-4 font-normal text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-xs divide-y divide-[#30363d]">
+                                <tr class="hover:bg-[#21262d] transition-colors channel-row">
+                                    <td class="py-2 px-4 text-white">
+                                        <div class="channel-name-display flex items-center">
+                                            <i class="fas fa-video text-gray-500 mr-2"></i><span class="name-text">通道1: 可见光</span>
+                                        </div>
+                                        <div class="channel-name-edit hidden flex items-center">
+                                            <i class="fas fa-video text-gray-500 mr-2"></i>
+                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="通道1: 可见光">
+                                        </div>
+                                    </td>
+                                    <td class="py-2 px-4 font-mono text-gray-400">44030000001310000001</td>
+                                    <td class="py-2 px-4 channel-status-cell text-[#3fb950]">在线</td>
+                                    <td class="py-2 px-4 text-right">
+                                        <div class="channel-actions-display">
+                                            <button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>
+                                            <button type="button" class="channel-preview-btn text-[#58a6ff] hover:underline ml-3" data-channel-online="true" onclick="openChannelPreview('通道1: 可见光', '44030000001310000001')">实况预览</button>
+                                        </div>
+                                        <div class="channel-actions-edit hidden space-x-3">
+                                            <button class="text-gray-400 hover:text-white" onclick="cancelEditChannelName(this)">取消</button>
+                                            <button class="text-[#3fb950] hover:underline" onclick="saveChannelName(this)">保存</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-[#21262d] transition-colors channel-row">
+                                    <td class="py-2 px-4 text-white">
+                                        <div class="channel-name-display flex items-center">
+                                            <i class="fas fa-video text-gray-500 mr-2"></i><span class="name-text">通道2: 红外</span>
+                                        </div>
+                                        <div class="channel-name-edit hidden flex items-center">
+                                            <i class="fas fa-video text-gray-500 mr-2"></i>
+                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="通道2: 红外">
+                                        </div>
+                                    </td>
+                                    <td class="py-2 px-4 font-mono text-gray-400">44030000001310000002</td>
+                                    <td class="py-2 px-4 channel-status-cell text-[#3fb950]">在线</td>
+                                    <td class="py-2 px-4 text-right">
+                                        <div class="channel-actions-display">
+                                            <button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>
+                                            <button type="button" class="channel-preview-btn text-[#58a6ff] hover:underline ml-3" data-channel-online="true" onclick="openChannelPreview('通道2: 红外', '44030000001310000002')">实况预览</button>
+                                        </div>
+                                        <div class="channel-actions-edit hidden space-x-3">
+                                            <button class="text-gray-400 hover:text-white" onclick="cancelEditChannelName(this)">取消</button>
+                                            <button class="text-[#3fb950] hover:underline" onclick="saveChannelName(this)">保存</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 地图选点 Modal ============ -->
+    <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[600px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <h3 class="text-sm font-medium text-white">在地图中选点</h3>
+                <button onclick="closeMapPicker()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 bg-[#0d1117] relative cursor-crosshair" id="map-area" onclick="updateMarker(event)" style="background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;">
+                <div class="absolute inset-0 bg-black/20"></div>
+                <div class="absolute top-4 left-4 right-4 flex justify-center z-10">
+                    <div class="relative w-96 shadow-lg">
+                        <input type="text" placeholder="搜索地点" class="w-full bg-[#161b22]/90 backdrop-blur border border-[#30363d] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
+                        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                <div class="absolute z-10 pointer-events-none text-[#58a6ff] text-3xl drop-shadow-md transform -translate-x-1/2 -translate-y-full" id="map-marker" style="top: 50%; left: 50%;">
+                    <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-10">
+                    <span id="temp-lng">113.945231</span>, <span id="temp-lat">22.573123</span>
+                </div>
+            </div>
+            <div class="px-4 py-3 border-t border-[#30363d] flex justify-end space-x-3 bg-[#21262d]">
+                <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#30363d] transition-colors text-xs">取消</button>
+                <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">确认坐标</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 地图查看 Modal (只读) ============ -->
+    <div id="map-view-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <div class="flex items-center">
+                    <h3 class="text-sm font-medium text-white">安装位置</h3>
+                    <span class="ml-3 px-1.5 py-0.5 rounded text-[10px] bg-[#1f6feb]/10 text-[#58a6ff] border border-[#1f6feb]/20">只读查看</span>
+                </div>
+                <button onclick="closeMapView()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 bg-[#0d1117] relative" style="background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;">
+                <div class="absolute inset-0 bg-black/20"></div>
+                <div class="absolute z-10 pointer-events-none text-[#f85149] text-3xl drop-shadow-md transform -translate-x-1/2 -translate-y-full" style="top: 50%; left: 50%;">
+                    <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-10">
+                    <span id="map-view-lng">113.945231</span>, <span id="map-view-lat">22.573123</span>
+                </div>
+            </div>
+            <div class="px-4 py-3 border-t border-[#30363d] flex justify-end bg-[#21262d]">
+                <button onclick="closeMapView()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 通道实况预览 Modal ============ -->
+    <div id="modal-preview-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <div>
+                    <h3 class="text-sm font-medium text-white" id="preview-device-name">海康双光谱球机-北门</h3>
+                </div>
+                <button onclick="closePreviewModal()" class="text-gray-400 hover:text-white shrink-0 ml-4"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="bg-black aspect-video relative flex items-center justify-center group" id="preview-player-area">
+                <div id="preview-loading" class="hidden flex flex-col items-center text-gray-400">
+                    <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                    <span class="text-xs">正在拉流...</span>
+                </div>
+                <div id="preview-playing" class="hidden w-full h-full relative">
+                    <img src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=1200&auto=format&fit=crop" alt="实况画面" class="w-full h-full object-cover opacity-90">
+                    <div class="absolute top-4 left-4 text-white/90 text-xs font-mono drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">
+                        <i class="fas fa-video mr-2"></i><span id="preview-channel-name">通道1: 可见光</span>
+                    </div>
+                    <div class="absolute top-4 right-4 flex space-x-2">
+                        <span class="bg-black/50 text-[#3fb950] text-[10px] px-2 py-1 rounded backdrop-blur-sm border border-[#3fb950]/30"><i class="fas fa-circle text-[6px] mr-1"></i>播放中</span>
+                        <span class="bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">1920×1080</span>
+                        <span class="bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">25 FPS</span>
+                    </div>
+                    <div class="absolute bottom-4 right-4 text-white/70 text-xs font-mono drop-shadow-md" id="preview-time">2026-06-17 14:00:00</div>
+                </div>
+                <button id="preview-idle" onclick="startPreviewStream()" class="flex flex-col items-center text-white/50 group-hover:text-white/80 transition-colors cursor-pointer">
+                    <i class="fas fa-play-circle text-6xl mb-2"></i>
+                    <span class="text-xs">点击开始拉流验证</span>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-t border-[#30363d] bg-[#21262d] text-xs">
+                <span class="text-gray-500 font-mono">通道编码 <span id="preview-channel-code" class="text-gray-300">44030000001310000001</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col space-y-2"></div>
+
+    <script>
+        let currentDetailDeviceName = '';
+        let currentDetailDeviceStatus = '在线';
+
+        // 通道实况预览 Modal（运维验证）
+        function openChannelPreview(channelName, channelCode) {
+            if (currentDetailDeviceStatus === '未注册') {
+                showToast('设备未注册，无法预览实况', 'error');
+                return;
+            }
+            if (currentDetailDeviceStatus === '离线') {
+                showToast('设备离线，无法预览实况', 'error');
+                return;
+            }
+            const rowBtn = Array.from(document.querySelectorAll('.channel-preview-btn')).find(
+                btn => btn.getAttribute('onclick')?.includes(channelCode)
+            );
+            if (rowBtn && rowBtn.dataset.channelOnline !== 'true') {
+                showToast('通道离线，无法预览实况', 'error');
+                return;
+            }
+
+            document.getElementById('preview-device-name').innerText = currentDetailDeviceName || document.getElementById('detail-device-name').innerText;
+            document.getElementById('preview-channel-name').innerText = channelName;
+            document.getElementById('preview-channel-code').innerText = channelCode;
+            resetPreviewPlayer();
+            document.getElementById('modal-preview-overlay').classList.remove('hidden');
+            // 打开后自动开始拉流
+            startPreviewStream();
+        }
+
+        function resetPreviewPlayer() {
+            document.getElementById('preview-idle').classList.remove('hidden');
+            document.getElementById('preview-loading').classList.add('hidden');
+            document.getElementById('preview-playing').classList.add('hidden');
+        }
+
+        function startPreviewStream() {
+            document.getElementById('preview-idle').classList.add('hidden');
+            document.getElementById('preview-playing').classList.add('hidden');
+            document.getElementById('preview-loading').classList.remove('hidden');
+            const now = new Date();
+            document.getElementById('preview-time').innerText = now.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+            setTimeout(() => {
+                document.getElementById('preview-loading').classList.add('hidden');
+                document.getElementById('preview-playing').classList.remove('hidden');
+            }, 800);
+        }
+
+        function closePreviewModal() {
+            document.getElementById('modal-preview-overlay').classList.add('hidden');
+            resetPreviewPlayer();
+        }
+
+        function updateDetailChannelActions(deviceStatus) {
+            const deviceOnline = deviceStatus === '在线';
+            const syncEl = document.getElementById('detail-last-sync');
+
+            // 先更新通道状态与 data 属性，再统一刷新按钮样式（避免沿用上一次的离线状态）
+            if (deviceStatus === '未注册') {
+                syncEl.innerText = '上次同步: —';
+                document.querySelectorAll('#detail-content-channels .channel-status-cell').forEach(cell => {
+                    cell.className = 'py-2 px-4 channel-status-cell text-gray-500';
+                    cell.innerText = '—';
+                });
+                document.querySelectorAll('#detail-content-channels .channel-preview-btn').forEach(btn => {
+                    btn.dataset.channelOnline = 'false';
+                });
+            } else if (deviceStatus === '离线') {
+                syncEl.innerText = '上次同步: 2026-06-05 18:30:00';
+                document.querySelectorAll('#detail-content-channels .channel-status-cell').forEach(cell => {
+                    cell.className = 'py-2 px-4 channel-status-cell text-gray-400';
+                    cell.innerText = '离线';
+                });
+                document.querySelectorAll('#detail-content-channels .channel-preview-btn').forEach(btn => {
+                    btn.dataset.channelOnline = 'false';
+                });
+            } else {
+                syncEl.innerText = '上次同步: 2026-06-06 10:24:12';
+                document.querySelectorAll('#detail-content-channels .channel-status-cell').forEach(cell => {
+                    cell.className = 'py-2 px-4 channel-status-cell text-[#3fb950]';
+                    cell.innerText = '在线';
+                });
+                document.querySelectorAll('#detail-content-channels .channel-preview-btn').forEach(btn => {
+                    btn.dataset.channelOnline = 'true';
+                });
+            }
+
+            document.querySelectorAll('#detail-content-channels .channel-preview-btn').forEach(btn => {
+                const channelOnline = btn.dataset.channelOnline === 'true';
+                const enabled = deviceOnline && channelOnline;
+                btn.disabled = false;
+                btn.className = enabled
+                    ? 'channel-preview-btn text-[#58a6ff] hover:underline ml-3 cursor-pointer'
+                    : 'channel-preview-btn text-gray-600 cursor-not-allowed ml-3';
+                btn.title = enabled ? '验证该通道视频流是否通畅' : (deviceStatus === '未注册' ? '设备未注册' : deviceStatus === '离线' ? '设备离线' : '通道离线');
+            });
+        }
+
+        // 通道行内编辑
+        function startEditChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            row.querySelector('.channel-name-display').classList.add('hidden');
+            row.querySelector('.channel-name-edit').classList.remove('hidden');
+            row.querySelector('.channel-actions-display').classList.add('hidden');
+            row.querySelector('.channel-actions-edit').classList.remove('hidden');
+            
+            // 聚焦输入框
+            const input = row.querySelector('.channel-name-edit input');
+            input.focus();
+            // 将光标移到末尾
+            const val = input.value;
+            input.value = '';
+            input.value = val;
+        }
+
+        function cancelEditChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            row.querySelector('.channel-name-display').classList.remove('hidden');
+            row.querySelector('.channel-name-edit').classList.add('hidden');
+            row.querySelector('.channel-actions-display').classList.remove('hidden');
+            row.querySelector('.channel-actions-edit').classList.add('hidden');
+            
+            // 恢复输入框的值为当前显示的文本
+            const currentName = row.querySelector('.name-text').textContent;
+            row.querySelector('.channel-name-edit input').value = currentName;
+        }
+
+        function saveChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            const newName = row.querySelector('.channel-name-edit input').value.trim();
+            
+            if (newName) {
+                row.querySelector('.name-text').textContent = newName;
+                showToast('通道名称已更新', 'success');
+            } else {
+                showToast('通道名称不能为空', 'error');
+                return;
+            }
+            
+            row.querySelector('.channel-name-display').classList.remove('hidden');
+            row.querySelector('.channel-name-edit').classList.add('hidden');
+            row.querySelector('.channel-actions-display').classList.remove('hidden');
+            row.querySelector('.channel-actions-edit').classList.add('hidden');
+        }
+
+        // Toast
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-[#238636]/90 border-[#2ea043]' :
+                            type === 'error' ? 'bg-[#f85149]/90 border-[#ff6a69]' :
+                            'bg-[#1f6feb]/90 border-[#388bfd]';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            toast.className = `flex items-center px-4 py-2 rounded text-white text-sm shadow-lg border ${bgColor} transform transition-all duration-300 translate-y-[-100%] opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-[-100%]', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        // 添加摄像头
+        function openAddModal() {
+            document.getElementById('add-step-form').classList.remove('hidden');
+            document.getElementById('add-step-cred').classList.add('hidden');
+            document.getElementById('add-submit-btn').classList.remove('hidden');
+            document.getElementById('add-done-btn').classList.add('hidden');
+            document.getElementById('add-step-2-tag').classList.add('text-gray-500');
+            document.getElementById('add-step-2-tag').classList.remove('text-[#58a6ff]');
+            document.getElementById('add-step-2-num').classList.add('bg-[#30363d]', 'text-gray-400');
+            document.getElementById('add-step-2-num').classList.remove('bg-[#1f6feb]', 'text-white');
+            ['add-name','add-model','add-lng','add-lat'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('modal-add-overlay').classList.remove('hidden');
+        }
+        function closeAddModal() { document.getElementById('modal-add-overlay').classList.add('hidden'); }
+        function submitAddDevice() {
+            const name = document.getElementById('add-name').value.trim();
+            if (!name) { showToast('请填写设备名称', 'error'); return; }
+            const serial = String(Math.floor(1000000 + Math.random() * 8999999));
+            document.getElementById('cred-gbid').innerText = '44030000001320' + serial;
+            document.getElementById('cred-pwd').innerText = Math.random().toString(36).slice(-8);
+            document.getElementById('add-step-form').classList.add('hidden');
+            document.getElementById('add-step-cred').classList.remove('hidden');
+            document.getElementById('add-submit-btn').classList.add('hidden');
+            document.getElementById('add-done-btn').classList.remove('hidden');
+            document.getElementById('add-step-2-tag').classList.remove('text-gray-500');
+            document.getElementById('add-step-2-tag').classList.add('text-[#58a6ff]');
+            document.getElementById('add-step-2-num').classList.remove('bg-[#30363d]', 'text-gray-400');
+            document.getElementById('add-step-2-num').classList.add('bg-[#1f6feb]', 'text-white');
+            showToast('设备已添加成功（未注册）', 'success');
+        }
+
+        // 分配项目
+        function openAssignModal(name) {
+            document.getElementById('assign-device-name').innerText = name;
+            document.getElementById('modal-assign-overlay').classList.remove('hidden');
+        }
+        function closeAssignModal() { document.getElementById('modal-assign-overlay').classList.add('hidden'); }
+        function confirmAssign() { closeAssignModal(); showToast('项目分配已更新', 'success'); }
+
+        function showCred(name) {
+            document.getElementById('cred-device-name-title').innerText = name;
+            document.getElementById('modal-cred-overlay').classList.remove('hidden');
+            // Reset password visibility state when opening
+            const pwdDisplay = document.getElementById('cred-pwd-display');
+            const pwdValue = document.getElementById('cred-pwd-value');
+            const toggleIcon = document.getElementById('cred-pwd-toggle');
+            pwdDisplay.classList.remove('hidden');
+            pwdValue.classList.add('hidden');
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+            toggleIcon.title = "显示密码";
+        }
+        function closeCredModal() {
+            document.getElementById('modal-cred-overlay').classList.add('hidden');
+        }
+
+        function togglePwdVisibility() {
+            const pwdDisplay = document.getElementById('cred-pwd-display');
+            const pwdValue = document.getElementById('cred-pwd-value');
+            const toggleIcon = document.getElementById('cred-pwd-toggle');
+            
+            if (pwdDisplay.classList.contains('hidden')) {
+                // Hide password
+                pwdDisplay.classList.remove('hidden');
+                pwdValue.classList.add('hidden');
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+                toggleIcon.title = "显示密码";
+            } else {
+                // Show password
+                pwdDisplay.classList.add('hidden');
+                pwdValue.classList.remove('hidden');
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+                toggleIcon.title = "隐藏密码";
+            }
+        }
+
+        function togglePwdVisibilityGlobal() {
+            const pwdDisplay = document.getElementById('cred-pwd-display-global');
+            const pwdValue = document.getElementById('cred-pwd-value-global');
+            const toggleIcon = document.getElementById('cred-pwd-toggle-global');
+            
+            if (pwdDisplay.classList.contains('hidden')) {
+                pwdDisplay.classList.remove('hidden');
+                pwdValue.classList.add('hidden');
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+                toggleIcon.title = "显示密码";
+            } else {
+                pwdDisplay.classList.add('hidden');
+                pwdValue.classList.remove('hidden');
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+                toggleIcon.title = "隐藏密码";
+            }
+        }
+
+        // 删除确认：摄像头输入「名称 + 国标编码」；无人机/机巢输入「名称 + 设备SN」
+        let pendingDelete = { name: '', code: '', requireInput: false, kind: 'camera' };
+
+        function openDeleteModal(deviceName, code, kind) {
+            kind = kind || 'camera';
+            pendingDelete = {
+                name: deviceName || '',
+                code: code || '',
+                requireInput: !!code,
+                kind: kind
+            };
+            const isCamera = kind === 'camera';
+            const codeLabel = isCamera ? '国标编码' : '设备SN';
+
+            const titleEl = document.getElementById('delete-modal-title');
+            const descEl = document.getElementById('delete-desc');
+            const fieldsEl = document.getElementById('delete-confirm-fields');
+            const labelName = document.getElementById('delete-label-name');
+            const labelGb = document.getElementById('delete-label-gb');
+            const inputName = document.getElementById('delete-input-name');
+            const inputGb = document.getElementById('delete-input-gb');
+            const errName = document.getElementById('delete-error-name');
+            const errGb = document.getElementById('delete-error-gb');
+
+            if (titleEl) titleEl.textContent = isCamera ? '确认删除该摄像头吗？' : '确认删除该设备吗？';
+            if (descEl) descEl.innerHTML = isCamera
+                ? '删除后，设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。'
+                : '删除后，设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 将从平台设备池移除，且操作不可恢复。';
+            if (labelName) labelName.textContent = '请输入设备名称以确认删除';
+            if (labelGb) labelGb.textContent = '请输入' + codeLabel + '以确认删除';
+            if (inputName) inputName.placeholder = '请输入设备名称';
+            if (inputGb) inputGb.placeholder = '请输入' + codeLabel;
+            if (errName) errName.textContent = '设备名称不匹配';
+            if (errGb) errGb.textContent = codeLabel + '不匹配';
+
+            if (fieldsEl) fieldsEl.classList.toggle('hidden', !pendingDelete.requireInput);
+            if (inputName) inputName.value = '';
+            if (inputGb) inputGb.value = '';
+            if (errName) errName.classList.add('hidden');
+            if (errGb) errGb.classList.add('hidden');
+            setDeleteConfirmEnabled(!pendingDelete.requireInput);
+            document.getElementById('modal-delete-overlay').classList.remove('hidden');
+            if (pendingDelete.requireInput) setTimeout(() => inputName && inputName.focus(), 50);
+        }
+
+        function setDeleteConfirmEnabled(enabled) {
+            const confirmBtn = document.getElementById('delete-confirm-btn');
+            if (!confirmBtn) return;
+            confirmBtn.disabled = !enabled;
+            if (enabled) {
+                confirmBtn.className = 'px-4 py-2 bg-[#f85149] text-white rounded hover:bg-[#ff6a69] transition-colors text-sm font-medium';
+            } else {
+                confirmBtn.className = 'px-4 py-2 bg-[#f85149]/40 text-white/60 rounded cursor-not-allowed text-sm font-medium transition-colors';
+            }
+        }
+
+        function validateDeleteInputs() {
+            if (!pendingDelete.requireInput) {
+                setDeleteConfirmEnabled(true);
+                return;
+            }
+            const inputName = document.getElementById('delete-input-name');
+            const inputGb = document.getElementById('delete-input-gb');
+            const errName = document.getElementById('delete-error-name');
+            const errGb = document.getElementById('delete-error-gb');
+            const nameVal = (inputName?.value || '').trim();
+            const gbVal = (inputGb?.value || '').trim();
+            const nameOk = nameVal === pendingDelete.name;
+            const gbOk = gbVal === pendingDelete.code;
+            const nameTouched = nameVal.length > 0;
+            const gbTouched = gbVal.length > 0;
+
+            if (errName) errName.classList.toggle('hidden', !nameTouched || nameOk);
+            if (errGb) errGb.classList.toggle('hidden', !gbTouched || gbOk);
+            if (inputName) {
+                inputName.classList.toggle('border-[#f85149]', nameTouched && !nameOk);
+                inputName.classList.toggle('border-[#30363d]', !(nameTouched && !nameOk));
+            }
+            if (inputGb) {
+                inputGb.classList.toggle('border-[#f85149]', gbTouched && !gbOk);
+                inputGb.classList.toggle('border-[#30363d]', !(gbTouched && !gbOk));
+            }
+            setDeleteConfirmEnabled(nameOk && gbOk);
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('modal-delete-overlay').classList.add('hidden');
+            pendingDelete = { name: '', code: '', requireInput: false, kind: 'camera' };
+            const inputName = document.getElementById('delete-input-name');
+            const inputGb = document.getElementById('delete-input-gb');
+            if (inputName) inputName.value = '';
+            if (inputGb) inputGb.value = '';
+            setDeleteConfirmEnabled(false);
+        }
+
+        function confirmDeleteAction() {
+            if (pendingDelete.requireInput) {
+                const nameVal = (document.getElementById('delete-input-name')?.value || '').trim();
+                const gbVal = (document.getElementById('delete-input-gb')?.value || '').trim();
+                if (nameVal !== pendingDelete.name || gbVal !== pendingDelete.code) {
+                    validateDeleteInputs();
+                    showToast('请正确输入设备名称与' + (pendingDelete.kind === 'camera' ? '国标编码' : '设备SN'), 'warning');
+                    return;
+                }
+            }
+            closeDeleteModal();
+            showToast('设备已删除', 'success');
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板', 'success');
+            }).catch(err => {
+                showToast('复制失败', 'error');
+            });
+        }
+
+        // 摄像头详情 Modal
+        function openDetailModal(name, status) {
+            currentDetailDeviceName = name;
+            currentDetailDeviceStatus = status;
+            document.getElementById('detail-device-name').innerText = name;
+            const statusEl = document.getElementById('detail-status');
+            if (status === '在线') {
+                statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线`;
+                statusEl.className = 'ml-3 text-xs flex items-center text-[#3fb950] font-normal';
+            } else if (status === '未注册') {
+                statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#d29922] mr-1.5"></span> 未注册`;
+                statusEl.className = 'ml-3 text-xs flex items-center text-[#d29922] font-normal';
+            } else {
+                statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span> 离线`;
+                statusEl.className = 'ml-3 text-xs flex items-center text-gray-400 font-normal';
+            }
+            
+            // 默认恢复为浏览模式
+            document.getElementById('detail-basic-view').classList.remove('hidden');
+            document.getElementById('detail-basic-edit').classList.add('hidden');
+            document.getElementById('detail-edit-btn').classList.remove('hidden');
+            
+            switchDetailTab('basic');
+            updateDetailChannelActions(status);
+            document.getElementById('modal-detail-overlay').classList.remove('hidden');
+        }
+
+        function toggleDetailEdit() {
+            const viewMode = document.getElementById('detail-basic-view');
+            const editMode = document.getElementById('detail-basic-edit');
+            const editBtn = document.getElementById('detail-edit-btn');
+            
+            if (viewMode.classList.contains('hidden')) {
+                // 切换到浏览模式
+                viewMode.classList.remove('hidden');
+                editMode.classList.add('hidden');
+                editBtn.classList.remove('hidden');
+            } else {
+                // 切换到编辑模式
+                viewMode.classList.add('hidden');
+                editMode.classList.remove('hidden');
+                editBtn.classList.add('hidden');
+            }
+        }
+
+        function saveDetailEdit() {
+            toggleDetailEdit();
+            showToast('基本信息已保存', 'success');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('modal-detail-overlay').classList.add('hidden');
+        }
+
+        function openRestartModal() {
+            document.getElementById('modal-restart-overlay').classList.remove('hidden');
+        }
+
+        function closeRestartModal() {
+            document.getElementById('modal-restart-overlay').classList.add('hidden');
+        }
+
+        function confirmRestart() {
+            closeRestartModal();
+            showToast('重启指令已下发', 'success');
+        }
+
+        function switchDetailTab(tabId) {
+            ['basic', 'config', 'channels'].forEach(id => {
+                const tab = document.getElementById(`detail-tab-${id}`);
+                const content = document.getElementById(`detail-content-${id}`);
+                if (id === tabId) {
+                    tab.classList.remove('border-transparent', 'text-gray-400');
+                    tab.classList.add('border-[#58a6ff]', 'text-[#58a6ff]', 'font-medium');
+                    content.classList.remove('hidden');
+                } else {
+                    tab.classList.add('border-transparent', 'text-gray-400');
+                    tab.classList.remove('border-[#58a6ff]', 'text-[#58a6ff]', 'font-medium');
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // 主 Tab 切换 (无人机 / 摄像头)
+        function switchMainTab(tabId) {
+            const droneTab = document.getElementById('tab-drone');
+            const cameraTab = document.getElementById('tab-camera');
+            const droneContent = document.getElementById('tab-content-drone');
+            const cameraContent = document.getElementById('tab-content-camera');
+            
+            if (tabId === 'drone') {
+                droneTab.className = 'py-2.5 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer';
+                cameraTab.className = 'py-2.5 text-gray-400 hover:text-gray-200 cursor-pointer transition-colors';
+                droneContent.classList.remove('hidden');
+                cameraContent.classList.add('hidden');
+            } else {
+                cameraTab.className = 'py-2.5 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer';
+                droneTab.className = 'py-2.5 text-gray-400 hover:text-gray-200 cursor-pointer transition-colors';
+                cameraContent.classList.remove('hidden');
+                droneContent.classList.add('hidden');
+            }
+        }
+
+        // 无人机添加指南（同已上线弹窗）
+        function openDroneGuideModal() {
+            document.getElementById('modal-drone-guide-overlay').classList.remove('hidden');
+            switchDroneBrand('autel');
+        }
+
+        function closeDroneGuideModal() {
+            document.getElementById('modal-drone-guide-overlay').classList.add('hidden');
+        }
+
+        function switchDroneBrand(brand) {
+            const isAutel = brand === 'autel';
+            document.getElementById('dg-panel-autel').classList.toggle('hidden', !isAutel);
+            document.getElementById('dg-panel-dji').classList.toggle('hidden', isAutel);
+            document.getElementById('dg-tab-autel').className = 'px-5 py-2 rounded-md text-sm transition-colors ' + (isAutel ? 'bg-[#333] text-white' : 'text-gray-400 hover:text-white');
+            document.getElementById('dg-tab-dji').className = 'px-5 py-2 rounded-md text-sm transition-colors ' + (!isAutel ? 'bg-[#333] text-white' : 'text-gray-400 hover:text-white');
+        }
+
+        // 摄像头接入指南
+        let guideStep = 1;
+
+        function openGuideModal() {
+            document.getElementById('modal-guide-overlay').classList.remove('hidden');
+            switchGuideStep(1);
+        }
+
+        function closeGuideModal() {
+            document.getElementById('modal-guide-overlay').classList.add('hidden');
+        }
+
+        function switchGuideStep(step) {
+            guideStep = step;
+            for (let i = 1; i <= 7; i++) {
+                document.getElementById(`guide-step-${i}`).classList.toggle('hidden', i !== step);
+                const dot = document.getElementById(`guide-dot-${i}`);
+                dot.classList.toggle('bg-[#1f6feb]', i <= step);
+                dot.classList.toggle('text-white', i <= step);
+                dot.classList.toggle('bg-[#30363d]', i > step);
+                dot.classList.toggle('text-gray-400', i > step);
+            }
+            const nextBtn = document.getElementById('guide-next-btn');
+            nextBtn.innerText = step === 7 ? '完成' : '下一步';
+            const prevBtn = document.getElementById('guide-prev-btn');
+            if (prevBtn) {
+                prevBtn.classList.toggle('hidden', step === 1);
+            }
+        }
+
+        function nextGuideStep() {
+            if (guideStep >= 7) {
+                closeGuideModal();
+                return;
+            }
+            switchGuideStep(guideStep + 1);
+        }
+
+        function prevGuideStep() {
+            if (guideStep <= 1) return;
+            switchGuideStep(guideStep - 1);
+        }
+
+        // 地图选点
+        let currentMapSource = '';
+        function openMapPicker(source) {
+            currentMapSource = source;
+            let lng = '113.945231';
+            let lat = '22.573123';
+            if (source === 'add') {
+                lng = document.getElementById('add-lng').value || lng;
+                lat = document.getElementById('add-lat').value || lat;
+            } else if (source === 'detail') {
+                lng = document.getElementById('detail-lng').value || lng;
+                lat = document.getElementById('detail-lat').value || lat;
+            }
+            document.getElementById('temp-lng').innerText = lng;
+            document.getElementById('temp-lat').innerText = lat;
+            document.getElementById('map-modal').classList.remove('hidden');
+        }
+        function closeMapPicker() {
+            document.getElementById('map-modal').classList.add('hidden');
+        }
+
+        // 地图查看 (只读)
+        function openMapView(lng, lat) {
+            document.getElementById('map-view-lng').innerText = lng;
+            document.getElementById('map-view-lat').innerText = lat;
+            document.getElementById('map-view-modal').classList.remove('hidden');
+        }
+        function closeMapView() {
+            document.getElementById('map-view-modal').classList.add('hidden');
+        }
+        function confirmMapPicker() {
+            const lng = document.getElementById('temp-lng').innerText;
+            const lat = document.getElementById('temp-lat').innerText;
+            if (currentMapSource === 'add') {
+                document.getElementById('add-lng').value = lng;
+                document.getElementById('add-lat').value = lat;
+            } else if (currentMapSource === 'detail') {
+                document.getElementById('detail-lng').value = lng;
+                document.getElementById('detail-lat').value = lat;
+            }
+            closeMapPicker();
+        }
+        function updateMarker(e) {
+            const mapArea = document.getElementById('map-area');
+            const marker = document.getElementById('map-marker');
+            const rect = mapArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            marker.style.left = x + 'px';
+            marker.style.top = y + 'px';
+            const baseLng = 113.94;
+            const baseLat = 22.57;
+            const newLng = (baseLng + (x / rect.width) * 0.02).toFixed(6);
+            const newLat = (baseLat - (y / rect.height) * 0.02).toFixed(6);
+            document.getElementById('temp-lng').innerText = newLng;
+            document.getElementById('temp-lat').innerText = newLat;
+        }
+    </script>
+<script src="custom-select.js"></script>
+</body>
+</html>

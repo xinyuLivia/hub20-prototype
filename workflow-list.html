@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化工作流列表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#141414',
+                            panel: '#1f1f1f',
+                            border: '#303030',
+                            text: '#e5e5e5',
+                            textSecondary: '#a6a6a6',
+                            primary: '#177ddc',
+                            primaryHover: '#1765ad'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #141414;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        }
+        
+        .stat-card {
+            background-color: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 8px;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .stat-card-title {
+            color: #a6a6a6;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #e5e5e5;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .stat-card-value span {
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        .stat-card-desc {
+            color: #a6a6a6;
+            font-size: 12px;
+        }
+
+        .workflow-card {
+            background-color: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s;
+        }
+
+        .workflow-card:hover {
+            border-color: #434343;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: rgba(23, 125, 220, 0.1);
+            color: #177ddc;
+            border: 1px solid rgba(23, 125, 220, 0.2);
+            white-space: nowrap;
+        }
+
+        .action-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #a6a6a6;
+            border: 1px solid #303030;
+            white-space: nowrap;
+        }
+
+        .dropdown-menu {
+            background: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            width: 120px;
+        }
+
+        .dropdown-item {
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #e5e5e5;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* 顶部导航区 */
+        .top-nav {
+            height: 48px;
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #303030;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+        
+        .switch-input {
+            appearance: none;
+            width: 32px;
+            height: 16px;
+            background-color: #434343;
+            border-radius: 16px;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .switch-input:checked {
+            background-color: #177ddc;
+        }
+        
+        .switch-input::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        
+        .switch-input:checked::after {
+            transform: translateX(16px);
+        }
+
+        /* 弹窗及内部样式 */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #434343;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #5c5c5c;
+        }
+
+        .step-line {
+            position: absolute;
+            left: 11px;
+            top: 24px;
+            bottom: -8px;
+            width: 2px;
+            background-color: #303030;
+        }
+        
+        .step-item:last-child .step-line {
+            display: none;
+        }
+
+        .action-node {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid #303030;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-node .action-icon {
+            width: 32px;
+            height: 32px;
+            background: #1f1f1f;
+            border: 1px solid #434343;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a6a6a6;
+        }
+    </style>
+</head>
+<body class="dark antialiased h-screen flex flex-col">
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav shrink-0">
+        <div class="flex items-center text-sm text-dark-textSecondary gap-2">
+            <i class="fas fa-arrow-left cursor-pointer hover:text-white mr-2" onclick="window.location.href='project-home.html'"></i>
+            <span class="cursor-pointer hover:text-white" onclick="window.location.href='project-home.html'">项目首页</span>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-dark-text" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>自动化工作流</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-dark-panel border border-dark-border rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 bg-[rgba(23,125,220,0.1)] text-dark-primary cursor-pointer" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <i class="fas fa-times cursor-pointer text-dark-textSecondary hover:text-white text-lg transition-colors" onclick="window.location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 overflow-auto p-6 flex flex-col gap-6">
+        
+        <!-- 顶部数据概览（分执行设备） -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="stat-card relative">
+                <div class="stat-card-title flex items-center gap-2"><i class="fas fa-plane text-dark-primary"></i>无人机处置</div>
+                <div class="flex items-end gap-16">
+                    <div>
+                        <div class="stat-card-value">98%</div>
+                        <div class="stat-card-desc">运行成功率</div>
+                    </div>
+                    <div>
+                        <div class="stat-card-value">90</div>
+                        <div class="stat-card-desc">运行次数(次)</div>
+                    </div>
+                </div>
+                <a href="workflow-event-list.html?device=drone" class="absolute right-6 top-6 text-dark-primary text-sm hover:text-dark-primaryHover">查看详情</a>
+            </div>
+            <div class="stat-card relative">
+                <div class="stat-card-title flex items-center gap-2"><i class="fas fa-robot text-green-400"></i>地面机器人处置</div>
+                <div class="flex items-end gap-16">
+                    <div>
+                        <div class="stat-card-value">90%</div>
+                        <div class="stat-card-desc">运行成功率</div>
+                    </div>
+                    <div>
+                        <div class="stat-card-value">400</div>
+                        <div class="stat-card-desc">运行次数(次)</div>
+                    </div>
+                </div>
+                <a href="workflow-event-list.html?device=dog" class="absolute right-6 top-6 text-dark-primary text-sm hover:text-dark-primaryHover">查看详情</a>
+            </div>
+        </div>
+
+        <!-- 筛选与操作区（执行设备 Tab 内联于筛选行左侧，替代独立"执行设备"筛选项） -->
+        <div class="flex items-center justify-between mt-2 gap-4 flex-wrap">
+            <div class="flex items-center gap-4 flex-wrap">
+                <!-- 执行设备分栏 Tab -->
+                <div class="flex items-center border-b border-dark-border">
+                    <button class="device-tab px-4 py-2 text-sm border-b-2 border-dark-primary text-white -mb-px" data-device="drone" onclick="switchDevice('drone')">无人机处置</button>
+                    <button class="device-tab px-4 py-2 text-sm border-b-2 border-transparent text-dark-textSecondary hover:text-white -mb-px" data-device="dog" onclick="switchDevice('dog')">地面机器人处置</button>
+                </div>
+
+                <!-- 搜索框 -->
+                <div class="relative w-64">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-sm"></i>
+                    <input type="text" placeholder="请输入查询内容" class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-text pl-9 pr-3 py-1.5 focus:outline-none focus:border-dark-primary transition-colors">
+                </div>
+
+                <!-- 事件类型 -->
+                <div class="relative w-36">
+                    <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 appearance-none focus:outline-none focus:border-dark-primary" onchange="this.classList.toggle('text-dark-textSecondary', this.value===''); this.classList.toggle('text-white', this.value!=='');">
+                        <option value="" disabled selected hidden>事件类型</option>
+                        <option value="" class="text-dark-textSecondary">事件类型</option>
+                        <option value="1" class="text-white">高速-行人闯入</option>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+                </div>
+
+                <!-- 触发方式 -->
+                <div class="relative w-36">
+                    <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 appearance-none focus:outline-none focus:border-dark-primary" onchange="this.classList.toggle('text-dark-textSecondary', this.value===''); this.classList.toggle('text-white', this.value!=='');">
+                        <option value="" disabled selected hidden>触发方式</option>
+                        <option value="" class="text-dark-textSecondary">触发方式</option>
+                        <option value="1" class="text-white">告警触发</option>
+                        <option value="2" class="text-white">手动触发</option>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+                </div>
+
+                <!-- 状态 -->
+                <div class="relative w-32">
+                    <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-1.5 appearance-none focus:outline-none focus:border-dark-primary" onchange="this.classList.toggle('text-dark-textSecondary', this.value===''); this.classList.toggle('text-white', this.value!=='');">
+                        <option value="" disabled selected hidden>状态</option>
+                        <option value="" class="text-dark-textSecondary">状态</option>
+                        <option value="1" class="text-white">已启用</option>
+                        <option value="0" class="text-white">未启用</option>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+                </div>
+
+                <button class="w-8 h-8 flex items-center justify-center bg-dark-bg border border-dark-border rounded text-dark-textSecondary hover:text-white transition-colors">
+                    <i class="fas fa-sync-alt text-sm"></i>
+                </button>
+            </div>
+
+            <button onclick="openCreateModal()" class="bg-dark-primary hover:bg-dark-primaryHover text-white px-4 py-1.5 rounded text-sm flex items-center gap-2 transition-colors">
+                <i class="fas fa-plus text-xs"></i>
+                新增配置
+            </button>
+        </div>
+
+        <!-- 列表卡片区 -->
+        <div id="cardGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            
+            <!-- 卡片 1（无人机） -->
+            <div class="workflow-card" data-device="drone">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-base font-medium text-white truncate pr-4">高速行人闯入事件触发联动处置 2026-01-16</h3>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <input type="checkbox" class="switch-input" checked>
+                        <i onclick="window.location.href='workflow-create.html'" class="fas fa-pen text-dark-textSecondary hover:text-white cursor-pointer transition-colors" title="编辑配置"></i>
+                        <div class="relative group dropdown-container">
+                            <i class="fas fa-ellipsis-h text-dark-textSecondary hover:text-white cursor-pointer pb-2 dropdown-trigger"></i>
+                            <div class="dropdown-menu absolute right-0 top-full mt-1 z-20 py-1 hidden">
+                                <div class="dropdown-item">删除</div>
+                                <div class="dropdown-item" onclick="openPreviewModal()">预览详情</div>
+                                <div class="dropdown-item">运行日志</div>
+                                <div class="dropdown-item">操作日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-dark-textSecondary mb-4 flex items-center gap-3">
+                    <span class="text-dark-primary"><i class="fas fa-plane mr-1"></i>无人机</span>
+                    <span>类型: 高速-行人闯入</span>
+                    <span>已执行 <span class="text-dark-primary">9</span> 次</span>
+                </div>
+                
+                <!-- 流程标签展示区 -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <span class="tag">系统推荐设备</span>
+                    <span class="tag">告警触发</span>
+                    <span class="tag">手动触发</span>
+                    <span class="tag">需人工确认</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <span class="tag">飞往事件地址</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <div class="flex gap-2 flex-wrap mt-2 w-full">
+                        <span class="action-tag">悬停</span>
+                        <span class="action-tag">开始喊话</span>
+                        <span class="action-tag">结束喊话</span>
+                        <span class="action-tag">返航</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-dark-textSecondary border-t border-dark-border pt-4 flex justify-between mt-auto">
+                    <span>更新: admin 2026-01-12 12:00</span>
+                    <span>创建: admin 2026-01-12 12:00</span>
+                </div>
+            </div>
+
+            <!-- 卡片 2（无人机） -->
+            <div class="workflow-card" data-device="drone">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-base font-medium text-white truncate pr-4">高速行人闯入事件触发联动处置 2026-01-16</h3>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <input type="checkbox" class="switch-input" checked>
+                        <i onclick="window.location.href='workflow-create.html'" class="fas fa-pen text-dark-textSecondary hover:text-white cursor-pointer transition-colors" title="编辑配置"></i>
+                        <div class="relative group dropdown-container">
+                            <i class="fas fa-ellipsis-h text-dark-textSecondary hover:text-white cursor-pointer pb-2 dropdown-trigger"></i>
+                            <div class="dropdown-menu absolute right-0 top-full mt-1 z-20 py-1 hidden">
+                                <div class="dropdown-item">删除</div>
+                                <div class="dropdown-item" onclick="openPreviewModal()">预览详情</div>
+                                <div class="dropdown-item">运行日志</div>
+                                <div class="dropdown-item">操作日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-dark-textSecondary mb-4 flex items-center gap-3">
+                    <span class="text-dark-primary"><i class="fas fa-plane mr-1"></i>无人机</span>
+                    <span>类型: 高速-行人闯入</span>
+                    <span>已执行 <span class="text-dark-primary">9</span> 次</span>
+                </div>
+                
+                <!-- 流程标签展示区 -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <span class="tag">系统推荐设备</span>
+                    <span class="tag">告警触发</span>
+                    <span class="tag">手动触发</span>
+                    <span class="tag">需人工确认</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <span class="tag">飞往事件地址</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <div class="flex gap-2 flex-wrap mt-2 w-full">
+                        <span class="action-tag">悬停</span>
+                        <span class="action-tag">开始喊话</span>
+                        <span class="action-tag">结束喊话</span>
+                        <span class="action-tag">返航</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-dark-textSecondary border-t border-dark-border pt-4 flex justify-between mt-auto">
+                    <span>更新: admin 2026-01-12 12:00</span>
+                    <span>创建: admin 2026-01-12 12:00</span>
+                </div>
+            </div>
+
+            <!-- 卡片 3（地面机器狗） -->
+            <div class="workflow-card" data-device="dog">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-base font-medium text-white truncate pr-4">园区人员闯入事件触发机器狗处置 2026-01-16</h3>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <input type="checkbox" class="switch-input" checked>
+                        <i onclick="window.location.href='workflow-create.html?device=dog'" class="fas fa-pen text-dark-textSecondary hover:text-white cursor-pointer transition-colors" title="编辑配置"></i>
+                        <div class="relative group dropdown-container">
+                            <i class="fas fa-ellipsis-h text-dark-textSecondary hover:text-white cursor-pointer pb-2 dropdown-trigger"></i>
+                            <div class="dropdown-menu absolute right-0 top-full mt-1 z-20 py-1 hidden">
+                                <div class="dropdown-item">删除</div>
+                                <div class="dropdown-item" onclick="openPreviewModal()">预览详情</div>
+                                <div class="dropdown-item">运行日志</div>
+                                <div class="dropdown-item">操作日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-dark-textSecondary mb-4 flex items-center gap-3">
+                    <span class="text-green-400"><i class="fas fa-robot mr-1"></i>地面机器狗</span>
+                    <span>类型: 园区-人员闯入</span>
+                    <span>已执行 <span class="text-dark-primary">9</span> 次</span>
+                </div>
+                
+                <!-- 流程标签展示区 -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <span class="tag">系统推荐设备</span>
+                    <span class="tag">告警触发</span>
+                    <span class="tag">需人工确认</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <span class="tag">前往事件地址</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <div class="flex gap-2 flex-wrap mt-2 w-full">
+                        <span class="action-tag">云台环视</span>
+                        <span class="action-tag">开始喊话</span>
+                        <span class="action-tag">结束喊话</span>
+                        <span class="action-tag">返回停靠点</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-dark-textSecondary border-t border-dark-border pt-4 flex justify-between mt-auto">
+                    <span>更新: admin 2026-01-12 12:00</span>
+                    <span>创建: admin 2026-01-12 12:00</span>
+                </div>
+            </div>
+
+            <!-- 卡片 4 (无人机 · 草稿) -->
+            <div class="workflow-card" data-device="drone">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-2 truncate pr-4">
+                        <span class="px-1.5 py-0.5 border border-blue-400 text-blue-400 text-[10px] rounded shrink-0">草稿</span>
+                        <h3 class="text-base font-medium text-white truncate">高速行人闯入事件触发联动处置 2026-01-16</h3>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <input type="checkbox" class="switch-input">
+                        <i onclick="window.location.href='workflow-create.html'" class="fas fa-pen text-dark-textSecondary hover:text-white cursor-pointer transition-colors" title="编辑配置"></i>
+                        <div class="relative group dropdown-container">
+                            <i class="fas fa-ellipsis-h text-dark-textSecondary hover:text-white cursor-pointer pb-2 dropdown-trigger"></i>
+                            <div class="dropdown-menu absolute right-0 top-full mt-1 z-20 py-1 hidden">
+                                <div class="dropdown-item">删除</div>
+                                <div class="dropdown-item" onclick="openPreviewModal()">预览详情</div>
+                                <div class="dropdown-item">运行日志</div>
+                                <div class="dropdown-item">操作日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-dark-textSecondary mb-4 flex items-center gap-3">
+                    <span class="text-dark-primary"><i class="fas fa-plane mr-1"></i>无人机</span>
+                    <span>类型: 高速-行人闯入</span>
+                </div>
+                
+                <!-- 流程标签展示区 -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <span class="action-tag bg-dark-bg border-dark-border">系统推荐设备</span>
+                    <span class="action-tag bg-dark-bg border-dark-border">告警触发</span>
+                    <span class="action-tag bg-dark-bg border-dark-border">手动触发</span>
+                    <span class="action-tag bg-dark-bg border-dark-border">需人工确认</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <span class="action-tag bg-dark-bg border-dark-border">飞往事件地址</span>
+                    <i class="fas fa-chevron-right text-dark-textSecondary text-[10px]"></i>
+                    <div class="flex gap-2 flex-wrap mt-2 w-full">
+                        <span class="action-tag bg-dark-bg border-dark-border">悬停</span>
+                        <span class="action-tag bg-dark-bg border-dark-border">开始喊话</span>
+                        <span class="action-tag bg-dark-bg border-dark-border">结束喊话</span>
+                        <span class="action-tag bg-dark-bg border-dark-border">返航</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-dark-textSecondary border-t border-dark-border pt-4 flex justify-between mt-auto">
+                    <span>更新: admin 2026-01-12 12:00</span>
+                    <span>创建: admin 2026-01-12 12:00</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="previewModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <!-- 遮罩层 -->
+        <div class="modal-overlay absolute inset-0 transition-opacity" onclick="closePreviewModal()"></div>
+        
+        <!-- 弹窗内容 -->
+        <div class="bg-dark-panel border border-dark-border rounded-lg shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col relative z-10 mx-4">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-medium text-dark-text" id="modalTitle">自动化工作流20260112123预览</h2>
+                    <span class="px-2 py-1 bg-dark-bg border border-dark-border rounded text-xs text-dark-textSecondary">高速-车辆违停</span>
+                </div>
+                <button onclick="closePreviewModal()" class="text-dark-textSecondary hover:text-white transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Body (取消了这里的 overflow-y-auto，让滚动条只在右侧出现) -->
+            <div class="p-6 flex-1 flex gap-8 min-h-0">
+                
+                <!-- 左侧：基础配置 (触发器 & 任务调度) (固定高度，不滚动) -->
+                <div class="w-1/2 flex flex-col gap-6">
+                    
+                    <!-- 触发器模块 -->
+                    <div class="bg-dark-bg border border-dark-border rounded-lg p-5">
+                        <div class="flex items-center gap-2 mb-4 text-dark-text font-medium border-b border-dark-border pb-2">
+                            <i class="fas fa-bolt text-dark-primary"></i>
+                            <h3>触发器</h3>
+                        </div>
+                        
+                        <div class="space-y-4 text-sm">
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">触发事件类型:</span>
+                                <span class="text-dark-text">高速-车辆违停</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">触发方式:</span>
+                                <div class="flex gap-2">
+                                    <span class="px-2 py-0.5 bg-[rgba(255,255,255,0.08)] rounded border border-dark-border">告警触发</span>
+                                    <span class="px-2 py-0.5 bg-[rgba(255,255,255,0.08)] rounded border border-dark-border">手动触发</span>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">手动触发菜单:</span>
+                                <span class="text-dark-text">违停喊话</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">人工确认:</span>
+                                <div class="text-dark-text">
+                                    需人工确认
+                                    <span class="text-dark-textSecondary ml-2">（3 分钟失效）</span>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">默认设备来源:</span>
+                                <span class="text-dark-text">另派设备</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">通知对象:</span>
+                                <span class="text-dark-text">张三, 李四</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">设备匹配半径:</span>
+                                <span class="text-dark-text">3 km</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">设备匹配时效:</span>
+                                <span class="text-dark-text">3 分钟</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 任务调度模块 -->
+                    <div class="bg-dark-bg border border-dark-border rounded-lg p-5">
+                        <div class="flex items-center gap-2 mb-4 text-dark-text font-medium border-b border-dark-border pb-2">
+                            <i class="fas fa-route text-blue-400"></i>
+                            <h3>任务调度</h3>
+                        </div>
+                        
+                        <div class="space-y-4 text-sm">
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">处置类型:</span>
+                                <span class="text-dark-text">飞往事件地址</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-dark-textSecondary w-28 shrink-0">飞行参数:</span>
+                                <div class="text-dark-text space-y-1">
+                                    <div>飞行速度: <span class="text-dark-textSecondary">5 m/s</span></div>
+                                    <div>目标点高度: <span class="text-dark-textSecondary">30 m</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：处置动作 (流程图) -->
+                <div class="w-1/2 bg-dark-bg border border-dark-border rounded-lg p-5 flex flex-col h-full overflow-hidden">
+                    <div class="flex items-center gap-2 mb-4 text-dark-text font-medium border-b border-dark-border pb-2 shrink-0">
+                        <i class="fas fa-layer-group text-orange-400"></i>
+                        <h3>处置动作</h3>
+                        <span class="text-dark-textSecondary text-xs ml-auto">共 6 个动作</span>
+                    </div>
+                    
+                    <!-- 这里加上 custom-scrollbar 进行独立滚动 -->
+                    <div class="relative flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                        
+                        <!-- 步骤 1 -->
+                        <div class="step-item relative pl-8 pb-4">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">1</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-pause"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">悬停等待</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤 2 -->
+                        <div class="step-item relative pl-8 pb-4">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">2</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-eye"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">看向目标点</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤 3 -->
+                        <div class="step-item relative pl-8 pb-4">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">3</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">开始喊话</div>
+                                    <div class="text-xs text-dark-textSecondary mt-1">单曲循环 | 语音文件: 请尽快驶离.mp3 | 喊话音量: 80</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤 4 -->
+                        <div class="step-item relative pl-8 pb-4">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">4</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-search-plus"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">变焦</div>
+                                    <div class="text-xs text-dark-textSecondary mt-1">变焦倍数: 3x</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤 5 -->
+                        <div class="step-item relative pl-8 pb-4">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">5</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-stopwatch"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">计时器</div>
+                                    <div class="text-xs text-dark-textSecondary mt-1">时长: 100 s</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤 6 -->
+                        <div class="step-item relative pl-8">
+                            <div class="step-line"></div>
+                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-dark-bg border-2 border-dark-border flex items-center justify-center z-10 text-xs text-dark-textSecondary">6</div>
+                            <div class="action-node">
+                                <div class="action-icon"><i class="fas fa-volume-mute"></i></div>
+                                <div>
+                                    <div class="text-sm font-medium">结束喊话</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- 新增配置弹窗（选择执行设备） -->
+    <div id="createModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeCreateModal()"></div>
+        <div class="bg-dark-panel border border-dark-border rounded-lg shadow-2xl w-full max-w-md relative z-10 mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border">
+                <h2 class="text-base font-medium text-dark-text">新增配置</h2>
+                <button onclick="closeCreateModal()" class="text-dark-textSecondary hover:text-white transition-colors"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm text-dark-textSecondary mb-2">自动化工作流配置名称</label>
+                    <input type="text" value="自动化工作流20260112123" class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-text px-3 py-2 focus:outline-none focus:border-dark-primary">
+                </div>
+                <div>
+                    <label class="block text-sm text-dark-textSecondary mb-2">执行设备</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" data-create-device="drone" onclick="selectCreateDevice('drone')" class="create-device-opt border border-dark-primary bg-[rgba(23,125,220,0.1)] rounded px-4 py-3 flex items-center gap-2 text-dark-primary">
+                            <i class="fas fa-plane"></i><span>无人机</span>
+                        </button>
+                        <button type="button" data-create-device="dog" onclick="selectCreateDevice('dog')" class="create-device-opt border border-dark-border rounded px-4 py-3 flex items-center gap-2 text-dark-textSecondary hover:text-white">
+                            <i class="fas fa-robot"></i><span>地面机器狗</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 border-t border-dark-border">
+                <button onclick="closeCreateModal()" class="px-4 py-1.5 rounded text-sm border border-dark-border text-dark-textSecondary hover:text-white">取消</button>
+                <button onclick="confirmCreate()" class="px-4 py-1.5 rounded text-sm bg-dark-primary hover:bg-dark-primaryHover text-white">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 执行设备分栏切换 + 筛选
+        let currentDevice = 'drone';
+        function switchDevice(device) {
+            currentDevice = device;
+            document.querySelectorAll('.device-tab').forEach(tab => {
+                const active = tab.dataset.device === device;
+                tab.classList.toggle('border-dark-primary', active);
+                tab.classList.toggle('text-white', active);
+                tab.classList.toggle('border-transparent', !active);
+                tab.classList.toggle('text-dark-textSecondary', !active);
+            });
+            document.querySelectorAll('#cardGrid .workflow-card').forEach(card => {
+                card.style.display = (card.dataset.device === device) ? '' : 'none';
+            });
+        }
+
+        // 新增配置弹窗
+        let createDevice = 'drone';
+        function selectCreateDevice(device) {
+            createDevice = device;
+            document.querySelectorAll('.create-device-opt').forEach(opt => {
+                const active = opt.dataset.createDevice === device;
+                opt.classList.toggle('border-dark-primary', active);
+                opt.classList.toggle('bg-[rgba(23,125,220,0.1)]', active);
+                opt.classList.toggle('text-dark-primary', active);
+                opt.classList.toggle('border-dark-border', !active);
+                opt.classList.toggle('text-dark-textSecondary', !active);
+            });
+        }
+        function openCreateModal() {
+            selectCreateDevice('drone');
+            document.getElementById('createModal').classList.remove('hidden');
+        }
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+        }
+        function confirmCreate() {
+            window.location.href = createDevice === 'dog' ? 'workflow-create.html?device=dog' : 'workflow-create.html?device=drone';
+        }
+
+        document.addEventListener('click', function(event) {
+            const isTrigger = event.target.closest('.dropdown-trigger');
+            
+            // 先关闭所有菜单
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                if (isTrigger && menu.parentElement === isTrigger.parentElement) {
+                    return; // 下面会 toggle 它
+                }
+                menu.classList.add('hidden');
+            });
+            
+            if (isTrigger) {
+                const menu = isTrigger.parentElement.querySelector('.dropdown-menu');
+                menu.classList.toggle('hidden');
+            }
+        });
+
+        function openPreviewModal() {
+            // 生成动态标题 自动化工作流+{日期}+{3位流水}
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const randomFlow = Math.floor(Math.random() * 900) + 100; // 3位随机流水
+            
+            document.getElementById('modalTitle').textContent = `自动化工作流${year}${month}${day}${randomFlow}预览`;
+            
+            document.getElementById('previewModal').classList.remove('hidden');
+            
+            // 关掉可能打开的下拉菜单
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+        
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // 默认展示无人机处置分栏
+        switchDevice('drone');
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>手动触发事件联动派遣 · 弹窗原型（1.4）</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root {
+      /* 对齐 Figma 设计系统 AI-Design-3.0 的深色主题规范 */
+      --bg: #0a0e14;
+      --panel: #141414;
+      --modal: #1e1e1e;
+      --surface: #141414;
+      --border: #333333;
+      --text: #e0e0e0;
+      --muted: #8c8c8c;
+      --accent: #1677ff;
+      --accent-hover: #40a9ff;
+      --danger: #ff4d4f;
+      --radius: 8px;
+      --font: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      --mono: "Cascadia Code", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 背景：模拟智慧巡检大屏 */
+    .dashboard-bg {
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(10, 14, 20, 0.75) 0%, rgba(10, 14, 20, 0.9) 100%),
+        url("https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1920&q=60") center/cover;
+      filter: saturate(0.85);
+    }
+
+    .dashboard-chrome {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .top-bar {
+      height: 48px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(20, 24, 32, 0.92);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .side-panels {
+      position: absolute;
+      top: 48px;
+      bottom: 0;
+      width: 280px;
+      background: rgba(20, 24, 32, 0.75);
+      border-color: var(--border);
+    }
+
+    .side-panels.left { left: 0; border-right: 1px solid var(--border); }
+    .side-panels.right { right: 0; border-left: 1px solid var(--border); }
+
+    .hint-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 36, 48, 0.95);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      z-index: 5;
+    }
+
+    /* 遮罩与弹窗 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal {
+      width: min(920px, 100%);
+      max-height: calc(100vh - 48px);
+      background: var(--modal);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 遵循设计规范：无底部描边，大内边距 */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 24px 16px 24px;
+      flex-shrink: 0;
+    }
+
+    .modal-header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .btn-icon {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .btn-icon:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 360px;
+      max-height: min(520px, calc(100vh - 180px));
+    }
+
+    @media (max-width: 720px) {
+      .modal-body { grid-template-columns: 1fr; }
+      .map-pane { min-height: 220px; }
+    }
+
+    .map-pane {
+      position: relative;
+      border-right: 1px solid var(--border);
+      min-height: 0;
+    }
+
+    #eventMap {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      background: #141414;
+    }
+
+    .map-hint {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 500;
+      background: rgba(20, 20, 20, 0.88);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .form-pane {
+      padding: 0 24px 24px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 遵循设计规范：水平排列，Label 在左 */
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .field.align-top {
+      align-items: flex-start;
+    }
+
+    .field > label {
+      width: 90px;
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 0;
+    }
+
+    .field.align-top > label {
+      margin-top: 7px;
+    }
+
+    .field-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* 只读态：无边框，无深色背景 */
+    .field-readonly .value {
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      cursor: default;
+      user-select: text;
+    }
+
+    .field-readonly .value.tag-level {
+      display: inline-flex;
+      width: auto;
+      padding: 2px 10px;
+      border: 1px solid rgba(247, 186, 30, 0.35);
+      background: rgba(247, 186, 30, 0.12);
+      color: #f7ba1e;
+      font-weight: 500;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* 可编辑态：深色背景，明确边框 */
+    .input-box {
+      width: 100%;
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 13px;
+      transition: border-color 0.15s;
+    }
+    
+    .input-box::placeholder {
+      color: #555;
+    }
+
+    .input-box:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .input-box.invalid {
+      border-color: var(--danger);
+    }
+
+    .coord-error {
+      font-size: 12px;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+    
+    .coord-error:empty {
+      display: none;
+    }
+
+    .datetime-input {
+      color-scheme: dark;
+    }
+
+    /* 遵循设计规范：无顶部描边 */
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px 24px 24px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 7px 20px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    /* 取消按钮：深灰背景，浅灰文字 */
+    .btn-ghost {
+      background: #2a2a2a;
+      color: var(--text);
+    }
+
+    /* 确认按钮：品牌蓝背景，白色文字 */
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:disabled {
+      background: #333333;
+      color: #555555;
+      cursor: not-allowed;
+    }
+
+    .leaflet-container { font-family: var(--font); background: #141414; }
+
+    .event-marker-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .event-marker-pin {
+      width: 28px;
+      height: 28px;
+      margin-left: -14px;
+      margin-top: -28px;
+      background: #1677ff;
+      border: 2px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      opacity: 0;
+      transition: transform 0.25s, opacity 0.25s;
+      z-index: 200;
+      background: var(--modal);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-bg" aria-hidden="true"></div>
+  <div class="dashboard-chrome">
+    <div class="top-bar">Avant 智慧巡检</div>
+    <div class="side-panels left"></div>
+    <div class="side-panels right"></div>
+  </div>
+  <p class="hint-bar">1.4 原型：地图右键 → 工作流菜单 → 本弹窗；可拖曳标记或改经纬度联动定位</p>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <header class="modal-header">
+        <h1 id="modalTitle">手动触发事件联动派遣任务</h1>
+        <button type="button" class="btn-icon" id="btnClose" title="关闭" aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 1L1 13M1 1L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="modal-body">
+        <div class="map-pane">
+          <div id="eventMap"></div>
+          <div class="map-hint">点击地图或拖曳标记可调整事件位置</div>
+        </div>
+
+        <div class="form-pane">
+          <!-- 只读字段 -->
+          <div class="field field-readonly">
+            <label>事件类型</label>
+            <div class="field-content value" id="eventTypeDisplay">高速-车辆违停</div>
+          </div>
+
+          <div class="field field-readonly">
+            <label>告警等级</label>
+            <div class="field-content">
+              <div class="value tag-level" id="alarmLevelDisplay">4级</div>
+            </div>
+          </div>
+
+          <!-- 可编辑字段 -->
+          <div class="field align-top">
+            <label>事件地址</label>
+            <div class="field-content">
+              <div class="coords-row" style="display: flex; gap: 8px;">
+                <input type="text" id="inputLng" class="input-box" placeholder="经度" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                <input type="text" id="inputLat" class="input-box" placeholder="纬度" inputmode="decimal" autocomplete="off" spellcheck="false" />
+              </div>
+              <p class="coord-error" id="coordError" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="inputTime">发生时间</label>
+            <div class="field-content">
+              <input type="datetime-local" class="input-box datetime-input" id="inputTime" step="1" />
+            </div>
+          </div>
+
+          <!-- 告警图片上传 -->
+          <div class="field align-top">
+            <label>告警图片</label>
+            <div class="field-content">
+              <label for="alarmImage" style="display:inline-flex;align-items:center;gap:8px;padding:14px 18px;border:1px dashed #434343;border-radius:6px;color:#a6a6a6;cursor:pointer;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                上传告警图片
+              </label>
+              <input type="file" id="alarmImage" accept="image/*" style="display:none;" />
+            </div>
+          </div>
+
+          <!-- 处置动作展示（只读） -->
+          <div class="field field-readonly align-top">
+            <label>处置动作</label>
+            <div class="field-content">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <span class="value tag-level" style="background:rgba(255,255,255,.06);border:1px solid #434343;color:#e5e5e5;">悬停</span>
+                <span class="value tag-level" style="background:rgba(255,255,255,.06);border:1px solid #434343;color:#e5e5e5;">开始喊话</span>
+                <span class="value tag-level" style="background:rgba(255,255,255,.06);border:1px solid #434343;color:#e5e5e5;">结束喊话</span>
+                <span class="value tag-level" style="background:rgba(255,255,255,.06);border:1px solid #434343;color:#e5e5e5;">返航</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="btnCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="btnConfirm">确认</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    (function () {
+      /** 默认：深圳附近（截图经纬度标签有误，此处按正确语义：纬≈22.7°，经≈114.3°） */
+      const DEFAULT_LAT = 22.7352507;
+      const DEFAULT_LNG = 114.3050975;
+
+      const $ = (id) => document.getElementById(id);
+      const inputLat = $('inputLat');
+      const inputLng = $('inputLng');
+      const coordError = $('coordError');
+      const btnConfirm = $('btnConfirm');
+
+      let map = null;
+      let marker = null;
+      let syncingFromMap = false;
+      let syncingFromInput = false;
+
+      const pinIcon = L.divIcon({
+        className: 'event-marker-icon',
+        html: '<div class="event-marker-pin"></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+      });
+
+      function parseCoord(str) {
+        const n = Number(String(str).trim().replace(/,/g, ''));
+        return Number.isFinite(n) ? n : NaN;
+      }
+
+      function formatCoord(n) {
+        return Number(n).toFixed(7).replace(/\.?0+$/, (m) => (m === '.' ? '' : m));
+      }
+
+      function validateCoords(lat, lng) {
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+          return '纬度须在 -90°～90° 之间';
+        }
+        if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+          return '经度须在 -180°～180° 之间';
+        }
+        return '';
+      }
+
+      function setCoordError(msg) {
+        coordError.textContent = msg || '';
+        inputLat.classList.toggle('invalid', !!msg);
+        inputLng.classList.toggle('invalid', !!msg);
+        btnConfirm.disabled = !!msg;
+      }
+
+      function readInputs() {
+        return {
+          lat: parseCoord(inputLat.value),
+          lng: parseCoord(inputLng.value),
+        };
+      }
+
+      function writeInputs(lat, lng) {
+        inputLat.value = formatCoord(lat);
+        inputLng.value = formatCoord(lng);
+      }
+
+      function updateMarkerPosition(lat, lng, pan = true) {
+        if (!map || !marker) return;
+        const ll = L.latLng(lat, lng);
+        marker.setLatLng(ll);
+        if (pan) map.panTo(ll, { animate: true, duration: 0.35 });
+      }
+
+      function applyFromInputs() {
+        if (syncingFromMap) return;
+        const { lat, lng } = readInputs();
+        const err = validateCoords(lat, lng);
+        setCoordError(err);
+        if (err) return;
+        syncingFromInput = true;
+        updateMarkerPosition(lat, lng, true);
+        syncingFromInput = false;
+      }
+
+      function applyFromMap(lat, lng) {
+        if (syncingFromInput) return;
+        syncingFromMap = true;
+        writeInputs(lat, lng);
+        setCoordError('');
+        syncingFromMap = false;
+      }
+
+      function initMap() {
+        map = L.map('eventMap', {
+          zoomControl: true,
+          attributionControl: true,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+        }).addTo(map);
+
+        marker = L.marker([DEFAULT_LAT, DEFAULT_LNG], {
+          icon: pinIcon,
+          draggable: true,
+        }).addTo(map);
+
+        marker.on('dragend', () => {
+          const { lat, lng } = marker.getLatLng();
+          applyFromMap(lat, lng);
+        });
+
+        map.on('click', (e) => {
+          applyFromMap(e.latlng.lat, e.latlng.lng);
+          updateMarkerPosition(e.latlng.lat, e.latlng.lng, false);
+        });
+
+        map.setView([DEFAULT_LAT, DEFAULT_LNG], 15);
+        setTimeout(() => map.invalidateSize(), 100);
+      }
+
+      function initDatetime() {
+        const d = new Date('2026-01-12T12:00:12');
+        const pad = (n) => String(n).padStart(2, '0');
+        const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        $('inputTime').value = local;
+        $('inputTime').max = local;
+      }
+
+      function showToast(msg) {
+        const t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => t.classList.remove('show'), 2800);
+      }
+
+      function closeModal() {
+        $('overlay').style.display = 'none';
+      }
+
+      writeInputs(DEFAULT_LAT, DEFAULT_LNG);
+      initDatetime();
+      initMap();
+
+      inputLat.addEventListener('input', applyFromInputs);
+      inputLng.addEventListener('input', applyFromInputs);
+      inputLat.addEventListener('blur', applyFromInputs);
+      inputLng.addEventListener('blur', applyFromInputs);
+
+      $('btnClose').addEventListener('click', closeModal);
+      $('btnCancel').addEventListener('click', closeModal);
+
+      $('btnConfirm').addEventListener('click', () => {
+        const { lat, lng } = readInputs();
+        const err = validateCoords(lat, lng);
+        if (err) {
+          setCoordError(err);
+          return;
+        }
+        showToast(`已提交派遣：${$('eventTypeDisplay').textContent} · ${formatCoord(lng)}°, ${formatCoord(lat)}°`);
+      });
+
+      window.addEventListener('resize', () => {
+        if (map) map.invalidateSize();
+      });
+    })();
+  </script>
+<script src="custom-select.js"></script>
+</body>
+</html>

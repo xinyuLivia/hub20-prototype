@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 - 摄像头列表 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .map-bg {
+            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
+            position: relative;
+        }
+        .map-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(20, 20, 20, 0.4);
+            z-index: 0;
+        }
+        .camera-marker {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            cursor: pointer;
+            z-index: 10;
+        }
+        .custom-tab.active {
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="javascript:history.back()" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>设备管理</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- 设备管理二级导航 (Tabs) -->
+    <div class="bg-[#1e1e1e] border-b border-[#2d2d2d] px-4 flex space-x-8 text-sm shrink-0 z-10 relative">
+        <div class="py-3 text-gray-400 hover:text-gray-200 cursor-pointer flex items-center" onclick="location.href='drone-list.html'">
+            <i class="fas fa-plane mr-2"></i> 无人机及机巢
+        </div>
+        <div class="py-3 text-[#58a6ff] border-b-2 border-[#58a6ff] font-medium cursor-pointer flex items-center" onclick="location.href='camera-list.html'">
+            <i class="fas fa-video mr-2"></i> 摄像头
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧列表区 -->
+        <div class="w-96 bg-[#141414] border-r border-[#2d2d2d] flex flex-col z-10 shrink-0">
+            <!-- 标题与添加 -->
+            <div class="px-3 pt-3 pb-2 flex justify-between items-center shrink-0">
+                <span class="text-sm font-medium text-white">摄像头设备 <span class="text-gray-500 font-normal">(4)</span></span>
+                <button onclick="location.href='camera-monitor.html'" class="text-xs bg-[#1f6feb] hover:bg-[#388bfd] text-white px-2.5 py-1 rounded transition-colors flex items-center">
+                    <i class="fas fa-desktop mr-1.5"></i> 监控中心
+                </button>
+            </div>
+            <!-- 筛选栏 -->
+            <div class="p-3 border-b border-[#2d2d2d] flex space-x-2 shrink-0">
+                <div class="w-24 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center justify-between cursor-pointer hover:border-[#555] shrink-0">
+                    <span class="text-xs text-gray-400">状态</span>
+                    <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+                </div>
+                <div class="relative flex-1 min-w-0">
+                    <input type="text" placeholder="搜索名称/IP/国标编码" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-2 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                    <i class="fas fa-search absolute right-2.5 top-2 text-gray-500 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- 设备列表 -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-hide">
+                
+                <!-- 卡片 1 -->
+                <div class="bg-[#0d1117] border border-[#58a6ff] rounded-lg p-3 hover:border-[#58a6ff] transition-colors cursor-pointer relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-[#58a6ff]"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-video text-gray-400"></i>
+                            <span class="font-medium text-white text-sm">海康双光谱球机-北门</span>
+                        </div>
+                        <span class="text-xs text-[#3fb950] bg-[#2ea043]/10 px-2 py-0.5 rounded border border-[#2ea043]/30 flex items-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-400 space-y-1.5 mb-3">
+                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-300">192.168.1.105</span></div>
+                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-300 font-mono">44030000001320000001</span></div>
+                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-300">2</span></div>
+                    </div>
+                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
+                        <div class="flex space-x-2">
+                            <a href="camera-monitor.html?view=live" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] font-medium bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
+                                进入监控
+                            </a>
+                            <a href="camera-playback.html" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] font-medium bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
+                                录像回放
+                            </a>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 2 -->
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 hover:border-gray-500 transition-colors cursor-pointer">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-video text-gray-400"></i>
+                            <span class="font-medium text-white text-sm">大华枪机-东侧围墙</span>
+                        </div>
+                        <span class="text-xs text-[#3fb950] bg-[#2ea043]/10 px-2 py-0.5 rounded border border-[#2ea043]/30 flex items-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-400 space-y-1.5 mb-3">
+                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-300">10.242.40.11</span></div>
+                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-300 font-mono">44030000001310000002</span></div>
+                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-300">1</span></div>
+                    </div>
+                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
+                        <div class="flex space-x-2">
+                            <a href="camera-monitor.html?view=live" class="text-xs text-gray-400 hover:text-[#58a6ff] font-medium bg-[#252525] px-2 py-1 rounded border border-[#333] transition-colors">
+                                进入监控
+                            </a>
+                            <a href="camera-playback.html" class="text-xs text-gray-400 hover:text-[#58a6ff] font-medium bg-[#252525] px-2 py-1 rounded border border-[#333] transition-colors">
+                                录像回放
+                            </a>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 3 (离线) -->
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 hover:border-gray-500 transition-colors cursor-pointer opacity-75">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-video text-gray-500"></i>
+                            <span class="font-medium text-gray-300 text-sm">海康全景-料场全景</span>
+                        </div>
+                        <span class="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded border border-gray-600 flex items-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span> 离线
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500 space-y-1.5 mb-3">
+                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-400">192.168.1.108</span></div>
+                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-400 font-mono">44030000001320000005</span></div>
+                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-400">3</span></div>
+                    </div>
+                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
+                        <div class="flex space-x-2">
+                            <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="设备离线，无法播放实况">
+                                进入监控
+                            </button>
+                            <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="设备离线，无法拉取设备端录像">
+                                录像回放
+                            </button>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="text-xs text-gray-500 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- 卡片 4 (未注册) -->
+            <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 transition-colors cursor-default opacity-60">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-video text-gray-500"></i>
+                        <span class="font-medium text-gray-300 text-sm">大华球机-西门</span>
+                    </div>
+                    <span class="text-xs text-[#d29922] bg-[#d29922]/10 px-2 py-0.5 rounded border border-[#d29922]/30 flex items-center">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#d29922] mr-1.5"></span> 未注册
+                    </span>
+                </div>
+                <div class="text-xs text-gray-500 space-y-1.5 mb-3">
+                    <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-400">—</span></div>
+                    <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-400 font-mono">44030000001320000006</span></div>
+                    <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-400">—</span></div>
+                </div>
+                <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
+                    <div class="flex space-x-2">
+                        <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="未注册设备无法进入监控">
+                            进入监控
+                        </button>
+                        <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="未注册设备无法录像回放">
+                            录像回放
+                        </button>
+                    </div>
+                    <div class="flex items-center">
+                        <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center cursor-pointer" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </div>
+
+        <!-- 右侧地图区 -->
+        <div class="flex-1 map-bg relative">
+            <!-- 顶部操作栏 -->
+            <div class="absolute top-4 right-4 z-10">
+                <button class="bg-[#238636] hover:bg-[#2ea043] text-white text-sm px-4 py-2 rounded shadow-lg transition-colors" onclick="openGuideModal()">
+                    <i class="fas fa-book mr-1"></i> 摄像头接入指南
+                </button>
+            </div>
+
+            <!-- 地图控件 -->
+            <div class="absolute right-4 bottom-4 flex flex-col space-y-2 z-10">
+                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center mt-4">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
+                    <i class="fas fa-layer-group"></i>
+                </button>
+            </div>
+
+            <!-- 摄像头标记 1 (选中状态) -->
+            <div class="camera-marker" style="top: 45%; left: 50%;">
+                <div class="relative flex flex-col items-center">
+                        <!-- 气泡信息框 -->
+                        <div class="absolute bottom-full mb-2 w-56 bg-[#161b22] border border-[#58a6ff] rounded shadow-2xl p-2.5 z-20">
+                            <div class="text-sm font-medium text-white mb-1 truncate">海康双光谱球机-北门</div>
+                            <div class="text-xs text-gray-400 mb-2.5">状态: <span class="text-[#3fb950]">在线</span> | 通道: 2</div>
+                            <div class="flex justify-between items-center pt-2 border-t border-[#30363d]">
+                                <div class="flex space-x-2">
+                                    <a href="camera-monitor.html?view=live" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
+                                        进入监控
+                                    </a>
+                                    <a href="camera-playback.html" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
+                                        录像回放
+                                    </a>
+                                </div>
+                                <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                            </div>
+                            <!-- 气泡小尾巴 -->
+                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#58a6ff]"></div>
+                    </div>
+                    <!-- 图标 -->
+                    <div class="w-10 h-10 rounded-full bg-[#58a6ff]/20 border-2 border-[#58a6ff] flex items-center justify-center text-[#58a6ff] shadow-[0_0_15px_rgba(88,166,255,0.5)]">
+                        <i class="fas fa-video"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 摄像头标记 2 -->
+            <div class="camera-marker" style="top: 60%; left: 35%;">
+                <div class="relative flex flex-col items-center">
+                    <div class="w-8 h-8 rounded-full bg-[#161b22] border border-gray-400 flex items-center justify-center text-gray-300 shadow-lg hover:border-white hover:text-white transition-colors">
+                        <i class="fas fa-video text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部状态栏 -->
+            <div class="absolute bottom-0 left-0 right-0 h-6 bg-[#161b22]/80 backdrop-blur text-[10px] text-gray-400 flex items-center px-4 justify-between z-10">
+                <div class="flex space-x-4">
+                    <span>比例尺: 50m</span>
+                    <span>经度: 113.945231</span>
+                    <span>纬度: 22.573123</span>
+                </div>
+                <div>WGS84</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>
+
+    <!-- ============ 摄像头接入指南 Modal ============ -->
+    <div id="modal-guide-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[720px] h-[520px] flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
+                <div class="flex items-center space-x-3">
+                    <h3 class="text-base font-medium text-white">摄像头接入指南</h3>
+                    <button class="px-2 py-1 bg-[#21262d] text-gray-300 border border-[#30363d] rounded hover:bg-[#30363d] hover:text-white transition-colors text-xs flex items-center">
+                        <i class="fas fa-download mr-1.5 text-[10px]"></i> 下载
+                    </button>
+                </div>
+                <button onclick="closeGuideModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- 步骤条 -->
+            <div class="px-8 pt-5 pb-2 shrink-0">
+                <div class="flex items-center">
+                    <button id="guide-dot-1" onclick="switchGuideStep(1)" class="guide-dot w-6 h-6 rounded-full bg-[#1f6feb] text-white text-xs flex items-center justify-center">1</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-2" onclick="switchGuideStep(2)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">2</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-3" onclick="switchGuideStep(3)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">3</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-4" onclick="switchGuideStep(4)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">4</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-5" onclick="switchGuideStep(5)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">5</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-6" onclick="switchGuideStep(6)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">6</button>
+                    <div class="guide-line flex-1 h-px bg-[#30363d]"></div>
+                    <button id="guide-dot-7" onclick="switchGuideStep(7)" class="guide-dot w-6 h-6 rounded-full bg-[#30363d] text-gray-400 text-xs flex items-center justify-center">7</button>
+                </div>
+            </div>
+
+            <!-- 步骤内容 -->
+            <div class="flex-1 flex items-center justify-center px-12 py-6">
+                <div id="guide-step-1" class="guide-step text-center">
+                    <div class="text-sm text-white mb-6">进入全局设备管理的摄像头页</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex flex-col">
+                        <div class="h-10 border-b border-[#30363d] flex items-center justify-between px-4 text-xs">
+                            <span class="text-gray-400">全局首页</span>
+                            <span class="text-[#58a6ff]"><i class="fas fa-user-circle mr-1"></i>头像下拉 / 设备管理 / 摄像头</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center text-gray-500">
+                            <i class="fas fa-route text-4xl mr-4 text-[#58a6ff]"></i>
+                            <span class="text-left text-xs leading-6">从全局首页右上角头像/设置入口进入<br>平台级设备管理，并切换到摄像头(GB28181)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-2" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">新增摄像头并生成接入凭证</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加摄像头</span></div>
+                        <div class="space-y-2 text-xs text-gray-500">
+                            <div><span class="text-gray-300">1.</span> 录入设备名称、厂商、型号、安装位置</div>
+                            <div><span class="text-gray-300">2.</span> 保存后平台自动生成设备国标编码与接入密码</div>
+                            <div><span class="text-gray-300">3.</span> 可在摄像头详情的「国标配置」中查看凭证</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-3" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">登录摄像头厂商后台</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
+                        <div class="text-left text-xs text-gray-500 leading-7">
+                            <div class="text-gray-300 mb-2"><i class="fas fa-desktop mr-2 text-[#58a6ff]"></i>通过浏览器访问摄像头 Web 后台</div>
+                            <div>海康参考路径：配置 → 网络 → 高级配置 → 平台接入</div>
+                            <div>大华/宇视路径略有差异，但均需选择 GB28181/国标协议</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-4" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">在设备后台填写 GB28181 注册信息</div>
+                    <div class="mx-auto w-[520px] border border-[#30363d] rounded-lg bg-[#0d1117] overflow-hidden text-left">
+                        <table class="w-full text-xs">
+                            <thead class="bg-[#21262d] border-b border-[#30363d] text-gray-400">
+                                <tr>
+                                    <th class="py-2 px-4 font-normal text-left w-1/2">海康后台对应字段</th>
+                                    <th class="py-2 px-4 font-normal text-left border-l border-[#30363d] w-1/2">填入平台生成的凭证</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#30363d] text-gray-300">
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务器ID</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">SIP 服务器 ID</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务域</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] text-gray-400">(取 SIP 服务器 ID 前 10 位)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP服务器地址 / 端口</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">SIP 服务器 IP / Port</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP用户名 <span class="text-gray-500">与</span> SIP用户认证ID</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">设备国标编码</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-4 text-gray-300">SIP用户认证密码</td>
+                                    <td class="py-2 px-4 border-l border-[#30363d] font-mono text-[#58a6ff]">设备接入密码</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="guide-step-5" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">保存配置，等待设备注册上线</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
+                        <div class="text-center">
+                            <i class="fas fa-satellite-dish text-4xl text-[#3fb950] mb-4"></i>
+                            <div class="text-xs text-gray-500 leading-6">摄像头会主动向 HUB SIP 服务器注册<br>注册成功后平台状态从「未注册」变为「在线」</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-6" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">同步，设备进入设备池</div>
+                    <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-500 leading-7">
+                            <div><span class="text-gray-300">1.</span> 在摄像头详情或列表中点击「同步」</div>
+                            <div><span class="text-gray-300">2.</span> 平台向设备发起目录查询，拉取通道及设备状态</div>
+                            <div><span class="text-gray-300">3.</span> 设备留在设备池，所属项目显示为「-」（未分配）</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guide-step-7" class="guide-step text-center hidden">
+                    <div class="text-sm text-white mb-6">将摄像头分配至具体项目</div>
+                    <div class="mx-auto w-[480px] border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
+                        <div class="text-xs text-gray-400 mb-3">任选以下一种方式，将设备池中的摄像头领用至目标项目：</div>
+                        <div class="space-y-3 text-xs text-gray-500">
+                            <div class="border border-[#30363d] rounded p-3">
+                                <div class="text-gray-300 mb-1.5"><i class="fas fa-folder-open mr-2 text-[#58a6ff]"></i>方式一：项目编辑（推荐）</div>
+                                <div>全局首页 → 新增项目 / 编辑项目 → 项目设备 → <span class="text-[#58a6ff]">+ 添加设备</span>，从池中勾选摄像头</div>
+                            </div>
+                            <div class="border border-[#30363d] rounded p-3">
+                                <div class="text-gray-300 mb-1.5"><i class="fas fa-cogs mr-2 text-[#58a6ff]"></i>方式二：平台设备管理</div>
+                                <div>设备管理 → 摄像头列表 → 操作「修改项目」，选择目标项目或「暂不分配（留在设备池）」</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-[#3fb950] mt-3"><i class="fas fa-check-circle mr-1"></i>分配成功后，项目内可在「设备管理-摄像头」与「监控中心」使用该设备</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-[#30363d] flex justify-end space-x-2 shrink-0">
+                <button id="guide-prev-btn" onclick="prevGuideStep()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-1.5 rounded transition-colors border border-[#30363d] text-sm hidden">上一步</button>
+                <button id="guide-next-btn" onclick="nextGuideStep()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-4 py-1.5 rounded transition-colors text-sm">下一步</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toast 系统
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgColor = 'bg-[#1f6feb]/90 border-[#388bfd]';
+            let icon = 'fa-info-circle';
+            
+            if (type === 'success') {
+                bgColor = 'bg-[#238636]/90 border-[#2ea043]';
+                icon = 'fa-check-circle';
+            } else if (type === 'error') {
+                bgColor = 'bg-[#f85149]/90 border-[#ff6a69]';
+                icon = 'fa-exclamation-circle';
+            }
+            
+            toast.className = `flex items-center px-4 py-2 rounded text-white text-sm shadow-lg border ${bgColor} transform transition-all duration-300 translate-y-[-100%] opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i> ${message}`;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-y-[-100%]', 'opacity-0');
+            }, 10);
+            
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Modal 系统
+        function openModal(id) {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.querySelectorAll('#modal-overlay > div').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+        }
+
+        // 摄像头接入指南
+        let guideStep = 1;
+
+        function openGuideModal() {
+            document.getElementById('modal-guide-overlay').classList.remove('hidden');
+            switchGuideStep(1);
+        }
+
+        function closeGuideModal() {
+            document.getElementById('modal-guide-overlay').classList.add('hidden');
+        }
+
+        function switchGuideStep(step) {
+            guideStep = step;
+            for (let i = 1; i <= 7; i++) {
+                document.getElementById(`guide-step-${i}`).classList.toggle('hidden', i !== step);
+                const dot = document.getElementById(`guide-dot-${i}`);
+                dot.classList.toggle('bg-[#1f6feb]', i <= step);
+                dot.classList.toggle('text-white', i <= step);
+                dot.classList.toggle('bg-[#30363d]', i > step);
+                dot.classList.toggle('text-gray-400', i > step);
+            }
+            const nextBtn = document.getElementById('guide-next-btn');
+            nextBtn.innerText = step === 7 ? '完成' : '下一步';
+            const prevBtn = document.getElementById('guide-prev-btn');
+            if (prevBtn) {
+                prevBtn.classList.toggle('hidden', step === 1);
+            }
+        }
+
+        function nextGuideStep() {
+            if (guideStep < 7) {
+                switchGuideStep(guideStep + 1);
+            } else {
+                closeGuideModal();
+            }
+        }
+
+        function prevGuideStep() {
+            if (guideStep > 1) {
+                switchGuideStep(guideStep - 1);
+            }
+        }
+
+        // 业务交互
+        function syncChannel(btn) {
+            const icon = btn.querySelector('i');
+            icon.classList.add('fa-spin');
+            showToast('正在向设备发送目录查询指令...', 'info');
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                showToast('通道同步成功', 'success');
+            }, 1500);
+        }
+
+        function editDevice() {
+            openModal('modal-edit');
+        }
+
+        function saveEdit() {
+            closeModal();
+            showToast('设备信息保存成功', 'success');
+        }
+
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>

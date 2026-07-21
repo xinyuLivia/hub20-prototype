@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>告警详情原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgMain: '#0A0A0A',
+            bgPanel: '#141414',
+            borderDark: '#2A2A2A',
+            textMain: '#E0E0E0',
+            textSub: '#8C8C8C',
+            accent: '#1890FF', 
+            accentHover: '#40a9ff',
+            level1: '#F53F3F',
+            level2: '#FF7D00',
+            level3: '#F7BA1E',
+            tagBg1: 'rgba(245, 63, 63, 0.15)',
+            tagBg2: 'rgba(255, 125, 0, 0.15)',
+            tagBg3: 'rgba(247, 186, 30, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0A0A0A; color: #E0E0E0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 13px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    
+    .timeline-dot {
+      position: relative;
+    }
+    .timeline-dot::after {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 3px;
+      bottom: -16px;
+      width: 1px;
+      background-color: #2A2A2A;
+    }
+    .timeline-item:last-child .timeline-dot::after {
+      display: none;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- Toast Container -->
+  <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform -translate-y-full opacity-0">
+    <div class="bg-bgPanel border border-borderDark text-textMain px-4 py-2.5 rounded shadow-lg flex items-center gap-2">
+      <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+      <span id="toastMsg">操作成功</span>
+    </div>
+  </div>
+
+  <!-- Fullscreen Map Modal -->
+  <div id="mapModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex-col transition-opacity opacity-0">
+    <div class="h-12 border-b border-borderDark bg-[#1A1A1A] flex items-center justify-between px-6">
+      <div class="flex items-center gap-2 text-textMain font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        告警坐标
+      </div>
+      <button onclick="closeMapModal()" class="text-textSub hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="flex-1 bg-[#0a0a0a] relative overflow-hidden flex flex-col">
+      <div id="fullMapContainer" class="flex-1 w-full z-[1]"></div>
+      
+      <!-- Custom Controls (Zoom + Home) -->
+      <div class="absolute bottom-16 left-6 z-[500] flex flex-col gap-2">
+        <div class="bg-bgPanel/90 backdrop-blur-sm border border-borderDark rounded flex flex-col overflow-hidden shadow-lg">
+          <button onclick="fullMapInstance.zoomIn()" class="w-8 h-8 flex items-center justify-center text-textMain hover:bg-borderDark hover:text-white transition-colors border-b border-borderDark" title="放大">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          </button>
+          <button onclick="fullMapInstance.zoomOut()" class="w-8 h-8 flex items-center justify-center text-textMain hover:bg-borderDark hover:text-white transition-colors" title="缩小">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+          </button>
+        </div>
+        <div class="bg-bgPanel/90 backdrop-blur-sm border border-borderDark rounded overflow-hidden shadow-lg">
+          <button onclick="centerMap()" class="w-8 h-8 flex items-center justify-center text-textMain hover:bg-borderDark hover:text-white transition-colors" title="回到告警位置">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"></path></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Bottom Info Bar -->
+      <div class="h-12 w-full z-[500] bg-bgPanel/95 backdrop-blur-md border-t border-borderDark px-6 flex items-center shrink-0">
+        <div class="flex items-center gap-4">
+          <div class="text-textMain font-medium text-sm">34.21411016° N, 108.76242786° E</div>
+          <div class="w-px h-4 bg-borderDark"></div>
+          <div class="text-textSub text-[13px]">桩号区间: K2 - K3 | 巡检对象: 景区门口大道</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invalid Confirm Modal -->
+  <div id="invalidModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/60" onclick="closeInvalidModal()"></div>
+    <div class="relative bg-bgPanel border border-borderDark rounded-lg shadow-2xl w-[420px] p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-medium text-textMain">确认标记无效</h3>
+        <button onclick="closeInvalidModal()" class="text-textSub hover:text-textMain transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <p class="text-[13px] text-textSub leading-relaxed mb-6">您确定要将以下告警标记为无效吗？此操作无法撤销，标记为无效的告警将不再需要处理。</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeInvalidModal()" class="px-4 py-1.5 border border-borderDark rounded text-sm text-textMain hover:bg-borderDark transition-colors">取消</button>
+        <button onclick="confirmInvalid()" class="px-4 py-1.5 bg-level1 text-white rounded text-sm hover:opacity-90 transition-opacity font-medium">确认标记无效</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Process Alert Modal -->
+  <div id="processModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center transition-opacity opacity-0">
+    <div class="bg-[#1e1e1e] border border-borderDark rounded-lg w-[480px] shadow-2xl flex flex-col">
+      <div class="h-14 px-6 flex items-center justify-between border-b border-borderDark">
+        <h2 class="text-base font-medium text-textMain">告警处理</h2>
+        <button onclick="closeProcessModal()" class="text-textSub hover:text-white transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-6">
+        <div class="flex flex-col gap-2">
+          <label class="text-sm text-textSub flex items-center gap-1">处理结果 <span class="text-level1">*</span></label>
+          <textarea class="w-full bg-[#0a0a0a] border border-borderDark rounded px-3 py-2 text-sm text-textMain placeholder-textSub focus:outline-none focus:border-accent resize-none h-24" placeholder="请输入处理结果"></textarea>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm text-textSub">附件</label>
+          <div class="w-full bg-[#0a0a0a] border border-borderDark rounded px-3 py-2 text-sm flex items-center justify-between cursor-pointer hover:border-textSub transition-colors group">
+            <span class="text-textSub">请选择</span>
+            <span class="text-accent flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              上传
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="h-14 px-6 border-t border-borderDark flex items-center justify-end gap-3 bg-[#1A1A1A] rounded-b-lg">
+        <button onclick="closeProcessModal()" class="px-5 py-1.5 border border-borderDark text-textMain rounded hover:bg-borderDark transition-colors text-sm">取消</button>
+        <button onclick="submitProcessResult()" class="px-5 py-1.5 bg-accent text-white rounded hover:bg-accentHover shadow shadow-accent/20 transition-colors text-sm font-medium">提交处理结果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top header -->
+  <header class="h-[52px] shrink-0 border-b border-borderDark flex items-center justify-between px-6 bg-bgMain">
+    <div class="flex items-center gap-2 text-sm text-textSub">
+      <a href="alert-list.html" class="hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </a>
+      <span>项目首页</span>
+      <span>/</span> 
+      <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-textMain" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+              <span>告警中心</span>
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-bgPanel border border-borderDark rounded shadow-lg py-1">
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../drone-list.html'">设备管理</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../task-live.html'">任务实况</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../camera-monitor.html'">监控中心</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../task-list.html'">任务管理</div>
+                  <div class="px-4 py-2 bg-[rgba(24,144,255,0.1)] text-accent cursor-pointer" onclick="window.location.href='alert-list.html'">告警中心</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../resource-list.html'">资源库</div>
+                  <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-textSub" onclick="window.location.href='../workflow-list.html'">自动化工作流</div>
+              </div>
+          </div>
+      </div>
+      <span>/</span> 
+      <span class="text-textMain">告警详情</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="../project-home.html" class="text-textSub hover:text-white transition-colors" title="关闭">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Detail Header (Dynamic) -->
+  <div class="px-6 py-4 flex items-center justify-between border-b border-borderDark bg-bgMain shadow-sm shrink-0">
+    <div class="flex items-center gap-3" id="headerInfo">
+      <!-- Dynamic Content -->
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex gap-3" id="headerActions">
+        <!-- Dynamic Content -->
+      </div>
+      <div class="w-px h-5 bg-borderDark hidden" id="navDivider"></div>
+      <!-- Nav Actions (Prev/Next) -->
+      <div id="navActions" class="flex gap-2">
+        <!-- Dynamic Content -->
+      </div>
+    </div>
+  </div>
+
+    <!-- Content Grid -->
+  <div class="flex-1 overflow-hidden p-6 flex gap-4 bg-bgMain">
+    
+    <!-- Left Col (Image) -->
+    <div class="flex-1 bg-bgPanel border border-borderDark rounded flex flex-col relative overflow-hidden">
+      <div class="h-10 border-b border-borderDark flex items-center justify-between px-4 shrink-0 bg-[#1A1A1A]">
+        <div class="flex items-center gap-2 font-medium text-sm text-accent">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          告警图片
+        </div>
+        <div class="flex gap-4 text-xs text-textSub">
+          <button class="hover:text-textMain flex items-center gap-1 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 下载</button>
+        </div>
+      </div>
+      <div class="flex-1 p-4 flex items-center justify-center relative overflow-hidden bg-[#0a0a0a]">
+        <!-- Placeholder for image -->
+        <div id="mainImageBg" class="absolute inset-0 bg-cover bg-center opacity-80"></div>
+        
+        <!-- Bounding Box simulation -->
+        <div class="absolute border-2 border-level1 w-40 h-28 left-[30%] top-[40%] flex items-start">
+          <div id="imageTag" class="bg-level1 text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium flex items-center gap-1">
+            车辆违停 10.31
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Col -->
+    <div class="w-[500px] shrink-0 flex flex-col overflow-hidden border border-borderDark rounded bg-bgPanel">
+      
+      <!-- Tabs -->
+      <div class="flex border-b border-borderDark bg-[#1A1A1A] shrink-0 px-2" id="rightTabs">
+        <button onclick="switchTab('info')" id="tab-info" class="px-4 py-3 text-sm font-medium text-accent border-b-2 border-accent transition-colors">告警信息</button>
+        <button onclick="switchTab('process')" id="tab-process" class="px-4 py-3 text-sm font-medium text-textSub hover:text-textMain border-b-2 border-transparent transition-colors">处理记录</button>
+        <button onclick="switchTab('history')" id="tab-history" class="px-4 py-3 text-sm font-medium text-textSub hover:text-textMain border-b-2 border-transparent transition-colors">联动处置记录</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="flex-1 overflow-auto p-5 pb-8 relative">
+        
+        <!-- Tab 1: 告警信息 -->
+        <div id="tabContent-info" class="block space-y-6">
+          <div class="text-[13px] space-y-3.5" id="alertInfo">
+            <!-- Dynamic Content -->
+          </div>
+        </div>
+
+        <!-- Tab 2: 处理记录 -->
+        <div id="tabContent-process" class="hidden space-y-6">
+          
+          <!-- 确认信息 (Dynamic for 已确认 & 已处理) -->
+          <div id="confirmInfoContainer" class="hidden">
+            <h3 class="text-sm font-medium text-textSub mb-4 flex items-center gap-2">
+              <span class="w-1 h-3.5 bg-accent rounded-sm"></span>
+              告警确认
+            </h3>
+            <div class="text-[13px] space-y-4 px-3">
+              <div class="flex"><span class="text-textSub w-24">确认人</span><span class="text-textMain flex-1">王五 (A9012)</span></div>
+              <div class="flex"><span class="text-textSub w-24">确认时间</span><span class="text-textMain flex-1">2026-05-29 17:05:00</span></div>
+            </div>
+          </div>
+
+          <!-- 取消确认信息 (Dynamic) -->
+          <div id="cancelInfoContainer" class="hidden">
+            <h3 class="text-sm font-medium text-textSub mb-4 mt-6 flex items-center gap-2">
+              <span class="w-1 h-3.5 bg-textSub rounded-sm"></span>
+              告警取消确认
+            </h3>
+            <div class="text-[13px] space-y-4 px-3" id="cancelInfoContent">
+              <div class="flex"><span class="text-textSub w-24">取消人</span><span class="text-textMain flex-1">王五 (A9012)</span></div>
+              <div class="flex"><span class="text-textSub w-24">取消时间</span><span class="text-textMain flex-1">2026-05-29 17:20:00</span></div>
+            </div>
+          </div>
+
+          <!-- 处理结果 (Dynamic for ID 6) -->
+          <div id="processResultContainer" class="hidden">
+            <h3 class="text-sm font-medium text-textSub mb-4 mt-6 flex items-center gap-2">
+              <span class="w-1 h-3.5 bg-accent rounded-sm"></span>
+              告警处理
+            </h3>
+            <div class="text-[13px] space-y-4 px-3" id="processResultContent">
+              <div class="flex"><span class="text-textSub w-24">处理人</span><span class="text-textMain flex-1">张三 (A1234)</span></div>
+              <div class="flex"><span class="text-textSub w-24">处理时间</span><span class="text-textMain flex-1">2026-05-29 17:30:00</span></div>
+              <div class="flex flex-col gap-2 mt-2">
+                <span class="text-textSub">处理结果</span>
+                <div class="bg-[#1A1A1A] border border-borderDark rounded p-3 text-textMain min-h-[60px]">
+                  现场已确认情况，已通知相关人员进行清理，目前隐患已消除。
+                </div>
+              </div>
+              <div class="flex flex-col gap-2">
+                <span class="text-textSub">处理附件</span>
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between p-2.5 border border-borderDark bg-[#1A1A1A] rounded hover:border-textSub transition-colors cursor-pointer group">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-5 h-5 text-textSub group-hover:text-textMain transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                      <span class="text-textMain">处理现场确认单.pdf</span>
+                    </div>
+                    <svg class="w-4 h-4 text-textSub group-hover:text-textMain transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  </div>
+                  <div class="flex items-center justify-between p-2.5 border border-borderDark bg-[#1A1A1A] rounded hover:border-textSub transition-colors cursor-pointer group">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-5 h-5 text-textSub group-hover:text-textMain transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      <span class="text-textMain">现场照片_01.jpg</span>
+                    </div>
+                    <svg class="w-4 h-4 text-textSub group-hover:text-textMain transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 无效告警 (Dynamic for ID 7) -->
+          <div id="invalidReasonContainer" class="hidden">
+            <h3 class="text-sm font-medium text-textSub mb-4 flex items-center gap-2">
+              <span class="w-1 h-3.5 bg-accent rounded-sm"></span>
+              告警已标记无效
+            </h3>
+            <div class="text-[13px] space-y-4 px-3" id="invalidReasonContent">
+              <div class="flex"><span class="text-textSub w-24">标记人</span><span class="text-textMain flex-1">李四 (A5678)</span></div>
+              <div class="flex"><span class="text-textSub w-24">标记时间</span><span class="text-textMain flex-1">2026-05-29 17:00:10</span></div>
+            </div>
+          </div>
+
+          <!-- Empty State (Fallback for Process) -->
+          <div id="processEmptyState" class="flex flex-col items-center justify-center py-10 text-textSub">
+            <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            暂无处理记录
+          </div>
+
+        </div>
+
+        <!-- Tab 3: 联动处置记录 -->
+        <div id="tabContent-history" class="hidden space-y-6">
+
+          <!-- 处置历史 (Dynamic) -->
+          <div id="historyPanelContainer" class="hidden">
+            <div class="space-y-6" id="historyList">
+              <!-- Dynamic Content -->
+            </div>
+          </div>
+
+          <!-- Empty State (Fallback) -->
+          <div id="historyEmptyState" class="flex flex-col items-center justify-center py-10 text-textSub">
+            <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            暂无处置记录
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      
+      toast.classList.remove('-translate-y-full', 'opacity-0');
+      toast.classList.add('translate-y-4', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.add('-translate-y-full', 'opacity-0');
+        toast.classList.remove('translate-y-4', 'opacity-100');
+      }, 3000);
+    }
+
+    function openMapModal() {
+      const modal = document.getElementById('mapModal');
+      modal.classList.remove('hidden');
+      // small delay to allow display block to apply before transition
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+      }, 10);
+    }
+
+    function closeMapModal() {
+      const modal = document.getElementById('mapModal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 300);
+    }
+
+    function openProcessModal() {
+      const modal = document.getElementById('processModal');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+      }, 10);
+    }
+
+    function closeProcessModal() {
+      const modal = document.getElementById('processModal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 300);
+    }
+
+    function submitProcessResult() {
+      closeProcessModal();
+      showToast('告警处理结果已提交');
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      let id = urlParams.get('id') || '2';
+      
+      // Update data
+      let item = alerts.find(a => a.id === id);
+      if (item) {
+        item.status = '已处理';
+        
+        setTimeout(() => {
+           renderPage();
+        }, 500);
+      }
+    }
+
+    function confirmAlert() {
+      showToast('确认告警成功');
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      let id = urlParams.get('id') || '2';
+      
+      // Update data
+      let item = alerts.find(a => a.id === id);
+      if (item) {
+        item.status = '已确认';
+        // Add a mock history for the confirmation action if not already there
+        if (!mockHistories[id]) {
+          mockHistories[id] = [];
+        }
+        
+        setTimeout(() => {
+           renderPage();
+        }, 500);
+      }
+    }
+
+    function cancelConfirm() {
+      showToast('已取消确认，告警退回待确认');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let id = urlParams.get('id') || '2';
+
+      let item = alerts.find(a => a.id === id);
+      if (item) {
+        item.status = '待确认';
+        item.cancelInfo = { person: '王五 (A9012)', time: '2026-05-29 17:20:00' };
+
+        setTimeout(() => {
+           renderPage();
+        }, 500);
+      }
+    }
+
+    function markInvalid() {
+      const modal = document.getElementById('invalidModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeInvalidModal() {
+      const modal = document.getElementById('invalidModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function confirmInvalid() {
+      closeInvalidModal();
+      showToast('已标记为无效告警');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let id = urlParams.get('id') || '2';
+
+      let item = alerts.find(a => a.id === id);
+      if (item) {
+        item.status = '无效告警';
+        setTimeout(() => {
+           renderPage();
+        }, 500);
+      }
+    }
+
+    /** 模拟：按事件类型匹配已启用且勾选「告警触发」的最新工作流 */
+    function findRetryWorkflow(item) {
+      if (item.retryWorkflowAvailable === false) return null;
+      return { enabled: true, alertTrigger: true };
+    }
+
+    function handleRetry() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get('id') || '2';
+      const item = alerts.find(a => a.id === id);
+      if (!item) return;
+
+      if (!findRetryWorkflow(item)) {
+        showToast('未找到可用的自动化工作流配置，请检查配置后重试！');
+        return;
+      }
+
+      if (!confirm('将按工作流配置重新触发事件处置，是否确认？')) return;
+
+      item.eventStatus = '调度中';
+      item.status = '已确认';
+      showToast('重新处置触发成功，等待调度');
+      setTimeout(() => renderPage(), 500);
+    }
+
+    // --- Dynamic Data Logic ---
+    
+    // Exact same data from alert-list.html for consistency
+    const alerts = [
+      {
+        id: '1',
+        no: '20260601100406',
+        name: '行人闯入',
+        level: 3,
+        levelLabel: '三级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202606011...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-06-01 10:04:06'
+      },
+      {
+        id: '2',
+        no: '20260529165829',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '处置失败',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:29'
+      },
+      {
+        id: '3',
+        no: '20260529165827',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '待确认',
+        eventStatus: '已过期',
+        retryWorkflowAvailable: false,
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:27'
+      },
+      {
+        id: '4',
+        no: '20260529165826',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已确认',
+        eventStatus: '调度中',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:26'
+      },
+      {
+        id: '5',
+        no: '20260529165825',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已确认',
+        eventStatus: '处置完成',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:25'
+      },
+      {
+        id: '6',
+        no: '20260529165824',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '已处理',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:24'
+      },
+      {
+        id: '7',
+        no: '20260529165823',
+        name: '车辆违停',
+        level: 1,
+        levelLabel: '一级',
+        target: '景区门口大道',
+        img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1920&q=80',
+        task: '景区门口大道巡检任务202605291...',
+        channel: 'AI标注',
+        status: '无效告警',
+        eventStatus: '-',
+        reporter: '交通Agent',
+        time: '2026-05-29 16:58:23'
+      }
+    ];
+
+    // Mock history logic
+    const mockHistories = {
+      '2': [ // ID 2: 处置失败 (Multiple attempts)
+        {
+          status: '处置失败',
+          colorClass: 'text-level1',
+          bgClass: 'bg-[rgba(245,63,63,0.05)] border-level1/20',
+          dotClass: 'bg-level1 shadow-[0_0_0_3px_rgba(245,63,63,0.2)]',
+          time: '2026-05-29 10:15:22',
+          eventId: 'SJ202605290002',
+          triggerMethod: '重新处置触发',
+          isManualConfirmed: true,
+          hoverHeight: 20,
+          actions: '悬停等待→开始喊话→计时器（30s）→结束喊话→恢复原任务',
+          deviceSource: '另派设备',
+          deviceName: '真机Matrice 4TD_1581F8HG...',
+          taskName: '车辆违停事件联动临时任务20260529101522',
+          reason: '无人机设备已离线，无法到达目标点'
+        },
+        {
+          status: '处置失败',
+          colorClass: 'text-textSub',
+          bgClass: 'hover:bg-[#1A1A1A] border-borderDark',
+          dotClass: 'bg-textSub shadow-[0_0_0_3px_rgba(140,140,140,0.1)]',
+          time: '2026-05-29 09:57:08',
+          eventId: 'SJ202605290001',
+          triggerMethod: '告警触发',
+          isManualConfirmed: false,
+          hoverHeight: 20,
+          actions: '悬停等待→变焦拍照',
+          deviceSource: '当前设备',
+          deviceName: '真机Matrice 4TD_1581F8HG...',
+          taskName: '车辆违停事件联动临时任务20260529095708'
+        }
+      ],
+      '4': [ // ID 4: 调度中
+        {
+          status: '调度中',
+          colorClass: 'text-accent',
+          bgClass: 'bg-[rgba(24,144,255,0.05)] border-accent/20',
+          dotClass: 'bg-accent shadow-[0_0_0_3px_rgba(24,144,255,0.2)]',
+          time: '2026-05-29 16:59:10',
+          eventId: 'SJ202605290004',
+          triggerMethod: '告警触发',
+          isManualConfirmed: false,
+          deviceSource: '当前设备',
+          deviceName: '真机Matrice 4TD_1581F8HG...',
+          desc: '正在匹配可用设备...'
+        }
+      ],
+      '5': [ // ID 5: 处置完成
+        {
+          status: '处置完成',
+          colorClass: 'text-green-500',
+          bgClass: 'bg-[rgba(34,197,94,0.05)] border-green-500/20',
+          dotClass: 'bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.2)]',
+          time: '2026-05-29 17:15:00',
+          eventId: 'SJ202605290005',
+          triggerMethod: '告警触发',
+          isManualConfirmed: false,
+          hoverHeight: 30,
+          actions: '悬停等待→开始喊话→计时器（30s）→结束喊话→恢复原任务',
+          deviceSource: '另派设备',
+          deviceName: '真机Matrice 4TD_1581F8HG...',
+          taskName: '车辆违停事件联动临时任务20260529165825'
+        }
+      ],
+      '6': [ // ID 6: 已处理
+        {
+          status: '处置完成',
+          colorClass: 'text-green-500',
+          bgClass: 'bg-[rgba(34,197,94,0.05)] border-green-500/20',
+          dotClass: 'bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.2)]',
+          time: '2026-05-29 17:15:00',
+          eventId: 'SJ202605290006',
+          triggerMethod: '重新处置触发',
+          isManualConfirmed: true,
+          hoverHeight: 30,
+          actions: '悬停等待→变焦拍照',
+          deviceSource: '当前设备',
+          deviceName: '真机Matrice 4TD_1581F8HG...',
+          taskName: '车辆违停事件联动临时任务20260529165824'
+        }
+      ]
+    };
+
+    function getLevelClasses(level) {
+      if (level === 1) return 'border-level1/30 bg-tagBg1 text-level1';
+      if (level === 2) return 'border-level2/30 bg-tagBg2 text-level2';
+      return 'border-level3/30 bg-tagBg3 text-level3';
+    }
+
+    function getStatusDot(status) {
+      if (status === '待确认') return 'bg-level3';
+      if (status === '已确认') return 'bg-accent';
+      if (status === '已处理') return 'bg-textSub';
+      return 'bg-level1';
+    }
+
+    function getStatusColorClass(status) {
+      if (status === '待确认') return 'text-level3';
+      if (status === '已确认') return 'text-accent';
+      if (status === '已处理') return 'text-textSub';
+      return 'text-level1';
+    }
+
+    function renderPage() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let id = urlParams.get('id');
+      
+      // Default to ID 2 (which has 处置失败 history) if not found or invalid
+      let item = alerts.find(a => a.id === id);
+      if (!item) item = alerts.find(a => a.id === '2');
+
+      const currentIndex = alerts.findIndex(a => a.id === item.id);
+      const hasPrev = currentIndex > 0;
+      const hasNext = currentIndex < alerts.length - 1;
+      const prevId = hasPrev ? alerts[currentIndex - 1].id : null;
+      const nextId = hasNext ? alerts[currentIndex + 1].id : null;
+
+      document.getElementById('navActions').innerHTML = `
+        <button onclick="window.location.search='?id=${prevId}'" class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded border border-borderDark transition-colors text-[13px] ${hasPrev ? 'text-textMain hover:bg-borderDark hover:text-white cursor-pointer' : 'text-textSub opacity-50 cursor-not-allowed'}" ${!hasPrev ? 'disabled' : ''}>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+          上一条
+        </button>
+        <button onclick="window.location.search='?id=${nextId}'" class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded border border-borderDark transition-colors text-[13px] ${hasNext ? 'text-textMain hover:bg-borderDark hover:text-white cursor-pointer' : 'text-textSub opacity-50 cursor-not-allowed'}" ${!hasNext ? 'disabled' : ''}>
+          下一条
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+      `;
+      document.getElementById('navDivider').classList.remove('hidden');
+
+      // 1. Render Header Info
+      document.getElementById('headerInfo').innerHTML = `
+        <h1 class="text-lg font-medium">${item.task.replace('...', '')}</h1>
+        <span class="px-2 py-[1px] border ${getLevelClasses(item.level)} rounded text-xs ml-2">${item.levelLabel}</span>
+        <span class="text-xs bg-borderDark px-2 py-1 rounded text-textMain">${item.name}</span>
+        <span class="flex items-center gap-1.5 text-xs ml-2 ${getStatusColorClass(item.status)}"><span class="w-1.5 h-1.5 rounded-full ${getStatusDot(item.status)}"></span>${item.status}</span>
+      `;
+
+      // 2. Render Header Actions based on status
+      let actionsHTML = '';
+      if (item.status === '待确认') {
+        actionsHTML += `
+          <button onclick="markInvalid()" class="px-4 py-1.5 border border-borderDark rounded text-sm hover:bg-borderDark flex items-center gap-1 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            标记为无效
+          </button>
+          <button onclick="confirmAlert()" class="px-4 py-1.5 bg-bgPanel border border-accent text-accent rounded text-sm hover:bg-[rgba(24,144,255,0.15)] flex items-center gap-1 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            确认告警
+          </button>`;
+      } else if (item.status === '已确认') {
+        actionsHTML += `
+          <button onclick="cancelConfirm()" class="px-4 py-1.5 border border-borderDark rounded text-sm hover:bg-borderDark flex items-center gap-1 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a4 4 0 110 8h-1m-9-8l4-4m-4 4l4 4"></path></svg>
+            取消确认
+          </button>
+          <button onclick="showToast('消息推送成功')" class="px-4 py-1.5 bg-bgPanel border border-accent text-accent rounded text-sm hover:bg-[rgba(24,144,255,0.15)] flex items-center gap-1 transition-colors">
+            消息推送
+          </button>
+          <button onclick="openProcessModal()" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1">
+            处理告警
+          </button>`;
+      } else if (item.status === '已处理' || item.status === '无效告警') {
+        // No primary actions usually
+      }
+
+      // Add retry if condition matches
+      if (item.status === '待确认' && (item.eventStatus === '处置失败' || item.eventStatus === '已取消' || item.eventStatus === '已过期')) {
+        actionsHTML += `
+          <button onclick="handleRetry()" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            重新处置
+          </button>`;
+      }
+      document.getElementById('headerActions').innerHTML = actionsHTML;
+
+      // 3. Render Alert Info
+      document.getElementById('alertInfo').innerHTML = `
+        <div class="flex"><span class="text-textSub w-24">告警编号</span><span class="text-textMain flex-1">${item.no}</span></div>
+        <div class="flex"><span class="text-textSub w-24">告警名称</span><span class="text-textMain flex-1">${item.name}</span></div>
+        <div class="flex items-center"><span class="text-textSub w-24">告警等级</span><span class="flex-1"><span class="px-2 py-[1px] border ${getLevelClasses(item.level)} rounded text-xs">${item.levelLabel}</span></span></div>
+        <div class="flex"><span class="text-textSub w-24">告警坐标</span>
+          <div class="flex-1 flex flex-col gap-2">
+            <span class="text-textMain">34.21411016° N 108.76242786° E</span>
+            <!-- Map Mini View -->
+            <div class="h-28 w-full relative overflow-hidden rounded border border-borderDark/50 group">
+              <div id="miniMapContainer" class="w-full h-full z-[1]"></div>
+              <div class="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm z-[500]" onclick="openMapModal()">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex"><span class="text-textSub w-24">桩号区间</span><span class="text-textMain flex-1">K2 - K3</span></div>
+        <div class="flex"><span class="text-textSub w-24">巡检对象</span><span class="text-textMain flex-1">${item.target}</span></div>
+        <div class="flex"><span class="text-textSub w-24">所属任务</span><span class="text-accent cursor-pointer hover:underline flex-1 truncate" title="${item.task}">${item.task}</span></div>
+        <div class="flex"><span class="text-textSub w-24">告警渠道</span><span class="text-textMain flex-1">${item.channel}</span></div>
+        <div class="flex"><span class="text-textSub w-24">使用设备</span><span class="text-textMain flex-1">真机Matrice 4TD_1581F8HG...</span></div>
+        <div class="flex"><span class="text-textSub w-24">上报人</span><span class="text-textMain flex-1">${item.reporter}</span></div>
+        <div class="flex"><span class="text-textSub w-24">上报时间</span><span class="text-textMain flex-1">${item.time}</span></div>
+      `;
+
+      // Update Image
+      document.getElementById('mainImageBg').style.backgroundImage = `url('${item.img}')`;
+      document.getElementById('imageTag').innerHTML = `${item.name} 10.31`;
+      
+      // Update Image tag color based on level
+      if (item.level === 1) {
+         document.getElementById('imageTag').className = "bg-level1 text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium flex items-center gap-1";
+         document.getElementById('imageTag').parentElement.className = "absolute border-2 border-level1 w-40 h-28 left-[30%] top-[40%] flex items-start";
+      } else if (item.level === 2) {
+         document.getElementById('imageTag').className = "bg-level2 text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium flex items-center gap-1";
+         document.getElementById('imageTag').parentElement.className = "absolute border-2 border-level2 w-40 h-28 left-[30%] top-[40%] flex items-start";
+      } else {
+         document.getElementById('imageTag').className = "bg-level3 text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium flex items-center gap-1";
+         document.getElementById('imageTag').parentElement.className = "absolute border-2 border-level3 w-40 h-28 left-[30%] top-[40%] flex items-start";
+      }
+
+      // 4. Render History if exists
+      const hData = mockHistories[item.id];
+      if (hData && hData.length > 0) {
+        document.getElementById('historyPanelContainer').classList.remove('hidden');
+        document.getElementById('historyEmptyState').classList.add('hidden');
+        let hHtml = '';
+        hData.forEach(h => {
+          hHtml += `
+            <div class="flex gap-3 timeline-item group">
+              <div class="timeline-dot mt-1 w-2 h-2 rounded-full ${h.dotClass} shrink-0"></div>
+              <div class="flex-1 -mt-1.5 rounded p-3 border border-borderDark ${h.bgClass} transition-colors">
+                <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-borderDark/50">
+                  <span class="font-medium ${h.colorClass} flex items-center gap-1.5 text-[13px]">
+                    <span class="w-1.5 h-1.5 rounded-full ${h.colorClass.replace('text-', 'bg-')}"></span>${h.status}
+                  </span>
+                  <span class="text-xs text-textSub">${h.time}</span>
+                </div>
+                <div class="text-[13px] space-y-2">
+                  <div class="flex"><span class="text-textSub w-[68px]">事件ID</span><span class="text-accent cursor-pointer hover:underline font-medium">${h.eventId}</span></div>
+                  ${h.triggerMethod ? `<div class="flex"><span class="text-textSub w-[68px]">触发方式</span><span class="text-textMain bg-borderDark px-1.5 py-0.5 rounded text-xs">${h.triggerMethod}</span></div>` : ''}
+                  ${h.isManualConfirmed !== undefined ? `<div class="flex"><span class="text-textSub w-[68px]">人工确认</span><span class="text-textMain">${h.isManualConfirmed ? '需人工确认' : '无需人工确认'}</span></div>` : ''}
+                  ${h.deviceSource ? `<div class="flex"><span class="text-textSub w-[68px]">设备来源</span><span class="text-textMain">${h.deviceSource}</span></div>` : ''}
+                  ${h.deviceName ? `<div class="flex"><span class="text-textSub w-[68px]">使用设备</span><span class="text-textMain">${h.deviceName}</span></div>` : ''}
+                  ${h.reason ? `<div class="flex"><span class="text-textSub w-[68px]">失败原因</span><span class="text-textMain">${h.reason}</span></div>` : ''}
+                  ${h.desc ? `<div class="flex"><span class="text-textSub w-[68px]">当前状态</span><span class="text-textMain">${h.desc}</span></div>` : ''}
+                  ${h.taskName ? `
+                    <div class="flex items-center"><span class="text-textSub w-[68px]">处置任务</span>
+                      <span class="text-accent cursor-pointer hover:underline truncate flex-1 flex items-center gap-1" title="${h.taskName}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        ${h.taskName.length > 15 ? h.taskName.substring(0,15) + '...' : h.taskName}
+                      </span>
+                    </div>` : ''}
+                  ${h.hoverHeight ? `<div class="flex"><span class="text-textSub w-[68px]">悬停高度</span><span class="text-textMain">${h.hoverHeight} m</span></div>` : ''}
+                  ${h.actions ? `<div class="flex"><span class="text-textSub w-[68px]">处置动作</span><span class="text-textMain flex-1">${h.actions}</span></div>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        document.getElementById('historyList').innerHTML = hHtml;
+      } else {
+        document.getElementById('historyPanelContainer').classList.add('hidden');
+        document.getElementById('historyEmptyState').classList.remove('hidden');
+      }
+
+      // 5. Render Process Result
+      let hasProcess = false;
+      
+      if (item.status === '已确认' || item.status === '已处理') {
+        document.getElementById('confirmInfoContainer').classList.remove('hidden');
+        hasProcess = true;
+      } else {
+        document.getElementById('confirmInfoContainer').classList.add('hidden');
+      }
+
+      // 取消确认信息（退回待确认后仍保留记录）
+      if (item.cancelInfo) {
+        document.getElementById('cancelInfoContent').innerHTML = `
+          <div class="flex"><span class="text-textSub w-24">取消人</span><span class="text-textMain flex-1">${item.cancelInfo.person}</span></div>
+          <div class="flex"><span class="text-textSub w-24">取消时间</span><span class="text-textMain flex-1">${item.cancelInfo.time}</span></div>
+        `;
+        document.getElementById('cancelInfoContainer').classList.remove('hidden');
+        hasProcess = true;
+      } else {
+        document.getElementById('cancelInfoContainer').classList.add('hidden');
+      }
+
+      if (item.status === '已处理') {
+        document.getElementById('processResultContainer').classList.remove('hidden');
+        hasProcess = true;
+      } else {
+        document.getElementById('processResultContainer').classList.add('hidden');
+      }
+
+      // 6. Render Invalid Reason if 无效告警
+      if (item.status === '无效告警') {
+        document.getElementById('invalidReasonContainer').classList.remove('hidden');
+        hasProcess = true;
+      } else {
+        document.getElementById('invalidReasonContainer').classList.add('hidden');
+      }
+
+      if (hasProcess) {
+        document.getElementById('processEmptyState').classList.add('hidden');
+      } else {
+        document.getElementById('processEmptyState').classList.remove('hidden');
+      }
+
+      initMiniMap();
+    }
+
+    function switchTab(tabId) {
+      // Hide all contents
+      document.getElementById('tabContent-info').classList.add('hidden');
+      document.getElementById('tabContent-info').classList.remove('block');
+      document.getElementById('tabContent-process').classList.add('hidden');
+      document.getElementById('tabContent-process').classList.remove('block');
+      document.getElementById('tabContent-history').classList.add('hidden');
+      document.getElementById('tabContent-history').classList.remove('block');
+
+      // Reset tab styling
+      document.getElementById('tab-info').className = "px-4 py-3 text-sm font-medium text-textSub hover:text-textMain border-b-2 border-transparent transition-colors";
+      document.getElementById('tab-process').className = "px-4 py-3 text-sm font-medium text-textSub hover:text-textMain border-b-2 border-transparent transition-colors";
+      document.getElementById('tab-history').className = "px-4 py-3 text-sm font-medium text-textSub hover:text-textMain border-b-2 border-transparent transition-colors";
+
+      // Show selected content and activate tab styling
+      document.getElementById('tabContent-' + tabId).classList.remove('hidden');
+      document.getElementById('tabContent-' + tabId).classList.add('block');
+      document.getElementById('tab-' + tabId).className = "px-4 py-3 text-sm font-medium text-accent border-b-2 border-accent transition-colors";
+      
+      // Fix map rendering issue if tab is switched
+      if (tabId === 'info' && miniMapInstance) {
+        setTimeout(() => miniMapInstance.invalidateSize(), 50);
+      }
+    }
+
+    let miniMapInstance = null;
+    let fullMapInstance = null;
+
+    const markerHtml = `<svg class="w-8 h-8 text-level2 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24" style="margin-top:-32px;margin-left:-16px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"></path></svg>`;
+    const customIcon = L.divIcon({
+      html: markerHtml,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    });
+
+    let currentCenter = [34.214110, 108.762427];
+    // Mock flight path route
+    const flightPath = [
+      [34.215, 108.762],
+      [34.214, 108.762],
+      [34.214110, 108.762427],
+      [34.214, 108.764],
+      [34.212, 108.765]
+    ];
+
+    function centerMap() {
+      if (fullMapInstance) {
+        fullMapInstance.setView(currentCenter, 16, { animate: true });
+      }
+    }
+
+    function openMapModal() {
+      const modal = document.getElementById('mapModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+        
+        if (!fullMapInstance) {
+          fullMapInstance = L.map('fullMapContainer', {
+            zoomControl: false,
+            attributionControl: false
+          }).setView(currentCenter, 16);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+          }).addTo(fullMapInstance);
+          
+          // Draw flight path
+          L.polyline(flightPath, {
+            color: '#1890FF', 
+            weight: 3,
+            opacity: 0.8,
+            dashArray: '5, 8',
+            lineJoin: 'round'
+          }).addTo(fullMapInstance);
+          
+          L.marker(currentCenter, {icon: customIcon}).addTo(fullMapInstance);
+        }
+        
+        // Ensure the map resizes correctly after the modal animation completes
+        setTimeout(() => {
+          fullMapInstance.invalidateSize();
+          fullMapInstance.setView(currentCenter, 16, { animate: false });
+        }, 200);
+        
+      }, 10);
+    }
+
+    function closeMapModal() {
+      const modal = document.getElementById('mapModal');
+      modal.classList.remove('opacity-100');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 300);
+    }
+    
+    function initMiniMap() {
+      if (miniMapInstance) {
+        miniMapInstance.remove();
+      }
+      
+      const container = document.getElementById('miniMapContainer');
+      if (!container) return;
+      
+      miniMapInstance = L.map('miniMapContainer', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false
+      }).setView(currentCenter, 15);
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20
+      }).addTo(miniMapInstance);
+      
+      L.polyline(flightPath, {
+        color: '#1890FF', 
+        weight: 2,
+        opacity: 0.8,
+        dashArray: '3, 6',
+        lineJoin: 'round'
+      }).addTo(miniMapInstance);
+      
+      L.marker(currentCenter, {icon: customIcon}).addTo(miniMapInstance);
+    }
+
+    // Run on load
+    renderPage();
+  </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="../custom-select.js"></script>
+</body>
+</html>

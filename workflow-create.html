@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化工作流 - 新增配置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#141414',
+                            panel: '#1f1f1f',
+                            border: '#303030',
+                            text: '#e5e5e5',
+                            textSecondary: '#a6a6a6',
+                            primary: '#177ddc',
+                            primaryHover: '#1765ad'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #141414;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        }
+        
+        .top-nav {
+            height: 48px;
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #303030;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+
+        /* 侧边栏步骤条 */
+        .step-nav-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+        
+        .step-nav-item.active {
+            background: rgba(23, 125, 220, 0.1);
+            border-color: #177ddc;
+        }
+        
+        .step-nav-item.active .step-icon-bg {
+            background-color: #177ddc;
+        }
+        
+        .step-icon-bg {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background-color: #303030;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        .step-nav-item.active .step-icon-bg {
+            background-color: #177ddc;
+            color: white;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #177ddc;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-right: -12px;
+            z-index: 10;
+            border: 2px solid #1f1f1f;
+        }
+
+        .step-number-inactive {
+            background-color: #434343;
+        }
+
+        /* 自定义输入框和表单控件 */
+        .form-input {
+            background-color: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 4px;
+            padding: 6px 12px;
+            color: #e5e5e5;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #177ddc;
+        }
+
+        .radio-wrapper {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            margin-right: 24px;
+        }
+
+        .radio-custom {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #434343;
+            margin-right: 8px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radio-wrapper input[type="radio"] {
+            display: none;
+        }
+
+        .radio-wrapper input[type="radio"]:checked + .radio-custom {
+            border-color: #177ddc;
+        }
+
+        .radio-wrapper input[type="radio"]:checked + .radio-custom::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #177ddc;
+        }
+
+        .checkbox-wrapper {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            margin-right: 24px;
+        }
+
+        .checkbox-custom {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid #434343;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-custom {
+            background-color: #177ddc;
+            border-color: #177ddc;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-custom::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: white;
+            font-size: 10px;
+        }
+
+        .tag-select {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid #434343;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+
+        .tag-select i {
+            margin-left: 8px;
+            font-size: 10px;
+            color: #a6a6a6;
+            cursor: pointer;
+        }
+
+        .tag-select i:hover {
+            color: white;
+        }
+
+        /* 动作流区域样式 */
+        .action-list-container {
+            border-right: 1px solid #303030;
+            padding-right: 16px;
+        }
+
+        .action-item-box {
+            background-color: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .action-item-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .action-item-body {
+            padding: 0 16px 16px 16px;
+            border-top: 1px dashed #303030;
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+
+        .action-library-btn {
+            background: transparent;
+            border: 1px solid #303030;
+            color: #a6a6a6;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .action-library-btn:hover {
+            border-color: #177ddc;
+            color: #177ddc;
+        }
+
+        .map-preview {
+            width: 100%;
+            height: 180px;
+            background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=800');
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            border: 1px solid #303030;
+            position: relative;
+        }
+
+        .drone-graphic {
+            background: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 8px;
+            padding: 24px;
+            position: relative;
+        }
+        
+        /* 滚动条 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #434343;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="dark antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航栏 -->
+    <div class="top-nav shrink-0">
+        <div class="flex items-center text-sm text-dark-textSecondary gap-2">
+            <i class="fas fa-arrow-left cursor-pointer hover:text-white mr-2" onclick="window.location.href='workflow-list.html'"></i>
+            <span class="cursor-pointer hover:text-white" onclick="window.location.href='project-home.html'">项目首页</span>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-dark-textSecondary" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>自动化工作流</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-dark-panel border border-dark-border rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='alert/alert-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-dark-text" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 bg-[rgba(23,125,220,0.1)] text-dark-primary cursor-pointer" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+            <span>/</span>
+            <span class="text-dark-text">新增配置</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <i class="fas fa-times cursor-pointer text-dark-textSecondary hover:text-white text-lg transition-colors" onclick="window.location.href='project-home.html'" title="关闭"></i>
+        </div>
+    </div>
+
+    <!-- 主头部 -->
+    <div class="h-16 border-b border-dark-border flex items-center justify-between px-6 shrink-0 bg-dark-bg">
+        <div class="flex items-center gap-4">
+            <h1 class="text-lg font-medium text-white flex items-center gap-2">
+                自动化工作流20260112123 
+                <i class="fas fa-pen text-dark-textSecondary text-sm cursor-pointer hover:text-white"></i>
+            </h1>
+            <div class="text-xs text-dark-textSecondary ml-4 flex items-center gap-3">
+                <span id="deviceBadge" class="px-2 py-0.5 rounded border border-dark-primary text-dark-primary"><i class="fas fa-plane mr-1"></i>无人机</span>
+                <span>事件类型: 高速-行人闯入</span>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button class="px-4 py-1.5 border border-dark-border text-dark-text rounded text-sm hover:border-dark-textSecondary transition-colors" id="btnPrev" style="display: none;" onclick="prevStep()">
+                上一步
+            </button>
+            <button class="px-4 py-1.5 border border-dark-border text-dark-text rounded text-sm hover:border-dark-textSecondary transition-colors" onclick="alert('保存成功'); window.location.href='workflow-list.html'">
+                保存并退出
+            </button>
+            <button class="px-4 py-1.5 bg-dark-primary text-white rounded text-sm hover:bg-dark-primaryHover transition-colors" id="btnNext" onclick="nextStep()">
+                下一步
+            </button>
+        </div>
+    </div>
+
+    <!-- 左右分栏 -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- 左侧步骤导航 -->
+        <div class="w-64 border-r border-dark-border bg-dark-panel p-4 shrink-0 flex flex-col gap-2">
+            
+            <div class="flex items-center relative" onclick="goToStep(1)">
+                <div class="step-number" id="num-1">1</div>
+                <div class="step-nav-item active flex-1 ml-4" id="nav-1">
+                    <div class="step-icon-bg bg-[#177ddc]">
+                        <i class="fas fa-hand-pointer"></i>
+                    </div>
+                    <div>
+                        <div class="text-white text-sm font-medium">触发器</div>
+                        <div class="text-xs text-dark-textSecondary mt-0.5" id="desc-1">配置中</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center relative" onclick="goToStep(2)">
+                <div class="step-number step-number-inactive" id="num-2">2</div>
+                <div class="step-nav-item flex-1 ml-4" id="nav-2">
+                    <div class="step-icon-bg">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div>
+                        <div class="text-white text-sm font-medium">任务调度</div>
+                        <div class="text-xs text-dark-textSecondary mt-0.5" id="desc-2">未配置</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center relative" onclick="goToStep(3)">
+                <div class="step-number step-number-inactive" id="num-3">3</div>
+                <div class="step-nav-item flex-1 ml-4" id="nav-3">
+                    <div class="step-icon-bg">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div>
+                        <div class="text-white text-sm font-medium">处置动作</div>
+                        <div class="text-xs text-dark-textSecondary mt-0.5" id="desc-3">未配置</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="flex-1 bg-dark-bg p-8 overflow-y-auto custom-scrollbar">
+            
+            <!-- 步骤 1：触发器 -->
+            <div id="step-1-content" class="max-w-5xl mx-auto block">
+                <div class="text-sm text-dark-textSecondary mb-6">
+                    可通过触发器配置，配置触发事件类型、触发方式、执行设备、处置模式、是否需人工确认等信息
+                </div>
+
+                <!-- 触发事件 -->
+                <div class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6">
+                    <h3 class="text-white font-medium mb-4">触发事件</h3>
+                    <div class="flex items-center">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0">触发事件类型</span>
+                        <div class="relative min-w-[300px]">
+                            <select class="w-full bg-dark-bg border border-dark-border rounded text-sm text-dark-textSecondary pl-3 pr-8 py-2 appearance-none focus:outline-none focus:border-dark-primary" onchange="this.classList.toggle('text-dark-textSecondary', this.value===''); this.classList.toggle('text-white', this.value!=='');">
+                                <option value="" disabled selected hidden>请选择触发事件类型</option>
+                                <option value="" class="text-dark-textSecondary">请选择触发事件类型</option>
+                                <option value="1" class="text-white">高速-车辆违停</option>
+                                <option value="2" class="text-white">高速-行人闯入</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 触发方式 -->
+                <div class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6">
+                    <h3 class="text-white font-medium mb-2">触发方式</h3>
+                    <div class="text-xs text-dark-textSecondary mb-4 space-y-1">
+                        <div>告警触发：监控到对应类型的告警则触发工作流，或告警列表点击重新处置触发；</div>
+                        <div>手动触发：用户在作业地图页面右键选择对应菜单，手动触发工作流</div>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0">触发方式</span>
+                        <div class="flex items-center">
+                            <label class="checkbox-wrapper text-sm text-white" id="autoTriggerLabel">
+                                <input type="checkbox" id="autoTrigger" checked onchange="handleTriggerChange()">
+                                <span class="checkbox-custom"></span>
+                                告警触发
+                            </label>
+                            <label class="checkbox-wrapper text-sm text-white" id="manualTriggerLabel">
+                                <input type="checkbox" id="manualTrigger" onchange="handleTriggerChange()">
+                                <span class="checkbox-custom"></span>
+                                手动触发
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 手动触发菜单 -->
+                <div id="manualMenuSection" class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6 flex gap-8" style="display: none;">
+                    <div class="flex-1">
+                        <h3 class="text-white font-medium mb-2">手动触发菜单</h3>
+                        <div class="text-xs text-dark-textSecondary mb-6">
+                            可在地图上通过右键手动对某个地点触发当前任务，请填写菜单名称
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-dark-textSecondary text-sm w-32 shrink-0 pt-2">菜单名称</span>
+                            <div class="relative w-full max-w-sm">
+                                <input id="manualMenuName" type="text" maxlength="20" class="form-input pr-12" value="违停喊话" oninput="validateManualMenuName()">
+                                <span id="manualMenuCount" class="absolute right-3 top-2 text-xs text-dark-textSecondary">4/20</span>
+                                <div id="manualMenuError" class="text-xs text-[#ff4d4f] mt-1 hidden">此菜单名称已存在</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 预览图 -->
+                    <div class="w-80 shrink-0">
+                        <div class="map-preview">
+                            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                                <div class="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg mb-2 relative">
+                                    <div class="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                        右键点击，选择当前工作流菜单
+                                        <div class="absolute bottom-[-4px] left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-500"></div>
+                                    </div>
+                                </div>
+                                <div class="bg-[#2a2a2a] border border-[#434343] rounded shadow-xl overflow-hidden w-32">
+                                    <div class="px-3 py-1.5 text-xs text-dark-textSecondary border-b border-[#434343]">自动化工作流</div>
+                                    <div id="manualMenuPreview" class="px-3 py-2 text-sm text-white hover:bg-[#333] cursor-pointer">违停喊话</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 是否需人工确认 -->
+                <div id="manualConfirmCard" class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6">
+                    <h3 class="text-white font-medium mb-2">是否需人工确认</h3>
+                    <div class="text-xs text-dark-textSecondary mb-4">
+                        若需人工确认，将给通知对象发送人工确认消息，确认后才进行处置。若超时无人响应，则该事件进入已过期状态，触发失败。
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0">是否需人工确认</span>
+                        <div class="flex items-center">
+                            <label class="radio-wrapper text-sm text-white">
+                                <input type="radio" name="manualConfirm" value="无需人工确认" checked onchange="handleManualConfirmChange()">
+                                <span class="radio-custom"></span>
+                                无需人工确认
+                            </label>
+                            <label class="radio-wrapper text-sm text-white">
+                                <input type="radio" name="manualConfirm" value="需人工确认" onchange="handleManualConfirmChange()">
+                                <span class="radio-custom"></span>
+                                需人工确认
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 执行设备 -->
+                <div class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6">
+                    <h3 class="text-white font-medium mb-4">执行设备</h3>
+                    
+                    <div class="flex mb-4">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0 pt-1">默认设备来源</span>
+                        <div>
+                            <div class="flex items-center mb-3">
+                                <label class="radio-wrapper text-sm text-white" id="dispatchDeviceLabel">
+                                    <input type="radio" name="deviceSource" value="另派设备" checked onchange="handleDeviceSourceChange()">
+                                    <span class="radio-custom"></span>
+                                    另派设备
+                                </label>
+                                <label class="radio-wrapper text-sm text-white" id="currentDeviceLabel">
+                                    <input type="radio" name="deviceSource" value="当前设备" onchange="handleDeviceSourceChange()">
+                                    <span class="radio-custom"></span>
+                                    当前设备
+                                </label>
+                            </div>
+                            <div id="deviceSourceHint" class="hidden text-xs text-[#faad14] mb-3">手动触发默认采用「另派设备」</div>
+                            <div id="deviceSourceDesc" class="text-xs text-dark-textSecondary leading-relaxed bg-[rgba(255,255,255,0.02)] p-3 rounded space-y-1">
+                                <div><span class="text-white">另派设备：</span>告警触发时，自动派遣当前空闲且启用的多旋翼无人机进行处置；若无可用多旋翼无人机，超出失效时长后事件进入已过期状态，触发失败。</div>
+                                <div><span class="text-white">当前设备：</span>告警触发时，默认当前多旋翼无人机暂停巡检任务去处置。</div>
+                                <div class="pt-2 border-t border-[rgba(255,255,255,0.05)] mt-2 text-[#a6a6a6]">
+                                    注：手动触发与告警重新处置默认采用「另派设备」。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0 pt-2">设备匹配半径</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input id="matchRadiusInput" type="number" min="1" max="5" class="form-input w-48" value="3" oninput="validateRangeInput(this, 1, 5, 'matchRadiusError')">
+                                <span class="text-dark-textSecondary text-sm">km</span>
+                            </div>
+                            <div id="matchRadiusError" class="text-xs text-[#ff4d4f] mt-1 hidden">请输入1~5</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 处置模式（仅"当前设备"时展示） -->
+                <div id="dispatchModeCard" class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6" style="display:none;">
+                    <h3 class="text-white font-medium mb-2">处置模式</h3>
+                    <div class="text-xs text-dark-textSecondary mb-4">
+                        仅「当前设备」生效。决定当前设备暂停后，是人工接管操控，还是自动执行配置的调度与处置动作。
+                    </div>
+                    <div class="flex items-start">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0 pt-1">处置模式</span>
+                        <div>
+                            <div class="flex items-center mb-3">
+                                <label class="radio-wrapper text-sm text-white">
+                                    <input type="radio" name="dispatchMode" value="人工处置" checked onchange="handleDispatchModeChange()">
+                                    <span class="radio-custom"></span>
+                                    人工处置
+                                </label>
+                                <label class="radio-wrapper text-sm text-white">
+                                    <input type="radio" name="dispatchMode" value="自动处置" onchange="handleDispatchModeChange()">
+                                    <span class="radio-custom"></span>
+                                    自动处置
+                                </label>
+                            </div>
+                            <div class="text-xs text-dark-textSecondary leading-relaxed bg-[rgba(255,255,255,0.02)] p-3 rounded space-y-1">
+                                <div><span class="text-white">人工处置：</span>告警触发时，当前设备将暂停悬停，默认需人工确认，确认后人工接管进行处置。</div>
+                                <div><span class="text-white">自动处置：</span>告警触发时，当前设备将暂停悬停，若无需人工确认则自动执行后续配置的调度和处置动作；若需人工确认则确认后执行后续配置的调度和处置动作。</div>
+                            </div>
+
+                            <!-- 自动处置：是否需人工确认 -->
+                            <div id="autoConfirmSub" class="mt-4" style="display:none;">
+                                <div class="text-dark-textSecondary text-sm mb-2">是否需人工确认</div>
+                                <div class="flex items-center">
+                                    <label class="radio-wrapper text-sm text-white">
+                                        <input type="radio" name="currentConfirm" value="无需人工确认" checked onchange="handleManualConfirmChange()">
+                                        <span class="radio-custom"></span>
+                                        无需人工确认
+                                    </label>
+                                    <label class="radio-wrapper text-sm text-white">
+                                        <input type="radio" name="currentConfirm" value="需人工确认" onchange="handleManualConfirmChange()">
+                                        <span class="radio-custom"></span>
+                                        需人工确认
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 人工处置：固定需确认提示 -->
+                            <div id="manualModeHint" class="mt-4 text-xs text-[#faad14]">人工处置固定「需人工确认」，确认后进入人工接管进行处置。</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 其他信息 -->
+                <div class="bg-dark-panel border border-dark-border rounded-lg p-6">
+                    <h3 class="text-white font-medium mb-4">其他信息</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <span class="text-dark-textSecondary text-sm w-32 shrink-0 flex items-center gap-1 pt-2" title="以下场景系统将给通知对象发送系统消息：待人工确认、确认处置但未匹配到设备、事件开始处置通知">通知对象 <i class="fas fa-info-circle"></i></span>
+                            <div>
+                                <div class="flex items-center bg-dark-bg border border-dark-border rounded px-2 py-1.5 w-full max-w-md">
+                                    <span class="tag-select">张三 <i class="fas fa-times"></i></span>
+                                    <span class="tag-select">李四 <i class="fas fa-times"></i></span>
+                                    <i class="fas fa-chevron-down text-dark-textSecondary text-xs ml-auto cursor-pointer"></i>
+                                </div>
+                                <div class="text-xs text-dark-textSecondary mt-1">最多选择 20 个用户</div>
+                            </div>
+                        </div>
+                        <div id="manualConfirmTimeoutSection" class="flex items-start hidden">
+                            <span class="text-dark-textSecondary text-sm w-32 shrink-0 flex items-center gap-1 pt-2" title="若超出时长无人确认处置，则该事件进入已过期状态，触发失败">人工确认失效时长 <i class="fas fa-info-circle"></i></span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <input id="manualConfirmTimeoutInput" type="number" min="1" max="30" class="form-input w-48" value="3" oninput="validateManualConfirmTimeout()">
+                                    <span class="text-dark-textSecondary text-sm">分钟</span>
+                                </div>
+                                <div id="manualConfirmTimeoutError" class="text-xs text-[#ff4d4f] mt-1 hidden">请输入1~30</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-dark-textSecondary text-sm w-32 shrink-0 flex items-center gap-1 pt-2" title="若超出时长未匹配到设备，则该事件进入已过期状态，触发失败">设备匹配时效时长 <i class="fas fa-info-circle"></i></span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <input id="deviceMatchTimeoutInput" type="number" min="1" max="30" class="form-input w-48" value="3" oninput="validateRangeInput(this, 1, 30, 'deviceMatchTimeoutError')">
+                                    <span class="text-dark-textSecondary text-sm">分钟</span>
+                                </div>
+                                <div id="deviceMatchTimeoutError" class="text-xs text-[#ff4d4f] mt-1 hidden">请输入1~30</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 步骤 2：任务调度 -->
+            <div id="step-2-content" class="max-w-5xl mx-auto hidden">
+                <div class="text-sm text-dark-textSecondary mb-6">
+                    可通过任务调度配置，配置处置类型及对应飞行参数
+                </div>
+
+                <div class="bg-dark-panel border border-dark-border rounded-lg p-6 mb-6">
+                    <h3 class="text-white font-medium mb-4">处置类型</h3>
+                    <div class="flex items-center">
+                        <span class="text-dark-textSecondary text-sm w-32 shrink-0">处置类型</span>
+                        <div class="flex items-center gap-6">
+                            <label class="radio-wrapper text-sm text-white mr-0">
+                                <input type="radio" name="dispatchType" checked>
+                                <span class="radio-custom"></span>
+                                <span id="dt-1">飞往事件地址</span>
+                            </label>
+                            <label class="radio-wrapper text-sm text-white mr-0">
+                                <input type="radio" name="dispatchType">
+                                <span class="radio-custom"></span>
+                                <span id="dt-2">飞往巡检对象</span>
+                            </label>
+                            <label class="radio-wrapper text-sm text-white mr-0">
+                                <input type="radio" name="dispatchType">
+                                <span class="radio-custom"></span>
+                                <span id="dt-3">飞往图选区域</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="dispatchHint" class="text-xs text-dark-textSecondary mt-2 ml-32">
+                        当触发自动指令飞行时，飞机将执行飞往事件地址
+                    </div>
+                </div>
+
+                <!-- 机器狗：前往事件地址无参数 -->
+                <div id="dogNoParamNote" class="bg-dark-panel border border-dark-border rounded-lg p-6 hidden">
+                    <div class="flex items-start gap-3 text-sm text-dark-textSecondary">
+                        <i class="fas fa-circle-info text-dark-primary mt-0.5"></i>
+                        <div>地面机器狗的【前往事件地址】为单点导航前往事件地址附近，<span class="text-white">无需配置飞行参数</span>。</div>
+                    </div>
+                </div>
+
+                <div id="flightParamsArea" class="flex gap-6">
+                    <!-- 左侧参数 -->
+                    <div class="w-1/2">
+                        <h3 class="text-white font-medium mb-2">飞行参数</h3>
+                        <div class="text-xs text-dark-textSecondary mb-6">请参考右图设置相关飞行参数</div>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <div class="text-sm text-white mb-2">飞行速度 (5~15m/s)</div>
+                                <div class="relative">
+                                    <input type="text" class="form-input" value="5">
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-sm">m/s</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-white mb-2">目标点高度 (离地高度 20~120m)</div>
+                                <div class="relative">
+                                    <input type="text" class="form-input" value="30">
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-sm">m</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧配图 -->
+                    <div class="w-1/2">
+                        <div class="drone-graphic h-full flex flex-col justify-center">
+                            <h4 class="text-sm text-white mb-2">飞行参数</h4>
+                            <p class="text-xs text-dark-textSecondary mb-6 leading-relaxed">
+                                飞行器悬停抵达目标点高度，基于全球高程数据计算，可保存在复杂、多变情况安全飞行。
+                            </p>
+                            <!-- 使用切图 -->
+                            <div class="mt-4 flex justify-center">
+                                <img src="assets/drone-graphic.png" class="max-w-full h-auto" style="max-height: 200px;" alt="飞行参数示意图">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 步骤 3：处置动作 -->
+            <div id="step-3-content" class="max-w-7xl mx-auto hidden h-full flex flex-col">
+                <div class="text-sm text-dark-textSecondary mb-4 shrink-0">
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>可在该节点添加飞行器抵达指定位置/区域后的动作，添加的动作将顺序执行</li>
+                        <li>动作支持手动拖动排序</li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-6 flex-1 min-h-0">
+                    <!-- 左侧：动作流列表 -->
+                    <div class="w-1/2 action-list-container flex flex-col">
+                        <div class="flex items-center justify-between mb-4 shrink-0">
+                            <h3 class="text-white font-medium">处置动作</h3>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3" id="actionListContainer">
+                            
+                            <!-- 动作 1 -->
+                            <div class="action-item-box">
+                                <div class="action-item-header">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-grip-vertical text-dark-textSecondary hover:text-white cursor-move" title="拖动排序"></i>
+                                        <div class="text-sm text-white">悬停等待</div>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-dark-textSecondary">
+                                        <i class="far fa-trash-alt hover:text-white cursor-pointer"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 动作 2 -->
+                            <div class="action-item-box">
+                                <div class="action-item-header">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-grip-vertical text-dark-textSecondary hover:text-white cursor-move" title="拖动排序"></i>
+                                        <div class="text-sm text-white">看向目标点</div>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-dark-textSecondary">
+                                        <i class="far fa-trash-alt hover:text-white cursor-pointer"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 动作 3 (展开配置) -->
+                            <div class="action-item-box">
+                                <div class="action-item-header pb-0 border-none">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-grip-vertical text-dark-textSecondary hover:text-white cursor-move" title="拖动排序"></i>
+                                        <div class="text-sm text-white">开始喊话</div>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-dark-textSecondary">
+                                        <i class="far fa-trash-alt hover:text-white cursor-pointer"></i>
+                                    </div>
+                                </div>
+                                <div class="action-item-body">
+                                    <div class="text-xs text-dark-textSecondary mb-2">喊话文件</div>
+                                    <div class="flex items-center justify-between border border-[#177ddc] text-[#177ddc] bg-[rgba(23,125,220,0.05)] rounded px-3 py-1.5 text-sm cursor-pointer mb-4">
+                                        选择喊话文件
+                                        <i class="fas fa-chevron-right text-xs"></i>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-xs text-dark-textSecondary mb-2 mt-4">
+                                        <span>喊话音量</span>
+                                        <span>80</span>
+                                    </div>
+                                    <div class="relative flex items-center gap-3">
+                                        <i class="fas fa-volume-down text-dark-textSecondary text-xs"></i>
+                                        <input type="range" class="w-full h-1 rounded-lg appearance-none cursor-pointer accent-[#177ddc]" style="background: linear-gradient(to right, #177ddc 80%, #303030 80%);" min="0" max="100" value="80" oninput="this.parentElement.previousElementSibling.children[1].innerText = this.value; this.style.background = `linear-gradient(to right, #177ddc ${this.value}%, #303030 ${this.value}%)`;">
+                                        <i class="fas fa-volume-up text-dark-textSecondary text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 动作 4 -->
+                            <div class="action-item-box">
+                                <div class="action-item-header pb-0 border-none">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-grip-vertical text-dark-textSecondary hover:text-white cursor-move" title="拖动排序"></i>
+                                        <div class="text-sm text-white">变焦</div>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-dark-textSecondary">
+                                        <i class="far fa-trash-alt hover:text-white cursor-pointer"></i>
+                                    </div>
+                                </div>
+                                <div class="action-item-body">
+                                    <div class="text-xs text-dark-textSecondary mb-2">变焦倍数</div>
+                                    <div class="relative">
+                                        <input type="text" class="form-input" value="3">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs">x</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 动作 5 -->
+                            <div class="action-item-box">
+                                <div class="action-item-header pb-0 border-none">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-grip-vertical text-dark-textSecondary hover:text-white cursor-move" title="拖动排序"></i>
+                                        <div class="text-sm text-white">计时器</div>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-dark-textSecondary">
+                                        <i class="far fa-trash-alt hover:text-white cursor-pointer"></i>
+                                    </div>
+                                </div>
+                                <div class="action-item-body">
+                                    <div class="text-xs text-dark-textSecondary mb-2">计时器 (0~1800s)</div>
+                                    <div class="relative">
+                                        <input type="text" class="form-input" value="100">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-dark-textSecondary text-xs">s</span>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+
+                    <!-- 右侧：动作库 -->
+                    <div class="w-1/2 flex flex-col">
+                        <div class="flex items-center gap-6 mb-6 shrink-0 border-b border-dark-border">
+                            <h3 class="text-dark-textSecondary font-medium pb-2 cursor-pointer hover:text-white">动作模板</h3>
+                            <h3 class="text-dark-primary font-medium pb-2 border-b-2 border-dark-primary cursor-pointer">动作库</h3>
+                        </div>
+                        
+                        <!-- 无人机动作库 -->
+                        <div id="droneLibrary" class="flex-1 overflow-y-auto custom-scrollbar space-y-6">
+                            
+                            <!-- 摄像机动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">摄像机动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-camera"></i> 拍照</button>
+                                    <button class="action-library-btn"><i class="fas fa-search-plus"></i> 变焦</button>
+                                    <button class="action-library-btn"><i class="fas fa-video"></i> 开始录像</button>
+                                    <button class="action-library-btn"><i class="fas fa-video-slash"></i> 结束录像</button>
+                                    <button class="action-library-btn"><i class="fas fa-image"></i> 全景拍照</button>
+                                </div>
+                            </div>
+
+                            <!-- 喊话器动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">喊话器动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-bullhorn"></i> 开始喊话</button>
+                                    <button class="action-library-btn"><i class="fas fa-volume-mute"></i> 结束喊话</button>
+                                </div>
+                            </div>
+
+                            <!-- 云台动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">云台动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-eye"></i> 看向目标点</button>
+                                </div>
+                            </div>
+
+                            <!-- 飞行器动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">飞行器动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-sync"></i> 开始环绕</button>
+                                    <button class="action-library-btn"><i class="fas fa-stop-circle"></i> 结束环绕</button>
+                                    <button class="action-library-btn"><i class="fas fa-pause"></i> 悬停等待</button>
+                                </div>
+                            </div>
+
+                            <!-- 云端动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">云端动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-crosshairs"></i> 开始检测 <i class="fas fa-info-circle ml-auto"></i></button>
+                                    <button class="action-library-btn"><i class="fas fa-times-circle"></i> 结束检测 <i class="fas fa-info-circle ml-auto"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- 动作参数 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">动作参数</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-stopwatch"></i> 计时器 <i class="fas fa-info-circle ml-auto"></i></button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- 地面机器狗动作库（待拓普视确认动作与参数） -->
+                        <div id="dogLibrary" class="flex-1 overflow-y-auto custom-scrollbar space-y-6 hidden">
+                            <div class="text-xs text-[#faad14] bg-[rgba(250,173,20,0.08)] border border-[rgba(250,173,20,0.2)] rounded p-2">动作类型与参数待与拓普视确认</div>
+                            <!-- 摄像机动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">摄像机动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-camera"></i> 拍照</button>
+                                    <button class="action-library-btn"><i class="fas fa-video"></i> 开始录像</button>
+                                    <button class="action-library-btn"><i class="fas fa-video-slash"></i> 结束录像</button>
+                                </div>
+                            </div>
+                            <!-- 喊话器动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">喊话器动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-bullhorn"></i> 开始喊话</button>
+                                    <button class="action-library-btn"><i class="fas fa-volume-mute"></i> 结束喊话</button>
+                                </div>
+                            </div>
+                            <!-- 云台动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">云台动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-eye"></i> 云台环视</button>
+                                    <button class="action-library-btn"><i class="fas fa-arrows-up-down"></i> 云台升降</button>
+                                </div>
+                            </div>
+                            <!-- 本体动作 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">本体动作</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-rotate"></i> 本体旋转</button>
+                                    <button class="action-library-btn"><i class="fas fa-arrows-left-right"></i> 平移</button>
+                                </div>
+                            </div>
+                            <!-- 动作参数 -->
+                            <div>
+                                <h4 class="text-xs text-dark-textSecondary mb-3">动作参数</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button class="action-library-btn"><i class="fas fa-stopwatch"></i> 计时器 <i class="fas fa-info-circle ml-auto"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 简单的步骤切换逻辑 -->
+    <script>
+        let currentStep = 1;
+
+        function goToStep(step) {
+            // 隐藏所有步骤内容
+            document.getElementById('step-1-content').classList.add('hidden');
+            document.getElementById('step-2-content').classList.add('hidden');
+            document.getElementById('step-3-content').classList.add('hidden');
+            document.getElementById('step-1-content').classList.remove('block', 'flex');
+            document.getElementById('step-2-content').classList.remove('block', 'flex');
+            document.getElementById('step-3-content').classList.remove('block', 'flex');
+            
+            // 显示目标步骤内容
+            if (step === 3) {
+                document.getElementById(`step-${step}-content`).classList.remove('hidden');
+                // 添加 flex 确保步骤 3 的内部布局正常
+            } else {
+                document.getElementById(`step-${step}-content`).classList.remove('hidden');
+            }
+
+            // 更新左侧导航状态
+            for (let i = 1; i <= 3; i++) {
+                const nav = document.getElementById(`nav-${i}`);
+                const num = document.getElementById(`num-${i}`);
+                const desc = document.getElementById(`desc-${i}`);
+                
+                if (i === step) {
+                    nav.classList.add('active');
+                    num.classList.remove('step-number-inactive');
+                    desc.textContent = '配置中';
+                } else if (i < step) {
+                    nav.classList.remove('active');
+                    num.classList.remove('step-number-inactive');
+                    num.innerHTML = '<i class="fas fa-check text-[10px]"></i>';
+                    desc.textContent = '已配置';
+                } else {
+                    nav.classList.remove('active');
+                    num.classList.add('step-number-inactive');
+                    num.innerHTML = i;
+                    desc.textContent = '未配置';
+                }
+            }
+
+            // 更新底部按钮
+            document.getElementById('btnPrev').style.display = step === 1 ? 'none' : 'block';
+            document.getElementById('btnNext').textContent = step === 3 ? '提交并启用' : '下一步';
+            if(step === 3) {
+                document.getElementById('btnNext').classList.replace('bg-dark-primary', 'bg-blue-600');
+            } else {
+                document.getElementById('btnNext').classList.replace('bg-blue-600', 'bg-dark-primary');
+            }
+
+            currentStep = step;
+        }
+
+        function nextStep() {
+            if (currentStep < 3) {
+                goToStep(currentStep + 1);
+            } else {
+                alert('提交成功！');
+                window.location.href = 'workflow-list.html';
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        function setControlState(input, label, disabled, tooltip) {
+            input.disabled = disabled;
+            label.style.opacity = disabled ? '0.5' : '1';
+            label.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            label.title = disabled ? tooltip : '';
+        }
+
+        function handleTriggerChange() {
+            const autoTrigger = document.getElementById('autoTrigger');
+            const manualTrigger = document.getElementById('manualTrigger');
+            const autoLabel = document.getElementById('autoTriggerLabel');
+            const manualLabel = document.getElementById('manualTriggerLabel');
+
+            if (!autoTrigger.checked && !manualTrigger.checked) {
+                autoTrigger.checked = true;
+            }
+
+            const onlyAuto = autoTrigger.checked && !manualTrigger.checked;
+            const onlyManual = manualTrigger.checked && !autoTrigger.checked;
+            setControlState(autoTrigger, autoLabel, onlyAuto, '至少开启一种触发方式');
+            setControlState(manualTrigger, manualLabel, onlyManual, '至少开启一种触发方式');
+
+            document.getElementById('manualMenuSection').style.display = manualTrigger.checked ? 'flex' : 'none';
+            syncDeviceSourceLock();
+        }
+
+        function syncDeviceSourceLock() {
+            const autoTrigger = document.getElementById('autoTrigger');
+            const manualTrigger = document.getElementById('manualTrigger');
+            const dispatchDevice = document.querySelector('input[name="deviceSource"][value="另派设备"]');
+            const currentDevice = document.querySelector('input[name="deviceSource"][value="当前设备"]');
+            const dispatchLabel = document.getElementById('dispatchDeviceLabel');
+            const currentLabel = document.getElementById('currentDeviceLabel');
+            const onlyManual = manualTrigger.checked && !autoTrigger.checked;
+
+            if (onlyManual) {
+                dispatchDevice.checked = true;
+                setControlState(dispatchDevice, dispatchLabel, true, '手动触发默认采用「另派设备」');
+                setControlState(currentDevice, currentLabel, true, '手动触发默认采用「另派设备」');
+                document.getElementById('deviceSourceHint').classList.remove('hidden');
+            } else {
+                setControlState(dispatchDevice, dispatchLabel, false, '');
+                setControlState(currentDevice, currentLabel, false, '');
+                document.getElementById('deviceSourceHint').classList.add('hidden');
+            }
+
+            handleDeviceSourceChange();
+        }
+
+        function handleDeviceSourceChange() {
+            const isCurrentDevice = document.querySelector('input[name="deviceSource"][value="当前设备"]').checked;
+            // 另派设备：展示独立「是否需人工确认」卡片；当前设备：改由「处置模式」卡片决定
+            document.getElementById('manualConfirmCard').style.display = isCurrentDevice ? 'none' : 'block';
+            document.getElementById('dispatchModeCard').style.display = isCurrentDevice ? 'block' : 'none';
+            if (isCurrentDevice) {
+                handleDispatchModeChange();
+            } else {
+                handleManualConfirmChange();
+            }
+        }
+
+        // 处置模式切换：人工处置=固定需确认；自动处置=可配需/无需确认
+        function handleDispatchModeChange() {
+            const isManualMode = document.querySelector('input[name="dispatchMode"][value="人工处置"]').checked;
+            document.getElementById('autoConfirmSub').style.display = isManualMode ? 'none' : 'block';
+            document.getElementById('manualModeHint').style.display = isManualMode ? 'block' : 'none';
+            handleManualConfirmChange();
+        }
+
+        // 综合判断当前上下文是否需要人工确认
+        function computeNeedConfirm() {
+            const isCurrentDevice = document.querySelector('input[name="deviceSource"][value="当前设备"]').checked;
+            if (isCurrentDevice) {
+                const isManualMode = document.querySelector('input[name="dispatchMode"][value="人工处置"]').checked;
+                if (isManualMode) return true; // 人工处置固定需确认
+                return document.querySelector('input[name="currentConfirm"][value="需人工确认"]').checked;
+            }
+            return document.querySelector('input[name="manualConfirm"][value="需人工确认"]').checked;
+        }
+
+        function handleManualConfirmChange() {
+            const needConfirm = computeNeedConfirm();
+            const section = document.getElementById('manualConfirmTimeoutSection');
+            section.style.display = needConfirm ? 'flex' : 'none';
+            validateManualConfirmTimeout();
+        }
+
+        function validateManualMenuName() {
+            const input = document.getElementById('manualMenuName');
+            const count = document.getElementById('manualMenuCount');
+            const preview = document.getElementById('manualMenuPreview');
+            const error = document.getElementById('manualMenuError');
+            const existedNames = ['违停喊话', '行人闯入处置'];
+            count.innerText = `${input.value.length}/20`;
+            preview.innerText = input.value || '菜单名称';
+
+            const duplicated = existedNames.includes(input.value.trim());
+            input.style.borderColor = duplicated ? '#ff4d4f' : '#303030';
+            error.classList.toggle('hidden', !duplicated);
+        }
+
+        function validateRangeInput(input, min, max, errorId) {
+            const value = Number(input.value);
+            const invalid = !Number.isInteger(value) || value < min || value > max;
+            input.style.borderColor = invalid ? '#ff4d4f' : '#303030';
+            document.getElementById(errorId).classList.toggle('hidden', !invalid);
+        }
+
+        function validateManualConfirmTimeout() {
+            const input = document.getElementById('manualConfirmTimeoutInput');
+            const currentDevice = document.querySelector('input[name="deviceSource"][value="当前设备"]').checked;
+            const max = currentDevice ? 5 : 30;
+            document.getElementById('manualConfirmTimeoutError').innerText = `请输入1~${max}`;
+            validateRangeInput(input, 1, max, 'manualConfirmTimeoutError');
+        }
+
+        // 执行设备模式（无人机 / 地面机器狗），由 URL 参数 ?device=dog 决定
+        function applyDeviceMode(device) {
+            const isDog = device === 'dog';
+            // 头部设备标识
+            const badge = document.getElementById('deviceBadge');
+            badge.innerHTML = isDog ? '<i class="fas fa-robot mr-1"></i>地面机器狗' : '<i class="fas fa-plane mr-1"></i>无人机';
+            badge.classList.toggle('border-dark-primary', !isDog);
+            badge.classList.toggle('text-dark-primary', !isDog);
+            badge.classList.toggle('border-green-500', isDog);
+            badge.classList.toggle('text-green-400', isDog);
+
+            // 设备来源文案
+            document.getElementById('deviceSourceDesc').innerHTML = isDog
+                ? '<div><span class="text-white">另派设备：</span>告警触发时，自动派遣当前空闲且启用的地面机器狗进行处置；若无可用机器狗，超出失效时长后事件进入已过期状态，触发失败。</div>'
+                  + '<div><span class="text-white">当前设备：</span>告警触发时，默认当前机器狗暂停巡检任务去处置。</div>'
+                  + '<div class="pt-2 border-t border-[rgba(255,255,255,0.05)] mt-2 text-[#a6a6a6]">注：手动触发与告警重新处置默认采用「另派设备」。</div>'
+                : '<div><span class="text-white">另派设备：</span>告警触发时，自动派遣当前空闲且启用的多旋翼无人机进行处置；若无可用多旋翼无人机，超出失效时长后事件进入已过期状态，触发失败。</div>'
+                  + '<div><span class="text-white">当前设备：</span>告警触发时，默认当前多旋翼无人机暂停巡检任务去处置。</div>'
+                  + '<div class="pt-2 border-t border-[rgba(255,255,255,0.05)] mt-2 text-[#a6a6a6]">注：手动触发与告警重新处置默认采用「另派设备」。</div>';
+
+            // 处置类型文案（飞往→前往；图选区域→指定区域）
+            document.getElementById('dt-1').innerText = isDog ? '前往事件地址' : '飞往事件地址';
+            document.getElementById('dt-2').innerText = isDog ? '前往巡检对象' : '飞往巡检对象';
+            document.getElementById('dt-3').innerText = isDog ? '前往指定区域' : '飞往图选区域';
+            document.getElementById('dispatchHint').innerText = isDog
+                ? '当触发自动指令时，地面机器狗将单点导航前往事件地址附近'
+                : '当触发自动指令飞行时，飞机将执行飞往事件地址';
+
+            // 飞行参数区 vs 机器狗无参数提示
+            document.getElementById('flightParamsArea').classList.toggle('hidden', isDog);
+            document.getElementById('dogNoParamNote').classList.toggle('hidden', !isDog);
+
+            // 动作库切换
+            document.getElementById('droneLibrary').classList.toggle('hidden', isDog);
+            document.getElementById('dogLibrary').classList.toggle('hidden', !isDog);
+        }
+
+        function getDeviceParam() {
+            const m = window.location.search.match(/device=(\w+)/);
+            return m ? m[1] : 'drone';
+        }
+
+        // 初始化
+        goToStep(1);
+        handleTriggerChange();
+        validateManualMenuName();
+        validateRangeInput(document.getElementById('matchRadiusInput'), 1, 5, 'matchRadiusError');
+        validateRangeInput(document.getElementById('deviceMatchTimeoutInput'), 1, 30, 'deviceMatchTimeoutError');
+        applyDeviceMode(getDeviceParam());
+    </script>
+    
+    <!-- 引入 SortableJS 实现拖动排序 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var el = document.getElementById('actionListContainer');
+            if (el) {
+                new Sortable(el, {
+                    handle: '.cursor-move', // 指定拖动把手
+                    animation: 150, // 拖动动画时长
+                    ghostClass: 'opacity-50' // 拖动时的占位符样式
+                });
+            }
+        });
+    </script>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var dd = document.getElementById('breadcrumbDropdown');
+    var menu = document.getElementById('breadcrumbMenu');
+    if (!dd || !menu) return;
+    if (!dd.contains(e.target)) menu.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="custom-select.js"></script>
+</body>
+</html>
