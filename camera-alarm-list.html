@@ -168,15 +168,43 @@
         const camera = '海康双光谱球机-北门';
         const taskName = '翼飞事件联动处置临时任务2026-01-15-12:50:00';
 
+        // status = 告警状态（用于操作按钮逻辑）；disposals = 各执行设备的处置状态（可双路：无人机 + 地面机器人）
         const alerts = [
-            { id: 'A001', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', statusDot: 'bg-[#f85149]', action: '立即处置', task: '-', evidence: false },
-            { id: 'A002', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', statusDot: 'bg-[#f85149]', action: '立即处置', task: '-', evidence: false },
-            { id: 'A003', name: '行人闯入', channel: '通道2: 红外', level: 3, levelLabel: '三级', status: '处置中', statusDot: 'bg-[#58a6ff]', action: '', task: taskName, evidence: false },
-            { id: 'A004', name: '行人闯入', channel: '通道1: 可见光', level: 3, levelLabel: '三级', status: '处置中', statusDot: 'bg-[#58a6ff]', action: '', task: taskName, evidence: false },
-            { id: 'A005', name: '行人闯入', channel: '通道1: 可见光', level: 1, levelLabel: '一级', status: '已处置', statusDot: 'bg-[#3fb950]', action: '', task: taskName, evidence: true },
-            { id: 'A006', name: '行人闯入', channel: '通道2: 红外', level: 1, levelLabel: '一级', status: '已取消', statusDot: 'bg-gray-500', action: '重新处置', task: '-', evidence: false },
-            { id: 'A007', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '处置失败', statusDot: 'bg-[#f85149]', action: '重新处置', task: taskName, evidence: true },
+            { id: 'A001', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', action: '立即处置', task: '-', evidence: false, disposals: [] },
+            { id: 'A002', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', action: '立即处置', task: '-', evidence: false, disposals: [] },
+            { id: 'A003', name: '行人闯入', channel: '通道2: 红外', level: 3, levelLabel: '三级', status: '处置中', action: '', task: taskName, evidence: false, disposals: [ { type:'drone', status:'处置中' }, { type:'robot', status:'处置完成' } ] },
+            { id: 'A004', name: '行人闯入', channel: '通道1: 可见光', level: 3, levelLabel: '三级', status: '处置中', action: '', task: taskName, evidence: false, disposals: [ { type:'drone', status:'处置中' } ] },
+            { id: 'A005', name: '行人闯入', channel: '通道1: 可见光', level: 1, levelLabel: '一级', status: '已处置', action: '', task: taskName, evidence: true, disposals: [ { type:'drone', status:'处置完成' }, { type:'robot', status:'处置完成' } ] },
+            { id: 'A006', name: '行人闯入', channel: '通道2: 红外', level: 1, levelLabel: '一级', status: '已取消', action: '', task: '-', evidence: false, disposals: [ { type:'drone', status:'已取消' } ] },
+            { id: 'A007', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '处置失败', action: '', task: taskName, evidence: true, disposals: [ { type:'drone', status:'处置失败' }, { type:'robot', status:'已取消' } ] },
         ];
+
+        const RETRYABLE_STATUSES = ['处置失败', '已取消', '已过期'];
+
+        // 处置状态标签配色（事件状态 7 态）
+        function disposalStatusClass(status) {
+            if (status === '处置失败' || status === '已过期' || status === '已取消') return 'border border-[#f85149]/40 bg-[#f85149]/12 text-[#f85149]';
+            if (status === '调度中' || status === '处置中' || status === '待处置') return 'border border-[#58a6ff]/40 bg-[#58a6ff]/12 text-[#58a6ff]';
+            if (status === '处置完成' || status === '已处置') return 'border border-[#3fb950]/40 bg-[#3fb950]/12 text-[#3fb950]';
+            return 'border border-[#333] bg-[#2d2d2d]/60 text-gray-400';
+        }
+        function deviceTypeIcon(type) {
+            return type === 'robot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-helicopter"></i>';
+        }
+        // 处置状态列：按执行设备分别展示状态标签；无触发显示「-」
+        function disposalChips(a) {
+            const list = a.disposals || [];
+            if (!list.length) return '<span class="text-gray-500">-</span>';
+            const label = { drone: '无人机', robot: '地面机器人' };
+            return `<div class="flex flex-col gap-1">` + list.map(d =>
+                `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] w-fit ${disposalStatusClass(d.status)}">${deviceTypeIcon(d.type)}<span>${label[d.type] || '无人机'}·${d.status}</span></span>`
+            ).join('') + `</div>`;
+        }
+
+        function canRetryDevice(a, type) {
+            const hit = (a.disposals || []).find(d => d.type === type);
+            return hit && RETRYABLE_STATUSES.includes(hit.status);
+        }
 
         let currentDetailAlarmId = '';
 
@@ -213,12 +241,25 @@
             location.href = `camera-playback.html?alarm=${currentDetailAlarmId}`;
         }
 
-        function handleDispose(action) {
+        function handleDispose(action, id) {
             if (action === '立即处置') {
                 showToast('未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试');
-            } else if (action === '重新处置') {
-                showToast('提交成功');
             }
+        }
+
+        function handleRetry(id, deviceType) {
+            const a = alerts.find(x => x.id === id);
+            if (!a) return;
+            const typeLabel = deviceType === 'robot' ? '地面机器人' : '无人机';
+            if (!confirm(`将按${typeLabel}工作流配置重新触发事件处置，是否确认？`)) return;
+            if (!a.disposals) a.disposals = [];
+            const hit = a.disposals.find(d => d.type === deviceType);
+            if (hit) hit.status = '处置中';
+            else a.disposals.push({ type: deviceType, status: '处置中' });
+            a.status = '处置中';
+            a.action = '';
+            showToast(`${typeLabel}重新派发提交成功，等待调度`);
+            renderList();
         }
 
         function levelClass(level) {
@@ -232,36 +273,48 @@
         }
 
         function renderActions(a) {
-            let html = `<button class="text-[#58a6ff] hover:underline text-xs mr-3" onclick="openAlarmDetail('${a.id}')">查看告警</button>`;
-            if (a.action) {
-                html += `<button class="text-[#58a6ff] hover:underline text-xs" onclick="handleDispose('${a.action}')">${a.action}</button>`;
+            let primary = `<button class="text-[#58a6ff] hover:underline text-xs" onclick="location.href='camera-alarm-detail.html?id=${a.id}'">查看告警</button>`;
+            if (a.action === '立即处置') {
+                primary += `<button class="text-[#58a6ff] hover:underline text-xs" onclick="handleDispose('立即处置', '${a.id}')">立即处置</button>`;
             }
-            return html;
+            let retries = [];
+            if (canRetryDevice(a, 'drone')) {
+                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'drone')">重新派发无人机</button>`);
+            }
+            if (canRetryDevice(a, 'robot')) {
+                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'robot')">重新派发地面机器人</button>`);
+            }
+            return `<div class="flex flex-col gap-1.5 items-start">
+                <div class="flex items-center gap-3">${primary}</div>
+                ${retries.length ? `<div class="flex flex-col gap-1">${retries.join('')}</div>` : ''}
+            </div>`;
         }
 
-        document.getElementById('alarmBody').innerHTML = alerts.map(a => `
-            <tr class="hover:bg-[#1a1a1a] transition-colors group">
-                <td class="py-3 px-2 font-mono text-gray-400">${a.id}</td>
-                <td class="py-3 px-2 text-white font-medium">${a.name}</td>
-                <td class="py-3 px-2 text-gray-300 whitespace-nowrap">${camera}</td>
-                <td class="py-3 px-2">${thumb(`location.href='camera-playback.html?alarm=${a.id}'`)}</td>
-                <td class="py-3 px-2 text-gray-400 text-xs whitespace-nowrap">${coord}</td>
-                <td class="py-3 px-2 text-gray-400 whitespace-nowrap">2023-07-10 15:30</td>
-                <td class="py-3 px-2"><span class="px-2 py-0.5 rounded text-xs ${levelClass(a.level)}">${a.levelLabel}</span></td>
-                <td class="py-3 px-2">
-                    <span class="flex items-center gap-1.5 text-gray-200" ${a.status === '待处置' ? 'title="未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试"' : ''}>
-                        <span class="w-1.5 h-1.5 rounded-full ${a.statusDot}"></span>${a.status}
-                    </span>
-                </td>
-                <td class="py-3 px-2 whitespace-nowrap">${renderActions(a)}</td>
-                <td class="py-3 px-2 max-w-[200px]">
-                    ${a.task === '-' ? '<span class="text-gray-500">-</span>' : `<a href="#" class="text-[#58a6ff] hover:underline truncate block" title="${a.task}">${a.task}</a>`}
-                </td>
-                <td class="py-3 px-2">
-                    ${a.evidence ? thumb(`location.href='camera-playback.html?alarm=${a.id}&evidence=1'`) : '<span class="text-gray-500">-</span>'}
-                </td>
-            </tr>
-        `).join('');
+        function renderList() {
+            document.getElementById('alarmBody').innerHTML = alerts.map(a => `
+                <tr class="hover:bg-[#1a1a1a] transition-colors group">
+                    <td class="py-3 px-2 font-mono text-gray-400">${a.id}</td>
+                    <td class="py-3 px-2 text-white font-medium">${a.name}</td>
+                    <td class="py-3 px-2 text-gray-300 whitespace-nowrap">${camera}</td>
+                    <td class="py-3 px-2">${thumb(`location.href='camera-playback.html?alarm=${a.id}'`)}</td>
+                    <td class="py-3 px-2 text-gray-400 text-xs whitespace-nowrap">${coord}</td>
+                    <td class="py-3 px-2 text-gray-400 whitespace-nowrap">2023-07-10 15:30</td>
+                    <td class="py-3 px-2"><span class="px-2 py-0.5 rounded text-xs ${levelClass(a.level)}">${a.levelLabel}</span></td>
+                    <td class="py-3 px-2" ${(a.disposals || []).length === 0 && a.status === '待处置' ? 'title="未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试"' : ''}>
+                        ${disposalChips(a)}
+                    </td>
+                    <td class="py-3 px-2">${renderActions(a)}</td>
+                    <td class="py-3 px-2 max-w-[200px]">
+                        ${a.task === '-' ? '<span class="text-gray-500">-</span>' : `<a href="#" class="text-[#58a6ff] hover:underline truncate block" title="${a.task}">${a.task}</a>`}
+                    </td>
+                    <td class="py-3 px-2">
+                        ${a.evidence ? thumb(`location.href='camera-playback.html?alarm=${a.id}&evidence=1'`) : '<span class="text-gray-500">-</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        renderList();
     </script>
 
 <script>

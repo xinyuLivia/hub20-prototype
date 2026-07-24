@@ -494,28 +494,49 @@
       }
     }
 
-    /** 模拟：按事件类型匹配已启用且勾选「告警触发」的最新工作流 */
-    function findRetryWorkflow(item) {
+    /** 模拟：按事件类型 + 执行设备类型匹配已启用且勾选「告警触发」的最新工作流 */
+    function findRetryWorkflow(item, deviceType) {
       if (item.retryWorkflowAvailable === false) return null;
-      return { enabled: true, alertTrigger: true };
+      return { enabled: true, alertTrigger: true, deviceType };
     }
 
-    function handleRetry() {
+    const RETRYABLE_STATUSES = ['处置失败', '已取消', '已过期'];
+
+    function getDisposalStatus(item, type) {
+      const list = item.disposals;
+      if (list && list.length) {
+        const hit = list.find(d => d.type === type);
+        return hit ? hit.status : null;
+      }
+      if (type === 'drone' && item.eventStatus && item.eventStatus !== '-') return item.eventStatus;
+      return null;
+    }
+
+    function canRetryDevice(item, type) {
+      return RETRYABLE_STATUSES.includes(getDisposalStatus(item, type));
+    }
+
+    function handleRetry(deviceType) {
       const urlParams = new URLSearchParams(window.location.search);
       const id = urlParams.get('id') || '2';
       const item = alerts.find(a => a.id === id);
       if (!item) return;
+      const typeLabel = deviceType === 'robot' ? '地面机器人' : '无人机';
 
-      if (!findRetryWorkflow(item)) {
-        showToast('未找到可用的自动化工作流配置，请检查配置后重试！');
+      if (!findRetryWorkflow(item, deviceType)) {
+        showToast(`未找到可用的${typeLabel}处置工作流配置，请检查配置后重试！`);
         return;
       }
 
-      if (!confirm('将按工作流配置重新触发事件处置，是否确认？')) return;
+      if (!confirm(`将按${typeLabel}工作流配置重新触发事件处置，是否确认？`)) return;
 
+      if (!item.disposals) item.disposals = [];
+      const hit = item.disposals.find(d => d.type === deviceType);
+      if (hit) hit.status = '调度中';
+      else item.disposals.push({ type: deviceType, status: '调度中' });
       item.eventStatus = '调度中';
-      item.status = '已确认';
-      showToast('重新处置触发成功，等待调度');
+      if (item.status === '待确认') item.status = '已确认';
+      showToast(`${typeLabel}重新派发触发成功，等待调度`);
       setTimeout(() => renderPage(), 500);
     }
 
@@ -550,6 +571,10 @@
         channel: 'AI标注',
         status: '待确认',
         eventStatus: '处置失败',
+        disposals: [
+          { type: 'drone', status: '处置失败' },
+          { type: 'robot', status: '已取消' }
+        ],
         reporter: '交通Agent',
         time: '2026-05-29 16:58:29'
       },
@@ -565,6 +590,9 @@
         channel: 'AI标注',
         status: '待确认',
         eventStatus: '已过期',
+        disposals: [
+          { type: 'drone', status: '已过期' }
+        ],
         retryWorkflowAvailable: false,
         reporter: '交通Agent',
         time: '2026-05-29 16:58:27'
@@ -581,6 +609,9 @@
         channel: 'AI标注',
         status: '已确认',
         eventStatus: '调度中',
+        disposals: [
+          { type: 'drone', status: '调度中' }
+        ],
         reporter: '交通Agent',
         time: '2026-05-29 16:58:26'
       },
@@ -596,6 +627,10 @@
         channel: 'AI标注',
         status: '已确认',
         eventStatus: '处置完成',
+        disposals: [
+          { type: 'drone', status: '处置完成' },
+          { type: 'robot', status: '处置完成' }
+        ],
         reporter: '交通Agent',
         time: '2026-05-29 16:58:25'
       },
@@ -632,9 +667,29 @@
     ];
 
     // Mock history logic
+    // 说明：一条告警可同时触发「无人机处置」与「地面机器人处置」，形成多条处置记录。
+    // 时间线按时间倒序混排，每条记录用 deviceType 区分执行设备（drone=无人机 / robot=地面机器人）。
     const mockHistories = {
-      '2': [ // ID 2: 处置失败 (Multiple attempts)
+      '2': [ // ID 2: 双处置示例（无人机多次失败 + 地面机器人已取消）→ 可分别重新派发
         {
+          deviceType: 'robot',
+          status: '已取消',
+          colorClass: 'text-textSub',
+          bgClass: 'hover:bg-[#1A1A1A] border-borderDark',
+          dotClass: 'bg-textSub shadow-[0_0_0_3px_rgba(140,140,140,0.1)]',
+          time: '2026-05-29 10:20:05',
+          eventId: 'SJ202605290003',
+          triggerMethod: '告警触发',
+          isManualConfirmed: true,
+          deviceSource: '另派设备',
+          deviceName: '机器狗 Go2-Pro_DOG0311...',
+          arrival: '单点导航前往事件地址',
+          actions: '出发→单点导航→抵达喊话→计时器（60s）→回充',
+          taskName: '车辆违停事件联动临时任务20260529102005',
+          reason: '人工确认超时，事件已取消'
+        },
+        {
+          deviceType: 'drone',
           status: '处置失败',
           colorClass: 'text-level1',
           bgClass: 'bg-[rgba(245,63,63,0.05)] border-level1/20',
@@ -651,6 +706,7 @@
           reason: '无人机设备已离线，无法到达目标点'
         },
         {
+          deviceType: 'drone',
           status: '处置失败',
           colorClass: 'text-textSub',
           bgClass: 'hover:bg-[#1A1A1A] border-borderDark',
@@ -666,8 +722,9 @@
           taskName: '车辆违停事件联动临时任务20260529095708'
         }
       ],
-      '4': [ // ID 4: 调度中
+      '4': [ // ID 4: 调度中（仅无人机处置）
         {
+          deviceType: 'drone',
           status: '调度中',
           colorClass: 'text-accent',
           bgClass: 'bg-[rgba(24,144,255,0.05)] border-accent/20',
@@ -681,8 +738,25 @@
           desc: '正在匹配可用设备...'
         }
       ],
-      '5': [ // ID 5: 处置完成
+      '5': [ // ID 5: 双处置示例（无人机处置完成 + 地面机器人处置完成）
         {
+          deviceType: 'robot',
+          status: '处置完成',
+          colorClass: 'text-green-500',
+          bgClass: 'bg-[rgba(34,197,94,0.05)] border-green-500/20',
+          dotClass: 'bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.2)]',
+          time: '2026-05-29 17:18:30',
+          eventId: 'SJ202605290052',
+          triggerMethod: '告警触发',
+          isManualConfirmed: false,
+          deviceSource: '另派设备',
+          deviceName: '机器狗 Go2-Pro_DOG0311...',
+          arrival: '单点导航前往事件地址',
+          actions: '出发→单点导航→抵达喊话→计时器（60s）→回充',
+          taskName: '车辆违停事件联动临时任务20260529171830'
+        },
+        {
+          deviceType: 'drone',
           status: '处置完成',
           colorClass: 'text-green-500',
           bgClass: 'bg-[rgba(34,197,94,0.05)] border-green-500/20',
@@ -698,8 +772,9 @@
           taskName: '车辆违停事件联动临时任务20260529165825'
         }
       ],
-      '6': [ // ID 6: 已处理
+      '6': [ // ID 6: 已处理（仅无人机处置完成）
         {
+          deviceType: 'drone',
           status: '处置完成',
           colorClass: 'text-green-500',
           bgClass: 'bg-[rgba(34,197,94,0.05)] border-green-500/20',
@@ -716,6 +791,20 @@
         }
       ]
     };
+
+    // 执行设备类型标签（无人机 / 地面机器人）
+    function getDeviceTypeBadge(deviceType) {
+      if (deviceType === 'robot') {
+        return `<span class="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-[#a371f7]/40 bg-[#a371f7]/10 text-[#a371f7] font-medium">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M5 8h14a1 1 0 011 1v8a2 2 0 01-2 2H6a2 2 0 01-2-2V9a1 1 0 011-1zm4 4v2m6-2v2"></path></svg>
+          地面机器人处置
+        </span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-accent/40 bg-accent/10 text-accent font-medium">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v4m0 8v4m8-8h-4M8 12H4m2.5-5.5l3 3m8-3l-3 3m0 5l3 3m-11-3l-3 3"></path></svg>
+        无人机处置
+      </span>`;
+    }
 
     function getLevelClasses(level) {
       if (level === 1) return 'border-level1/30 bg-tagBg1 text-level1';
@@ -799,13 +888,24 @@
         // No primary actions usually
       }
 
-      // Add retry if condition matches
-      if (item.status === '待确认' && (item.eventStatus === '处置失败' || item.eventStatus === '已取消' || item.eventStatus === '已过期')) {
-        actionsHTML += `
-          <button onclick="handleRetry()" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1">
+      // Add per-device retry buttons（上下排布）：仅对应处置失败/已取消/已过期时出现
+      let retryBtns = '';
+      if (canRetryDevice(item, 'drone')) {
+        retryBtns += `
+          <button onclick="handleRetry('drone')" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            重新处置
+            重新派发无人机
           </button>`;
+      }
+      if (canRetryDevice(item, 'robot')) {
+        retryBtns += `
+          <button onclick="handleRetry('robot')" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            重新派发地面机器人
+          </button>`;
+      }
+      if (retryBtns) {
+        actionsHTML += `<div class="flex flex-col gap-1.5">${retryBtns}</div>`;
       }
       document.getElementById('headerActions').innerHTML = actionsHTML;
 
@@ -863,8 +963,11 @@
               <div class="timeline-dot mt-1 w-2 h-2 rounded-full ${h.dotClass} shrink-0"></div>
               <div class="flex-1 -mt-1.5 rounded p-3 border border-borderDark ${h.bgClass} transition-colors">
                 <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-borderDark/50">
-                  <span class="font-medium ${h.colorClass} flex items-center gap-1.5 text-[13px]">
-                    <span class="w-1.5 h-1.5 rounded-full ${h.colorClass.replace('text-', 'bg-')}"></span>${h.status}
+                  <span class="flex items-center gap-2">
+                    <span class="font-medium ${h.colorClass} flex items-center gap-1.5 text-[13px]">
+                      <span class="w-1.5 h-1.5 rounded-full ${h.colorClass.replace('text-', 'bg-')}"></span>${h.status}
+                    </span>
+                    ${getDeviceTypeBadge(h.deviceType)}
                   </span>
                   <span class="text-xs text-textSub">${h.time}</span>
                 </div>
@@ -874,6 +977,7 @@
                   ${h.isManualConfirmed !== undefined ? `<div class="flex"><span class="text-textSub w-[68px]">人工确认</span><span class="text-textMain">${h.isManualConfirmed ? '需人工确认' : '无需人工确认'}</span></div>` : ''}
                   ${h.deviceSource ? `<div class="flex"><span class="text-textSub w-[68px]">设备来源</span><span class="text-textMain">${h.deviceSource}</span></div>` : ''}
                   ${h.deviceName ? `<div class="flex"><span class="text-textSub w-[68px]">使用设备</span><span class="text-textMain">${h.deviceName}</span></div>` : ''}
+                  ${h.arrival ? `<div class="flex"><span class="text-textSub w-[68px]">抵达方式</span><span class="text-textMain">${h.arrival}</span></div>` : ''}
                   ${h.reason ? `<div class="flex"><span class="text-textSub w-[68px]">失败原因</span><span class="text-textMain">${h.reason}</span></div>` : ''}
                   ${h.desc ? `<div class="flex"><span class="text-textSub w-[68px]">当前状态</span><span class="text-textMain">${h.desc}</span></div>` : ''}
                   ${h.taskName ? `

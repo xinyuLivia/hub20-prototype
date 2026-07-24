@@ -283,44 +283,6 @@
                 ></video>
                 <div class="takeover-border"></div>
 
-                <!-- 检测区域叠加层（贴地透视，随画面显示；显隐开关控制） -->
-                <div id="zoneOverlay" class="absolute inset-0 z-[12] pointer-events-none">
-                    <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <!-- 告警区（红实线） -->
-                        <polygon points="24,52 60,52 70,78 12,78" fill="rgba(248,81,73,0.06)" stroke="rgba(248,81,73,0.7)" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-                        <!-- 豁免区（绿虚线）与告警区重叠 -->
-                        <polygon points="45,50 74,50 86,73 50,73" fill="rgba(63,185,80,0.06)" stroke="rgba(63,185,80,0.7)" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>
-                    </svg>
-                    <!-- 区域名标签（极简，防遮挡，显示算法名称） -->
-                    <div class="absolute -translate-x-1/2 flex items-center gap-1 text-[10px] text-white/70 whitespace-nowrap" style="left:30%;top:65%; text-shadow: 0 1px 2px rgba(0,0,0,0.9);">
-                        <span class="w-1 h-1 rounded-full bg-[#f85149] opacity-80"></span>车辆违停
-                    </div>
-                    <div class="absolute -translate-x-1/2 flex items-center gap-1 text-[10px] text-white/70 whitespace-nowrap" style="left:72%;top:60%; text-shadow: 0 1px 2px rgba(0,0,0,0.9);">
-                        <span class="w-1 h-1 rounded-full bg-[#3fb950] opacity-80"></span>车辆违停
-                    </div>
-                </div>
-
-                <!-- 目标检测标框（画面过滤结果：告警区红框 / 豁免区灰白框；始终显示，不随区域显隐） -->
-                <div id="detBoxes" class="absolute inset-0 z-[14] pointer-events-none">
-                    <!-- 告警区内命中：红框 · 告警 -->
-                    <div class="absolute" style="left:27%;top:63%;width:9%;height:9%;">
-                        <div class="absolute inset-0 border-2 border-[#f85149] rounded-[2px]" style="box-shadow:0 0 6px rgba(248,81,73,.5);"></div>
-                        <div class="absolute -top-4 left-0 text-[9px] leading-none text-white bg-[#f85149] px-1 py-0.5 rounded-sm whitespace-nowrap">违停 0.93</div>
-                    </div>
-                    <!-- 豁免区内命中：灰白框 · 不告警 -->
-                    <div class="absolute" style="left:66%;top:58%;width:7%;height:8%;">
-                        <div class="absolute inset-0 border-2 border-white/75 rounded-[2px]"></div>
-                        <div class="absolute -top-4 left-0 text-[9px] leading-none text-black/80 bg-white/75 px-1 py-0.5 rounded-sm whitespace-nowrap">已豁免</div>
-                    </div>
-                </div>
-
-                <!-- 检测区域图例（随叠加层显隐） -->
-                <div id="zoneLegend" class="absolute top-11 left-3 z-[13] flex flex-col gap-1.5 text-[11px] text-white/90 pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                    <div class="flex items-center gap-2"><span class="inline-block w-4 border-t-2 border-[#f85149] opacity-80"></span>告警区·命中即告警</div>
-                    <div class="flex items-center gap-2"><span class="inline-block w-4 border-t-2 border-dashed border-[#3fb950] opacity-80"></span>豁免区·命中即豁免</div>
-                    <div class="text-[10px] text-[#e3b341] mt-0.5"><i class="fas fa-info-circle mr-1"></i>重叠处按豁免优先</div>
-                </div>
-
                 <!-- 左上遥测 -->
                 <div class="absolute top-3 left-3 z-10 flex items-center gap-3 text-white text-xs drop-shadow-md">
                     <span class="flex items-center gap-1 text-[#3fb950]"><i class="fas fa-signal"></i></span>
@@ -553,8 +515,6 @@
                 <button class="w-8 h-8 rounded bg-[#2d2d2d] text-[#58a6ff]" title="单屏"><i class="fas fa-square"></i></button>
                 <button class="w-8 h-8 rounded hover:bg-[#333] text-gray-400" title="分屏"><i class="fas fa-th-large"></i></button>
                 <button class="w-8 h-8 rounded hover:bg-[#333] text-gray-400" title="代码"><i class="fas fa-code"></i></button>
-                <div class="w-px h-5 bg-[#333] mx-1"></div>
-                <button id="btnZones" class="px-3 h-8 rounded bg-[#1f6feb]/15 border border-[#1f6feb] text-[#58a6ff] text-xs flex items-center gap-1.5" title="显示/隐藏检测区域" onclick="toggleZones()"><i class="fas fa-draw-polygon"></i> 检测区域</button>
                 <div class="w-px h-5 bg-[#333] mx-1"></div>
                 <button id="btnControl" class="live-toolbar-btn-control px-3 h-8 rounded border border-[#444] text-gray-200 text-xs flex items-center gap-1.5 hover:border-[#58a6ff]" onclick="toggleControl()">
                     <i class="fas fa-gamepad"></i> 操控
@@ -946,24 +906,6 @@ function toggleControl(force) {
     const stage = document.getElementById('liveStage');
     const open = typeof force === 'boolean' ? force : !stage.classList.contains('control-open');
     stage.classList.toggle('control-open', open);
-}
-
-/** 检测区域叠加层显隐（默认开；仅影响画面标注，不影响过滤逻辑） */
-let zonesVisible = true;
-function toggleZones(force) {
-    zonesVisible = typeof force === 'boolean' ? force : !zonesVisible;
-    const overlay = document.getElementById('zoneOverlay');
-    const legend = document.getElementById('zoneLegend');
-    const btn = document.getElementById('btnZones');
-    if (overlay) overlay.classList.toggle('hidden', !zonesVisible);
-    if (legend) legend.classList.toggle('hidden', !zonesVisible);
-    if (btn) {
-        btn.classList.toggle('bg-[#1f6feb]/15', zonesVisible);
-        btn.classList.toggle('border-[#1f6feb]', zonesVisible);
-        btn.classList.toggle('text-[#58a6ff]', zonesVisible);
-        btn.classList.toggle('border-[#444]', !zonesVisible);
-        btn.classList.toggle('text-gray-400', !zonesVisible);
-    }
 }
 
 function switchCtrlTab(tab) {

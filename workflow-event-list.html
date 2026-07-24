@@ -30,6 +30,18 @@
         .dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; }
         .link { color:#177ddc; cursor:pointer; }
         .link:hover { color:#1765ad; }
+        .status-tip { position:relative; display:inline-block; cursor:default; }
+        .status-tip .tip-bubble {
+            display:none; position:absolute; left:0; bottom:calc(100% + 6px); z-index:20;
+            max-width:240px; padding:6px 10px; border-radius:4px; font-size:12px; line-height:1.4;
+            color:#e5e5e5; background:#2a2a2a; border:1px solid #434343; white-space:normal;
+            box-shadow:0 4px 12px rgba(0,0,0,0.35); pointer-events:none;
+        }
+        .status-tip .tip-bubble::after {
+            content:''; position:absolute; left:12px; top:100%;
+            border:5px solid transparent; border-top-color:#2a2a2a;
+        }
+        .status-tip:hover .tip-bubble { display:block; }
         .device-tab { padding:8px 16px; font-size:14px; border-bottom:2px solid transparent; color:#a6a6a6; cursor:pointer; }
         .device-tab.active { color:#fff; border-bottom-color:#177ddc; }
         select { appearance:none; }
@@ -214,15 +226,15 @@
 
         function statusCell(r) {
             const s = statusMap[r.status];
-            let html = `<span class="whitespace-nowrap" style="color:${s.color}"><span class="dot" style="background:${s.dot}"></span>${r.status}</span>`;
-            if (r.reason) html += `<div class="text-xs text-dark-textSecondary mt-0.5">原因：${r.reason}</div>`;
-            return html;
+            const label = `<span class="whitespace-nowrap" style="color:${s.color}"><span class="dot" style="background:${s.dot}"></span>${r.status}</span>`;
+            if (!r.reason) return label;
+            const reasonLabel = r.status === '已过期' ? '过期原因' : '失败原因';
+            return `<span class="status-tip">${label}<span class="tip-bubble">${reasonLabel}：${r.reason}</span></span>`;
         }
 
         function opsCell(r) {
             if (r.status === '待处置') return '<span class="link mr-2">取消处置</span><span class="link">立即处置</span>';
-            if (r.status === '调度中') return '<span class="link">终止</span>';
-            return '<span class="link">查看</span>';
+            return '—';
         }
 
         function render(device) {

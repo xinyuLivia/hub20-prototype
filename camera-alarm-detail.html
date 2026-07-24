@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警中心 - 摄像头告警详情 - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            background-color: #141414;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+        .level-1 { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.35); }
+        .level-2 { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.35); }
+        .level-3 { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .tab-active { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+        .timeline-dot { position: relative; }
+        .timeline-dot::after {
+            content: ''; position: absolute; top: 18px; left: 3px; bottom: -20px; width: 1px; background-color: #2d2d2d;
+        }
+        .timeline-item:last-child .timeline-dot::after { display: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-white shadow-lg"></div>
+
+    <!-- Header -->
+    <header class="h-12 bg-[#1e1e1e] border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="camera-alarm-list.html" class="hover:text-white transition-colors flex items-center">
+                <i class="fas fa-arrow-left mr-3 text-lg"></i>
+            </a>
+            <a href="project-home.html" class="hover:text-white transition-colors">项目首页</a>
+            <span>/</span>
+            <div class="relative" id="breadcrumbDropdown"><div class="flex items-center cursor-pointer hover:text-white text-white" onclick="event.stopPropagation(); var m=document.getElementById('breadcrumbMenu'); if(m) m.classList.toggle('hidden');">
+                    <span>告警中心</span>
+                    <i class="fas fa-chevron-down text-xs ml-1"></i>
+                </div><div id="breadcrumbMenu" class="absolute left-0 top-full pt-1 w-36 hidden z-50">
+                    <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded shadow-lg py-1">
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='drone-list.html'">设备管理</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-live.html'">任务实况</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='camera-monitor.html'">监控中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='task-list.html'">任务管理</div>
+                        <div class="px-4 py-2 bg-[rgba(88,166,255,0.1)] text-[#58a6ff] cursor-pointer" onclick="window.location.href='camera-alarm-list.html'">告警中心</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='resource-list.html'">资源库</div>
+                        <div class="px-4 py-2 hover:bg-[rgba(255,255,255,0.08)] cursor-pointer text-gray-300" onclick="window.location.href='workflow-list.html'">自动化工作流</div>
+                    </div>
+                </div>
+            </div>
+            <span>/</span>
+            <span class="text-white">告警详情</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-times cursor-pointer hover:text-white text-lg text-gray-400" onclick="location.href='camera-alarm-list.html'" title="关闭"></i>
+        </div>
+    </header>
+
+    <!-- Detail Sub-header (Dynamic) -->
+    <div class="px-4 py-3 flex items-center justify-between border-b border-[#2d2d2d] bg-[#161616] shrink-0">
+        <div class="flex items-center gap-3 flex-wrap" id="headerInfo"></div>
+        <div class="flex items-center gap-3">
+            <div class="flex gap-2" id="headerActions"></div>
+            <div class="w-px h-5 bg-[#2d2d2d]"></div>
+            <div class="flex gap-2" id="navActions"></div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="flex-1 overflow-hidden p-4 flex gap-4">
+
+        <!-- Left: 告警图片 -->
+        <div class="flex-1 bg-[#1a1a1a] border border-[#2d2d2d] rounded flex flex-col overflow-hidden">
+            <div class="h-10 border-b border-[#2d2d2d] flex items-center justify-between px-4 shrink-0 bg-[#1e1e1e]">
+                <div class="flex items-center gap-2 font-medium text-sm text-[#58a6ff]">
+                    <i class="fas fa-image"></i> 告警图片
+                </div>
+                <button onclick="goPlayback()" class="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors">
+                    <i class="fas fa-play-circle"></i> 查看录像回放
+                </button>
+            </div>
+            <div class="flex-1 p-4 flex items-center justify-center relative overflow-hidden bg-[#0d0d0d]">
+                <div id="mainImageBg" class="absolute inset-0 bg-cover bg-center opacity-85"></div>
+                <div class="absolute border-2 w-40 h-28 left-[32%] top-[38%] flex items-start" id="imageBox">
+                    <div id="imageTag" class="text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium">行人闯入 0.92</div>
+                </div>
+                <button onclick="goPlayback()" class="absolute bottom-4 right-4 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-1.5 transition-colors">
+                    <i class="fas fa-play"></i> 查看录像回放并定位至告警时刻
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Tabs -->
+        <div class="w-[480px] shrink-0 flex flex-col overflow-hidden border border-[#2d2d2d] rounded bg-[#1a1a1a]">
+            <div class="flex border-b border-[#2d2d2d] bg-[#1e1e1e] shrink-0 px-2">
+                <button onclick="switchTab('info')" id="tab-info" class="px-4 py-3 text-sm font-medium tab-active">告警信息</button>
+                <button onclick="switchTab('history')" id="tab-history" class="px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent">联动处置记录</button>
+            </div>
+
+            <div class="flex-1 overflow-auto p-5">
+                <!-- Tab 1: 告警信息 -->
+                <div id="tabContent-info" class="block">
+                    <div class="text-[13px] space-y-3.5" id="alertInfo"></div>
+                </div>
+
+                <!-- Tab 2: 联动处置记录 -->
+                <div id="tabContent-history" class="hidden">
+                    <div id="historyList" class="space-y-6"></div>
+                    <div id="historyEmpty" class="hidden flex-col items-center justify-center py-12 text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-3 opacity-20"></i>
+                        <div>暂无处置记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const camera = '海康双光谱球机-北门';
+        const gbCode = '44030000001320000001';
+        const coord = '22.658217° N, 114.498008° E';
+        const coordLatLng = [22.658217, 114.498008];
+        const imgUrl = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80';
+
+        // 摄像头告警数据（与 camera-alarm-list.html 对齐）
+        // status = 告警状态（用于操作按钮逻辑）；disposals = 各执行设备的处置状态（可双路）
+        const alerts = [
+            { id: 'A001', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', time: '2023-07-10 15:30', disposals: [] },
+            { id: 'A002', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '待处置', time: '2023-07-10 15:28', disposals: [] },
+            { id: 'A003', name: '行人闯入', channel: '通道2: 红外', level: 3, levelLabel: '三级', status: '处置中', time: '2023-07-10 15:20', disposals: [ { type:'drone', status:'处置中' }, { type:'robot', status:'处置完成' } ] },
+            { id: 'A004', name: '行人闯入', channel: '通道1: 可见光', level: 3, levelLabel: '三级', status: '处置中', time: '2023-07-10 15:12', disposals: [ { type:'drone', status:'处置中' } ] },
+            { id: 'A005', name: '行人闯入', channel: '通道1: 可见光', level: 1, levelLabel: '一级', status: '已处置', time: '2023-07-10 14:50', disposals: [ { type:'drone', status:'处置完成' }, { type:'robot', status:'处置完成' } ] },
+            { id: 'A006', name: '行人闯入', channel: '通道2: 红外', level: 1, levelLabel: '一级', status: '已取消', time: '2023-07-10 14:20', disposals: [ { type:'drone', status:'已取消' } ] },
+            { id: 'A007', name: '行人闯入', channel: '通道1: 可见光', level: 2, levelLabel: '二级', status: '处置失败', time: '2023-07-10 14:05', disposals: [ { type:'drone', status:'处置失败' }, { type:'robot', status:'已取消' } ] },
+        ];
+
+        const RETRYABLE_STATUSES = ['处置失败', '已取消', '已过期'];
+
+        // 联动处置记录（时间倒序，混排无人机 / 地面机器人）
+        const histories = {
+            'A003': [
+                { deviceType:'robot', status:'处置完成', time:'2023-07-10 15:25:40', eventId:'SJ202307100031', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'机器狗 Go2-Pro_DOG0311...', arrival:'单点导航前往事件地址', actions:'出发→单点导航→抵达喊话→计时器（60s）→回充', taskName:'行人闯入事件联动临时任务20230710152540' },
+                { deviceType:'drone', status:'处置中', time:'2023-07-10 15:21:10', eventId:'SJ202307100030', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'真机Matrice 4TD_1581F8HG...', hoverHeight:25, actions:'悬停等待→开始喊话→计时器（30s）→结束喊话→恢复原任务', taskName:'行人闯入事件联动临时任务20230710152110', desc:'无人机已抵达目标点，正在喊话处置...' }
+            ],
+            'A004': [
+                { deviceType:'drone', status:'处置中', time:'2023-07-10 15:13:22', eventId:'SJ202307100028', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'真机Matrice 4TD_1581F8HG...', hoverHeight:30, actions:'悬停等待→变焦拍照→开始喊话', taskName:'行人闯入事件联动临时任务20230710151322', desc:'无人机正在前往事件地址...' }
+            ],
+            'A005': [
+                { deviceType:'robot', status:'处置完成', time:'2023-07-10 14:58:10', eventId:'SJ202307100022', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'机器狗 Go2-Pro_DOG0311...', arrival:'单点导航前往事件地址', actions:'出发→单点导航→抵达喊话→计时器（60s）→回充', taskName:'行人闯入事件联动临时任务20230710145810' },
+                { deviceType:'drone', status:'处置完成', time:'2023-07-10 14:52:30', eventId:'SJ202307100021', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'真机Matrice 4TD_1581F8HG...', hoverHeight:30, actions:'悬停等待→开始喊话→计时器（30s）→结束喊话→恢复原任务', taskName:'行人闯入事件联动临时任务20230710145230' }
+            ],
+            'A006': [
+                { deviceType:'drone', status:'已取消', time:'2023-07-10 14:22:00', eventId:'SJ202307100018', triggerMethod:'告警触发', isManualConfirmed:true, deviceSource:'另派设备', deviceName:'真机Matrice 4TD_1581F8HG...', hoverHeight:20, actions:'悬停等待', taskName:'行人闯入事件联动临时任务20230710142200', reason:'人工确认环节超时，事件已取消' }
+            ],
+            'A007': [
+                { deviceType:'robot', status:'已取消', time:'2023-07-10 14:10:05', eventId:'SJ202307100013', triggerMethod:'告警触发', isManualConfirmed:true, deviceSource:'另派设备', deviceName:'机器狗 Go2-Pro_DOG0311...', arrival:'单点导航前往事件地址', actions:'出发→单点导航→抵达喊话→计时器（60s）→回充', taskName:'行人闯入事件联动临时任务20230710141005', reason:'人工确认超时，事件已取消' },
+                { deviceType:'drone', status:'处置失败', time:'2023-07-10 14:06:18', eventId:'SJ202307100012', triggerMethod:'告警触发', isManualConfirmed:false, deviceSource:'另派设备', deviceName:'真机Matrice 4TD_1581F8HG...', hoverHeight:20, actions:'悬停等待→变焦拍照', taskName:'行人闯入事件联动临时任务20230710140618', reason:'无人机设备已离线，无法到达目标点' }
+            ]
+        };
+
+        function getId() {
+            const p = new URLSearchParams(location.search).get('id');
+            return alerts.find(a => a.id === p) ? p : 'A003';
+        }
+
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 2500);
+        }
+
+        function levelClass(level) { return level === 1 ? 'level-1' : level === 2 ? 'level-2' : 'level-3'; }
+        function levelBorderColor(level) { return level === 1 ? '#f85149' : level === 2 ? '#d29922' : '#58a6ff'; }
+        function levelBgColor(level) { return level === 1 ? '#f85149' : level === 2 ? '#d29922' : '#58a6ff'; }
+
+        // 处置状态标签配色（事件状态 7 态）
+        function disposalStatusClass(status) {
+            if (status === '处置失败' || status === '已过期' || status === '已取消') return 'border border-[#f85149]/40 bg-[#f85149]/12 text-[#f85149]';
+            if (status === '调度中' || status === '处置中' || status === '待处置') return 'border border-[#58a6ff]/40 bg-[#58a6ff]/12 text-[#58a6ff]';
+            if (status === '处置完成' || status === '已处置') return 'border border-[#3fb950]/40 bg-[#3fb950]/12 text-[#3fb950]';
+            return 'border border-[#333] bg-[#2d2d2d]/60 text-gray-400';
+        }
+        function statusTextColor(status) {
+            if (status === '处置失败' || status === '已过期' || status === '已取消') return 'text-[#f85149]';
+            if (status === '调度中' || status === '处置中' || status === '待处置') return 'text-[#58a6ff]';
+            if (status === '处置完成' || status === '已处置') return 'text-[#3fb950]';
+            return 'text-gray-400';
+        }
+        function statusDotColor(status) {
+            if (status === '处置失败' || status === '已过期' || status === '已取消') return 'bg-[#f85149]';
+            if (status === '调度中' || status === '处置中' || status === '待处置') return 'bg-[#58a6ff]';
+            if (status === '处置完成' || status === '已处置') return 'bg-[#3fb950]';
+            return 'bg-gray-500';
+        }
+
+        function deviceTypeIcon(type) {
+            return type === 'robot'
+                ? '<i class="fas fa-robot"></i>'
+                : '<i class="fas fa-helicopter"></i>';
+        }
+        function deviceTypeBadge(type) {
+            if (type === 'robot') {
+                return `<span class="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-[#a371f7]/40 bg-[#a371f7]/12 text-[#a371f7] font-medium"><i class="fas fa-robot"></i>地面机器人处置</span>`;
+            }
+            return `<span class="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-[#58a6ff]/40 bg-[#58a6ff]/12 text-[#58a6ff] font-medium"><i class="fas fa-helicopter"></i>无人机处置</span>`;
+        }
+
+        // 处置状态：按执行设备分别展示；无触发显示「-」
+        function disposalChips(item) {
+            const list = item.disposals || [];
+            if (!list.length) return '<span class="text-gray-500">-</span>';
+            const label = { drone: '无人机', robot: '地面机器人' };
+            return `<div class="flex flex-wrap gap-1.5">` + list.map(d =>
+                `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] ${disposalStatusClass(d.status)}">${deviceTypeIcon(d.type)}<span>${label[d.type] || '无人机'}·${d.status}</span></span>`
+            ).join('') + `</div>`;
+        }
+
+        function canRetryDevice(item, type) {
+            const hit = (item.disposals || []).find(d => d.type === type);
+            return hit && RETRYABLE_STATUSES.includes(hit.status);
+        }
+
+        let currentId = '';
+        function goPlayback() {
+            location.href = `camera-playback.html?alarm=${currentId}`;
+        }
+
+        function handleRetry(deviceType) {
+            const item = alerts.find(a => a.id === currentId);
+            if (!item) return;
+            const typeLabel = deviceType === 'robot' ? '地面机器人' : '无人机';
+            if (!confirm(`将按${typeLabel}工作流配置重新触发事件处置，是否确认？`)) return;
+            if (!item.disposals) item.disposals = [];
+            const hit = item.disposals.find(d => d.type === deviceType);
+            if (hit) hit.status = '处置中';
+            else item.disposals.push({ type: deviceType, status: '处置中' });
+            item.status = '处置中';
+            showToast(`${typeLabel}重新派发提交成功，等待调度`);
+            setTimeout(renderPage, 400);
+        }
+
+        function renderPage() {
+            const item = alerts.find(a => a.id === getId());
+            currentId = item.id;
+
+            // Prev / Next
+            const idx = alerts.findIndex(a => a.id === item.id);
+            const prevId = idx > 0 ? alerts[idx - 1].id : null;
+            const nextId = idx < alerts.length - 1 ? alerts[idx + 1].id : null;
+            document.getElementById('navActions').innerHTML = `
+                <button ${prevId ? `onclick="location.search='?id=${prevId}'"` : 'disabled'} class="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[#2d2d2d] text-xs ${prevId ? 'text-gray-200 hover:bg-[#252525]' : 'text-gray-600 opacity-50 cursor-not-allowed'}"><i class="fas fa-chevron-left"></i>上一条</button>
+                <button ${nextId ? `onclick="location.search='?id=${nextId}'"` : 'disabled'} class="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[#2d2d2d] text-xs ${nextId ? 'text-gray-200 hover:bg-[#252525]' : 'text-gray-600 opacity-50 cursor-not-allowed'}">下一条<i class="fas fa-chevron-right"></i></button>`;
+
+            // Header info
+            document.getElementById('headerInfo').innerHTML = `
+                <h1 class="text-base font-medium text-white">${item.name}</h1>
+                <span class="px-2 py-0.5 rounded text-xs ${levelClass(item.level)}">${item.levelLabel}</span>
+                <span class="text-xs text-gray-300 bg-[#2d2d2d] px-2 py-0.5 rounded flex items-center gap-1"><i class="fas fa-video text-[10px]"></i>${camera}</span>
+                <span class="text-xs text-gray-500">|</span>
+                <span class="text-xs text-gray-400">处置状态</span>
+                ${disposalChips(item)}`;
+
+            // Header actions：查看录像回放 + 立即处置 + 按设备重新派发（上下排布）
+            let actions = `<button onclick="goPlayback()" class="px-3 py-1.5 bg-transparent text-[#58a6ff] border border-[#30363d] rounded hover:bg-[#252525] transition-colors text-xs flex items-center gap-1"><i class="fas fa-play-circle"></i>查看录像回放</button>`;
+            if (item.status === '待处置') {
+                actions += `<button onclick="showToast('未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1"><i class="fas fa-bolt"></i>立即处置</button>`;
+            }
+            let retryBtns = '';
+            if (canRetryDevice(item, 'drone')) {
+                retryBtns += `<button onclick="handleRetry('drone')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1 whitespace-nowrap"><i class="fas fa-redo"></i>重新派发无人机</button>`;
+            }
+            if (canRetryDevice(item, 'robot')) {
+                retryBtns += `<button onclick="handleRetry('robot')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1 whitespace-nowrap"><i class="fas fa-redo"></i>重新派发地面机器人</button>`;
+            }
+            if (retryBtns) actions += `<div class="flex flex-col gap-1.5">${retryBtns}</div>`;
+            document.getElementById('headerActions').innerHTML = actions;
+
+            // Alert info
+            document.getElementById('alertInfo').innerHTML = `
+                <div class="flex"><span class="text-gray-500 w-24">告警ID</span><span class="text-white font-mono flex-1">${item.id}</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">告警名称</span><span class="text-white flex-1">${item.name}</span></div>
+                <div class="flex items-center"><span class="text-gray-500 w-24">告警等级</span><span class="flex-1"><span class="px-2 py-0.5 rounded text-xs ${levelClass(item.level)}">${item.levelLabel}</span></span></div>
+                <div class="flex"><span class="text-gray-500 w-24">摄像头名称</span><span class="text-white flex-1">${camera}</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">通道名称</span><span class="text-white flex-1">${item.channel}</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">国标编码</span><span class="text-gray-300 font-mono flex-1">${gbCode}</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">摄像头坐标</span>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <span class="text-gray-300">${coord}</span>
+                        <div class="h-28 w-full relative overflow-hidden rounded border border-[#2d2d2d]">
+                            <div id="miniMap" class="w-full h-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex"><span class="text-gray-500 w-24">告警渠道</span><span class="text-white flex-1">AI标注</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">上报来源</span><span class="text-white flex-1">摄像头 AI 检测</span></div>
+                <div class="flex"><span class="text-gray-500 w-24">上报时间</span><span class="text-white flex-1">${item.time}</span></div>`;
+
+            // Image
+            document.getElementById('mainImageBg').style.backgroundImage = `url('${imgUrl}')`;
+            document.getElementById('imageBox').style.borderColor = levelBorderColor(item.level);
+            const tag = document.getElementById('imageTag');
+            tag.textContent = `${item.name} 0.92`;
+            tag.style.backgroundColor = levelBgColor(item.level);
+
+            // History
+            const hData = histories[item.id];
+            const listEl = document.getElementById('historyList');
+            const emptyEl = document.getElementById('historyEmpty');
+            if (hData && hData.length) {
+                listEl.classList.remove('hidden');
+                emptyEl.classList.add('hidden');
+                emptyEl.classList.remove('flex');
+                listEl.innerHTML = hData.map(h => `
+                    <div class="flex gap-3 timeline-item">
+                        <div class="timeline-dot mt-1 w-2 h-2 rounded-full ${statusDotColor(h.status)} shrink-0"></div>
+                        <div class="flex-1 -mt-1.5 rounded p-3 border border-[#2d2d2d] bg-[#161616]">
+                            <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-[#2d2d2d]">
+                                <span class="flex items-center gap-2">
+                                    <span class="font-medium ${statusTextColor(h.status)} flex items-center gap-1.5 text-[13px]"><span class="w-1.5 h-1.5 rounded-full ${statusDotColor(h.status)}"></span>${h.status}</span>
+                                    ${deviceTypeBadge(h.deviceType)}
+                                </span>
+                                <span class="text-xs text-gray-500">${h.time}</span>
+                            </div>
+                            <div class="text-[13px] space-y-2">
+                                <div class="flex"><span class="text-gray-500 w-[68px]">事件ID</span><span class="text-[#58a6ff] cursor-pointer hover:underline font-medium">${h.eventId}</span></div>
+                                ${h.triggerMethod ? `<div class="flex"><span class="text-gray-500 w-[68px]">触发方式</span><span class="text-gray-200 bg-[#2d2d2d] px-1.5 py-0.5 rounded text-xs">${h.triggerMethod}</span></div>` : ''}
+                                ${h.isManualConfirmed !== undefined ? `<div class="flex"><span class="text-gray-500 w-[68px]">人工确认</span><span class="text-gray-200">${h.isManualConfirmed ? '需人工确认' : '无需人工确认'}</span></div>` : ''}
+                                ${h.deviceSource ? `<div class="flex"><span class="text-gray-500 w-[68px]">设备来源</span><span class="text-gray-200">${h.deviceSource}</span></div>` : ''}
+                                ${h.deviceName ? `<div class="flex"><span class="text-gray-500 w-[68px]">使用设备</span><span class="text-gray-200">${h.deviceName}</span></div>` : ''}
+                                ${h.arrival ? `<div class="flex"><span class="text-gray-500 w-[68px]">抵达方式</span><span class="text-gray-200">${h.arrival}</span></div>` : ''}
+                                ${h.hoverHeight ? `<div class="flex"><span class="text-gray-500 w-[68px]">悬停高度</span><span class="text-gray-200">${h.hoverHeight} m</span></div>` : ''}
+                                ${h.actions ? `<div class="flex"><span class="text-gray-500 w-[68px]">处置动作</span><span class="text-gray-200 flex-1">${h.actions}</span></div>` : ''}
+                                ${h.taskName ? `<div class="flex items-center"><span class="text-gray-500 w-[68px]">处置任务</span><span class="text-[#58a6ff] cursor-pointer hover:underline truncate flex-1" title="${h.taskName}">${h.taskName.length > 18 ? h.taskName.substring(0,18)+'...' : h.taskName}</span></div>` : ''}
+                                ${h.reason ? `<div class="flex"><span class="text-gray-500 w-[68px]">失败原因</span><span class="text-gray-200 flex-1">${h.reason}</span></div>` : ''}
+                                ${h.desc ? `<div class="flex"><span class="text-gray-500 w-[68px]">当前状态</span><span class="text-gray-200 flex-1">${h.desc}</span></div>` : ''}
+                            </div>
+                        </div>
+                    </div>`).join('');
+            } else {
+                listEl.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                emptyEl.classList.add('flex');
+            }
+
+            initMiniMap();
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabContent-info').className = tab === 'info' ? 'block' : 'hidden';
+            document.getElementById('tabContent-history').className = tab === 'history' ? 'block' : 'hidden';
+            document.getElementById('tab-info').className = tab === 'info' ? 'px-4 py-3 text-sm font-medium tab-active' : 'px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent';
+            document.getElementById('tab-history').className = tab === 'history' ? 'px-4 py-3 text-sm font-medium tab-active' : 'px-4 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent';
+            if (tab === 'info' && miniMapInstance) setTimeout(() => miniMapInstance.invalidateSize(), 50);
+        }
+
+        let miniMapInstance = null;
+        function initMiniMap() {
+            if (miniMapInstance) { miniMapInstance.remove(); miniMapInstance = null; }
+            const container = document.getElementById('miniMap');
+            if (!container) return;
+            miniMapInstance = L.map('miniMap', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false }).setView(coordLatLng, 15);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(miniMapInstance);
+            const icon = L.divIcon({ html: '<i class="fas fa-video" style="color:#58a6ff;font-size:20px;text-shadow:0 1px 3px rgba(0,0,0,.6);"></i>', className: '', iconSize: [20,20], iconAnchor: [10,10] });
+            L.marker(coordLatLng, { icon }).addTo(miniMapInstance);
+        }
+
+        renderPage();
+    </script>
+
+    <script>
+    (function(){
+        document.addEventListener('click', function(e){
+            var dd = document.getElementById('breadcrumbDropdown');
+            var menu = document.getElementById('breadcrumbMenu');
+            if (!dd || !menu) return;
+            if (!dd.contains(e.target)) menu.classList.add('hidden');
+        });
+    })();
+    </script>
+    <script src="custom-select.js"></script>
+</body>
+</html>

@@ -166,9 +166,9 @@
     <!-- 筛选：默认均为未选择态 -->
     <div class="px-5 py-3 shrink-0 flex flex-wrap items-center gap-3 border-b border-[#2d2d2d]">
       <div id="kwWrap" class="filter-wrap">
-        <input id="kw" class="form-ctl w-56" type="text"
-          placeholder="账号 / 姓名 / 操作说明"
-          title="模糊搜索：操作人员账号、操作人员姓名、操作说明"
+        <input id="kw" class="form-ctl w-[260px]" type="text"
+          placeholder="账号 / 姓名 / 操作说明 / 操作对象"
+          title="模糊搜索：操作人员账号、操作人员姓名、操作说明、操作对象"
           oninput="updateClearButtons(); debounceApplyFilter()" />
         <button type="button" class="filter-clear" title="清空" onclick="clearKw(event)"><i class="fas fa-times"></i></button>
       </div>
@@ -278,6 +278,7 @@
       <div class="px-5 border-b border-[#2d2d2d] flex gap-6 text-sm">
         <button id="tabBasic" class="py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]" onclick="switchTab('basic')">基本信息</button>
         <button id="tabExc" class="py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200" onclick="switchTab('exc')">异常信息</button>
+        <button id="tabContent" class="py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200" onclick="switchTab('content')">操作内容</button>
       </div>
       <div class="px-5 py-5 min-h-[120px]" id="detailBody"></div>
     </div>
@@ -295,22 +296,23 @@ const PROJECTS = [
   { name: '智慧城管混合巡检', code: 'PRJ-CG-003' },
 ];
 
+// object：操作对象快照；durationMs：耗时；changes：可选字段明细
 const LOGS = [
-  { id:1, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'巡检任务', type:'新增', desc:'新增巡检任务', time:'2026-07-08 16:24:15', method:'POST', ip:'10.42.0.244', status:'成功' },
-  { id:2, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-08 16:20:42', method:'POST', ip:'10.42.0.244', status:'成功' },
-  { id:3, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登录', desc:'用户登录', time:'2026-07-08 15:58:01', method:'POST', ip:'10.42.0.1', status:'成功' },
-  { id:4, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-08 15:45:18', method:'POST', ip:'10.42.0.244', status:'成功' },
-  { id:5, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'巡检任务', type:'新增', desc:'新增巡检任务-临时补充', time:'2026-07-08 14:12:33', method:'POST', ip:'10.42.1.88', status:'成功' },
-  { id:6, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'修改', desc:'编辑用户数据权限', time:'2026-07-08 13:05:09', method:'POST', ip:'10.42.0.1', status:'成功' },
-  { id:7, account:'admin', name:'系统管理员', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'航线管理', type:'修改', desc:'修改航线', time:'2026-07-07 12:26:59', method:'POST', ip:'10.42.0.1', status:'失败', error:'资源不存在，请刷新页面后重试' },
-  { id:8, account:'wang.fang', name:'王芳', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'计划管理', type:'新增', desc:'新增巡检计划', time:'2026-07-07 11:18:22', method:'POST', ip:'10.42.2.15', status:'成功' },
-  { id:9, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'设备管理', type:'修改', desc:'更新设备所属信息', time:'2026-07-07 10:02:44', method:'POST', ip:'10.42.0.244', status:'成功' },
-  { id:10, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'角色管理', type:'新增', desc:'新增项目角色', time:'2026-07-07 09:30:11', method:'POST', ip:'10.42.0.1', status:'成功' },
-  { id:11, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'告警中心', type:'修改', desc:'处理巡检告警', time:'2026-07-06 18:41:07', method:'POST', ip:'10.42.1.88', status:'成功' },
-  { id:12, account:'wang.fang', name:'王芳', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登出', desc:'用户登出', time:'2026-07-06 17:55:00', method:'POST', ip:'10.42.2.15', status:'成功' },
-  { id:13, account:'chen.hao', name:'陈浩', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'自动化工作流', type:'修改', desc:'启用事件联动工作流', time:'2026-07-06 16:20:31', method:'POST', ip:'10.42.3.41', status:'失败', error:'工作流校验失败：触发条件未配置' },
-  { id:14, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'新增', desc:'新增用户', time:'2026-07-06 15:01:19', method:'POST', ip:'10.42.0.1', status:'成功' },
-  { id:15, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'删除', desc:'删除航线草稿', time:'2026-07-06 14:11:08', method:'DELETE', ip:'10.42.0.244', status:'成功' },
+  { id:1, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'巡检任务', type:'新增', object:'巡检任务 / 西区日常巡检-0708', desc:'新增巡检任务', time:'2026-07-08 16:24:15', method:'POST', ip:'10.42.0.244', status:'成功', durationMs:186, changes:[{field:'任务名称', before:'', after:'西区日常巡检-0708'},{field:'关联航线', before:'', after:'西区环线A'},{field:'计划执行时间', before:'', after:'2026-07-09 08:00'},{field:'执行设备', before:'', after:'西区3号机(D-0231)'}] },
+  { id:2, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', object:'航线 / 西区环线A', desc:'修改航线', time:'2026-07-08 16:20:42', method:'POST', ip:'10.42.0.244', status:'成功', durationMs:312, changes:[{field:'飞行高度(m)', before:'80', after:'100'},{field:'航点数', before:'12', after:'15'}] },
+  { id:3, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登录', object:'—', desc:'用户登录', time:'2026-07-08 15:58:01', method:'POST', ip:'10.42.0.1', status:'成功', durationMs:94 },
+  { id:4, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'修改', object:'航线 / 东区巡线B', desc:'修改航线', time:'2026-07-08 15:45:18', method:'POST', ip:'10.42.0.244', status:'成功', durationMs:248, changes:[{field:'返航电量(%)', before:'25', after:'30'}] },
+  { id:5, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'巡检任务', type:'新增', object:'巡检任务 / 机场跑道临时巡检', desc:'新增巡检任务-临时补充', time:'2026-07-08 14:12:33', method:'POST', ip:'10.42.1.88', status:'成功', durationMs:221, changes:[{field:'任务名称', before:'', after:'机场跑道临时巡检'},{field:'关联航线', before:'', after:'机场外围航线'},{field:'计划执行时间', before:'', after:'2026-07-08 15:00'}] },
+  { id:6, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'修改', object:'用户 / 李伟(li.wei)', desc:'编辑用户数据权限', time:'2026-07-08 13:05:09', method:'POST', ip:'10.42.0.1', status:'成功', durationMs:405, changes:[{field:'项目数据范围', before:'国家电网机场', after:'国家电网机场、深圳东部巡检'},{field:'角色', before:'项目操作员', after:'项目管理员'}] },
+  { id:7, account:'admin', name:'系统管理员', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'航线管理', type:'修改', object:'航线 / 机场外围航线', desc:'修改航线', time:'2026-07-07 12:26:59', method:'POST', ip:'10.42.0.1', status:'失败', durationMs:67, error:'资源不存在，请刷新页面后重试' },
+  { id:8, account:'wang.fang', name:'王芳', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'计划管理', type:'新增', object:'巡检计划 / 城管周巡检计划', desc:'新增巡检计划', time:'2026-07-07 11:18:22', method:'POST', ip:'10.42.2.15', status:'成功', durationMs:173, changes:[{field:'计划名称', before:'', after:'城管周巡检计划'},{field:'执行周期', before:'', after:'每周一、周四 09:00'},{field:'关联任务数', before:'', after:'3'}] },
+  { id:9, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'设备管理', type:'修改', object:'设备 / 西区3号机(D-0231)', desc:'更新设备所属信息', time:'2026-07-07 10:02:44', method:'POST', ip:'10.42.0.244', status:'成功', durationMs:156, changes:[{field:'巡检状态', before:'启用', after:'停用'},{field:'所属分组', before:'西区', after:'东区'}] },
+  { id:10, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'角色管理', type:'新增', object:'角色 / 项目审核员', desc:'新增项目角色', time:'2026-07-07 09:30:11', method:'POST', ip:'10.42.0.1', status:'成功', durationMs:278, changes:[{field:'角色名称', before:'', after:'项目审核员'},{field:'功能权限', before:'', after:'巡检任务(只读)、告警中心(处理)'},{field:'数据范围', before:'', after:'按项目分配'}] },
+  { id:11, account:'li.wei', name:'李伟', domain:'项目', projectName:'国家电网机场', projectCode:'PRJ-GD-008', module:'告警中心', type:'修改', object:'告警 / ALM-20260706-338', desc:'处理巡检告警', time:'2026-07-06 18:41:07', method:'POST', ip:'10.42.1.88', status:'成功', durationMs:132 },
+  { id:12, account:'wang.fang', name:'王芳', domain:'系统', projectName:'—', projectCode:'—', module:'登录模块', type:'登出', object:'—', desc:'用户登出', time:'2026-07-06 17:55:00', method:'POST', ip:'10.42.2.15', status:'成功', durationMs:41 },
+  { id:13, account:'chen.hao', name:'陈浩', domain:'项目', projectName:'智慧城管混合巡检', projectCode:'PRJ-CG-003', module:'自动化工作流', type:'修改', object:'工作流 / 违停事件联动', desc:'启用事件联动工作流', time:'2026-07-06 16:20:31', method:'POST', ip:'10.42.3.41', status:'失败', durationMs:88, error:'工作流校验失败：触发条件未配置' },
+  { id:14, account:'admin', name:'系统管理员', domain:'系统', projectName:'—', projectCode:'—', module:'用户管理', type:'新增', object:'用户 / 陈浩(chen.hao)', desc:'新增用户', time:'2026-07-06 15:01:19', method:'POST', ip:'10.42.0.1', status:'成功', durationMs:198, changes:[{field:'账号', before:'', after:'chen.hao'},{field:'姓名', before:'', after:'陈浩'},{field:'角色', before:'', after:'项目操作员'},{field:'项目数据范围', before:'', after:'智慧城管混合巡检'}] },
+  { id:15, account:'SZD_station01', name:'张站长', domain:'项目', projectName:'深圳东部巡检', projectCode:'PRJ-SZD-001', module:'航线管理', type:'删除', object:'航线 / 西区环线A-草稿', desc:'删除航线草稿', time:'2026-07-06 14:11:08', method:'DELETE', ip:'10.42.0.244', status:'成功', durationMs:119, changes:[{field:'航线名称', before:'西区环线A-草稿', after:''},{field:'航点数', before:'8', after:''},{field:'状态', before:'草稿', after:''}] },
 ];
 
 let filter = { kw:'', projectCode:'', domain:'', module:'', status:'', date:'' };
@@ -523,7 +525,8 @@ function filtered() {
       const k = filter.kw.toLowerCase();
       const hit = (r.account||'').toLowerCase().includes(k)
         || (r.name||'').toLowerCase().includes(k)
-        || (r.desc||'').toLowerCase().includes(k);
+        || (r.desc||'').toLowerCase().includes(k)
+        || (r.object||'').toLowerCase().includes(k);
       if (!hit) return false;
     }
     if (filter.projectCode && r.projectCode !== filter.projectCode) return false;
@@ -595,18 +598,23 @@ function openDetail(id) {
   currentDetail = LOGS.find(r => r.id === id);
   if (!currentDetail) return;
   const r = currentDetail;
+  const statusHtml = r.status === '成功'
+    ? `<span class="inline-flex items-center gap-1.5 text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>成功</span>`
+    : `<span class="inline-flex items-center gap-1.5 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>失败</span>`;
+  const person = r.name ? `${r.name}（${r.account}）` : r.account;
   document.getElementById('detailHeader').innerHTML = `
-    <div class="grid grid-cols-2 gap-x-8 gap-y-3">
-      <div><span class="text-gray-500">操作人员账号：</span><span class="text-gray-200">${r.account}</span></div>
-      <div><span class="text-gray-500">操作人员姓名：</span><span class="text-gray-200">${r.name || '—'}</span></div>
-      <div><span class="text-gray-500">操作域：</span><span class="text-gray-200">${r.domain}</span></div>
-      <div><span class="text-gray-500">操作模块：</span><span class="text-gray-200">${r.module}</span></div>
-      <div><span class="text-gray-500">所属项目名称：</span><span class="text-gray-200">${r.projectName}</span></div>
-      <div><span class="text-gray-500">所属项目编号：</span><span class="text-gray-200">${r.projectCode}</span></div>
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0 flex-1">
+        <div class="text-gray-500 text-xs mb-1">操作说明</div>
+        <div class="text-white text-base font-medium leading-relaxed">${r.desc}</div>
+      </div>
+      <div class="shrink-0 pt-4">${statusHtml}</div>
+    </div>
+    <div class="grid grid-cols-2 gap-x-8 gap-y-2.5 pt-1">
+      <div><span class="text-gray-500">操作模块及类型：</span><span class="text-gray-200">${r.module} · ${r.type}</span></div>
+      <div><span class="text-gray-500">操作人员：</span><span class="text-gray-200">${person}</span></div>
       <div><span class="text-gray-500">操作时间：</span><span class="text-gray-200">${r.time}</span></div>
       <div><span class="text-gray-500">IP地址：</span><span class="text-gray-200">${r.ip}</span></div>
-      <div class="col-span-2"><span class="text-gray-500">操作类型：</span><span class="text-gray-200">${r.type}</span></div>
-      <div class="col-span-2"><span class="text-gray-500">操作说明：</span><span class="text-gray-200">${r.desc}</span></div>
     </div>`;
   switchTab(r.status === '失败' ? 'exc' : 'basic');
   document.getElementById('detailModal').classList.add('show');
@@ -616,26 +624,91 @@ function closeDetail() {
   document.getElementById('detailModal').classList.remove('show');
 }
 
+const TAB_ACTIVE = 'py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]';
+const TAB_IDLE = 'py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200';
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderContentTab(r) {
+  const changes = Array.isArray(r.changes) ? r.changes : [];
+  const objectBlock = `
+    <div class="mb-4">
+      <div class="text-gray-500 mb-1">操作对象</div>
+      <div class="text-gray-200">${esc(r.object || '—')}</div>
+    </div>`;
+  // 有字段明细 → 表格即具体操作内容；无字段明细的简单事件（登录/登出等）→ 仅操作对象，不复述摘要
+  if (!changes.length) {
+    return objectBlock + `
+      <div>
+        <div class="text-gray-500 mb-1">具体操作内容</div>
+        <div class="text-gray-500 text-xs">此操作无字段级明细（如登录、状态处理等事件），概要见顶部「操作说明」。</div>
+      </div>`;
+  }
+  if (r.type === '修改') {
+    const rows = changes.map(c => `
+      <tr class="border-b border-[#222]">
+        <td class="py-2 px-3 text-gray-300 align-top">${esc(c.field)}</td>
+        <td class="py-2 px-3 text-gray-500 line-through align-top">${c.before === '' || c.before == null ? '—' : esc(c.before)}</td>
+        <td class="py-2 px-3 text-emerald-300 align-top">${c.after === '' || c.after == null ? '—' : esc(c.after)}</td>
+      </tr>`).join('');
+    return objectBlock + `
+      <div class="text-gray-500 mb-2">具体操作内容</div>
+      <table class="w-full text-left text-sm border-collapse">
+        <thead><tr class="border-b border-[#2d2d2d] text-gray-500">
+          <th class="py-2 px-3 font-medium w-1/4">字段</th>
+          <th class="py-2 px-3 font-medium">变更前</th>
+          <th class="py-2 px-3 font-medium">变更后</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+  const isDel = r.type === '删除';
+  const valLabel = isDel ? '删除前内容' : '内容';
+  const rows = changes.map(c => {
+    const val = isDel ? c.before : c.after;
+    return `
+      <tr class="border-b border-[#222]">
+        <td class="py-2 px-3 text-gray-300 align-top w-1/3">${esc(c.field)}</td>
+        <td class="py-2 px-3 ${isDel ? 'text-gray-400' : 'text-gray-200'} align-top">${val === '' || val == null ? '—' : esc(val)}</td>
+      </tr>`;
+  }).join('');
+  return objectBlock + `
+    <div class="text-gray-500 mb-2">具体操作内容</div>
+    <table class="w-full text-left text-sm border-collapse">
+      <thead><tr class="border-b border-[#2d2d2d] text-gray-500">
+        <th class="py-2 px-3 font-medium">字段</th>
+        <th class="py-2 px-3 font-medium">${valLabel}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 function switchTab(tab) {
   const r = currentDetail;
+  const contentBtn = document.getElementById('tabContent');
   const basicBtn = document.getElementById('tabBasic');
   const excBtn = document.getElementById('tabExc');
   const body = document.getElementById('detailBody');
-  if (tab === 'basic') {
-    basicBtn.className = 'py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]';
-    excBtn.className = 'py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200';
-    const status = r.status === '成功'
-      ? `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>成功</span>`
-      : `<span class="inline-flex items-center gap-1.5 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>失败</span>`;
+  contentBtn.className = TAB_IDLE;
+  basicBtn.className = TAB_IDLE;
+  excBtn.className = TAB_IDLE;
+  if (tab === 'content') {
+    contentBtn.className = TAB_ACTIVE;
+    body.innerHTML = renderContentTab(r);
+  } else if (tab === 'basic') {
+    basicBtn.className = TAB_ACTIVE;
+    const duration = (r.durationMs == null || r.durationMs === '') ? '—' : `${r.durationMs} ms`;
     body.innerHTML = `
-      <div class="flex flex-wrap gap-10 text-sm">
+      <div class="grid grid-cols-2 gap-x-10 gap-y-4 text-sm">
+        <div><div class="text-gray-500 mb-1">所属项目名称</div><div class="text-gray-200">${r.projectName}</div></div>
+        <div><div class="text-gray-500 mb-1">所属项目编号</div><div class="text-gray-200">${r.projectCode}</div></div>
         <div><div class="text-gray-500 mb-1">请求方法</div><span class="inline-block px-2 py-0.5 rounded bg-[#0c2d48] text-[#58a6ff] border border-[#1a4a6e]">${r.method}</span></div>
-        <div><div class="text-gray-500 mb-1">操作状态</div>${status}</div>
-        <div><div class="text-gray-500 mb-1">操作域</div><span class="text-gray-200">${r.domain}</span></div>
+        <div><div class="text-gray-500 mb-1">耗时</div><div class="text-gray-200">${duration}</div></div>
       </div>`;
   } else {
-    basicBtn.className = 'py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200';
-    excBtn.className = 'py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]';
+    excBtn.className = TAB_ACTIVE;
     if (r.error) {
       body.innerHTML = `<div class="rounded border border-red-900/60 bg-red-950/40 text-red-300 px-4 py-3 text-sm">${r.error}</div>`;
     } else {
