@@ -195,7 +195,7 @@
       <!-- Dynamic Content -->
     </div>
     <div class="flex items-center gap-4">
-      <div class="flex gap-3" id="headerActions">
+      <div class="flex items-center gap-2" id="headerActions">
         <!-- Dynamic Content -->
       </div>
       <div class="w-px h-5 bg-borderDark hidden" id="navDivider"></div>
@@ -536,7 +536,7 @@
       else item.disposals.push({ type: deviceType, status: '调度中' });
       item.eventStatus = '调度中';
       if (item.status === '待确认') item.status = '已确认';
-      showToast(`${typeLabel}重新派发触发成功，等待调度`);
+      showToast(`重新处置（${typeLabel}）触发成功，等待调度`);
       setTimeout(() => renderPage(), 500);
     }
 
@@ -670,7 +670,7 @@
     // 说明：一条告警可同时触发「无人机处置」与「地面机器人处置」，形成多条处置记录。
     // 时间线按时间倒序混排，每条记录用 deviceType 区分执行设备（drone=无人机 / robot=地面机器人）。
     const mockHistories = {
-      '2': [ // ID 2: 双处置示例（无人机多次失败 + 地面机器人已取消）→ 可分别重新派发
+      '2': [ // ID 2: 双处置示例（无人机多次失败 + 地面机器人已取消）→ 可分别重新处置
         {
           deviceType: 'robot',
           status: '已取消',
@@ -888,24 +888,26 @@
         // No primary actions usually
       }
 
-      // Add per-device retry buttons（上下排布）：仅对应处置失败/已取消/已过期时出现
+      // 按设备重新处置：降低视觉权重，与告警主操作分组横向展示
       let retryBtns = '';
       if (canRetryDevice(item, 'drone')) {
         retryBtns += `
-          <button onclick="handleRetry('drone')" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
+          <button onclick="handleRetry('drone')" class="h-8 px-3 bg-bgPanel border border-borderDark text-textMain rounded text-[13px] hover:border-accent hover:text-accent hover:bg-[rgba(24,144,255,0.08)] transition-colors flex items-center gap-1.5 whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            重新派发无人机
+            重新处置（无人机）
           </button>`;
       }
       if (canRetryDevice(item, 'robot')) {
         retryBtns += `
-          <button onclick="handleRetry('robot')" class="px-4 py-1.5 bg-accent text-white rounded text-sm hover:bg-accentHover shadow-lg shadow-accent/20 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
+          <button onclick="handleRetry('robot')" class="h-8 px-3 bg-bgPanel border border-borderDark text-textMain rounded text-[13px] hover:border-accent hover:text-accent hover:bg-[rgba(24,144,255,0.08)] transition-colors flex items-center gap-1.5 whitespace-nowrap">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            重新派发地面机器人
+            重新处置（地面机器人）
           </button>`;
       }
       if (retryBtns) {
-        actionsHTML += `<div class="flex flex-col gap-1.5">${retryBtns}</div>`;
+        actionsHTML += `
+          <div class="h-6 w-px bg-borderDark mx-1"></div>
+          <div class="flex items-center gap-1.5">${retryBtns}</div>`;
       }
       document.getElementById('headerActions').innerHTML = actionsHTML;
 

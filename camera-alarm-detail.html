@@ -69,7 +69,7 @@
     <div class="px-4 py-3 flex items-center justify-between border-b border-[#2d2d2d] bg-[#161616] shrink-0">
         <div class="flex items-center gap-3 flex-wrap" id="headerInfo"></div>
         <div class="flex items-center gap-3">
-            <div class="flex gap-2" id="headerActions"></div>
+            <div class="flex items-center gap-2" id="headerActions"></div>
             <div class="w-px h-5 bg-[#2d2d2d]"></div>
             <div class="flex gap-2" id="navActions"></div>
         </div>
@@ -245,7 +245,7 @@
             if (hit) hit.status = '处置中';
             else item.disposals.push({ type: deviceType, status: '处置中' });
             item.status = '处置中';
-            showToast(`${typeLabel}重新派发提交成功，等待调度`);
+            showToast(`重新处置（${typeLabel}）提交成功，等待调度`);
             setTimeout(renderPage, 400);
         }
 
@@ -270,19 +270,21 @@
                 <span class="text-xs text-gray-400">处置状态</span>
                 ${disposalChips(item)}`;
 
-            // Header actions：查看录像回放 + 立即处置 + 按设备重新派发（上下排布）
+            // Header actions：主操作与按设备重新处置分组，重新处置降为描边次级按钮
             let actions = `<button onclick="goPlayback()" class="px-3 py-1.5 bg-transparent text-[#58a6ff] border border-[#30363d] rounded hover:bg-[#252525] transition-colors text-xs flex items-center gap-1"><i class="fas fa-play-circle"></i>查看录像回放</button>`;
             if (item.status === '待处置') {
                 actions += `<button onclick="showToast('未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1"><i class="fas fa-bolt"></i>立即处置</button>`;
             }
             let retryBtns = '';
             if (canRetryDevice(item, 'drone')) {
-                retryBtns += `<button onclick="handleRetry('drone')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1 whitespace-nowrap"><i class="fas fa-redo"></i>重新派发无人机</button>`;
+                retryBtns += `<button onclick="handleRetry('drone')" class="h-8 px-3 bg-[#1a1a1a] border border-[#30363d] text-gray-200 rounded hover:border-[#58a6ff] hover:text-[#58a6ff] hover:bg-[#58a6ff]/10 transition-colors text-xs flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-redo"></i>重新处置（无人机）</button>`;
             }
             if (canRetryDevice(item, 'robot')) {
-                retryBtns += `<button onclick="handleRetry('robot')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1 whitespace-nowrap"><i class="fas fa-redo"></i>重新派发地面机器人</button>`;
+                retryBtns += `<button onclick="handleRetry('robot')" class="h-8 px-3 bg-[#1a1a1a] border border-[#30363d] text-gray-200 rounded hover:border-[#58a6ff] hover:text-[#58a6ff] hover:bg-[#58a6ff]/10 transition-colors text-xs flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-redo"></i>重新处置（地面机器人）</button>`;
             }
-            if (retryBtns) actions += `<div class="flex flex-col gap-1.5">${retryBtns}</div>`;
+            if (retryBtns) {
+                actions += `<div class="h-6 w-px bg-[#2d2d2d] mx-1"></div><div class="flex items-center gap-1.5">${retryBtns}</div>`;
+            }
             document.getElementById('headerActions').innerHTML = actions;
 
             // Alert info

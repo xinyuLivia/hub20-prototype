@@ -347,6 +347,7 @@
             <th class="py-3 px-2 font-normal">上报时间</th>
             <th class="py-3 px-2 font-normal">处置状态</th>
             <th class="py-3 px-2 font-normal">操作</th>
+            <th class="py-3 px-2 font-normal">重新处置</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-borderDark" id="tableBody">
@@ -606,20 +607,21 @@
         primary.push(`<button onclick="handleAction('cancelConfirm', '${item.id}')" class="text-accent hover:text-blue-400">取消确认</button>`);
         primary.push(`<button onclick="handleAction('push', '${item.id}')" class="text-accent hover:text-blue-400">消息推送</button>`);
       }
+      
+      return `<div class="flex items-center gap-3 flex-wrap">${primary.join('')}</div>`;
+    }
 
-      // 按执行设备分别展示「重新派发」：仅对应处置失败/已取消/已过期时出现，上下排布
+    /** 「重新处置」独立列：上下排布，仅对应处置失败/已取消/已过期时出现 */
+    function getRetryActionsHTML(item) {
       let retries = [];
       if (canRetryDevice(item, 'drone')) {
-        retries.push(`<button onclick="handleRetry('${item.id}', 'drone')" class="text-accent hover:text-blue-400 font-medium whitespace-nowrap">重新派发无人机</button>`);
+        retries.push(`<button onclick="handleRetry('${item.id}', 'drone')" class="text-accent hover:text-blue-400 font-medium whitespace-nowrap">重新处置（无人机）</button>`);
       }
       if (canRetryDevice(item, 'robot')) {
-        retries.push(`<button onclick="handleRetry('${item.id}', 'robot')" class="text-accent hover:text-blue-400 font-medium whitespace-nowrap">重新派发地面机器人</button>`);
+        retries.push(`<button onclick="handleRetry('${item.id}', 'robot')" class="text-accent hover:text-blue-400 font-medium whitespace-nowrap">重新处置（地面机器人）</button>`);
       }
-      
-      return `<div class="flex flex-col gap-1.5 items-start">
-        <div class="flex items-center gap-3 flex-wrap">${primary.join('')}</div>
-        ${retries.length ? `<div class="flex flex-col gap-1">${retries.join('')}</div>` : ''}
-      </div>`;
+      if (!retries.length) return '<span class="text-textSub">-</span>';
+      return `<div class="flex flex-col gap-1 items-start">${retries.join('')}</div>`;
     }
 
     function renderList() {
@@ -643,6 +645,7 @@
           <td class="py-4 px-2 text-[#8C8C8C] text-[13px]">${item.time}</td>
           <td class="py-4 px-2 text-[13px]">${getDisposalChips(item)}</td>
           <td class="py-4 px-2 text-[13px] font-medium">${getActionsHTML(item)}</td>
+          <td class="py-4 px-2 text-[13px] font-medium">${getRetryActionsHTML(item)}</td>
         </tr>
       `).join('');
     }
@@ -695,8 +698,9 @@
           </div>
           
           <!-- Actions Footer -->
-          <div class="px-3 py-2 bg-[#1A1A1A] border-t border-borderDark flex flex-wrap gap-x-3 gap-y-1.5 text-xs mt-auto">
+          <div class="px-3 py-2 bg-[#1A1A1A] border-t border-borderDark flex flex-col gap-1.5 text-xs mt-auto">
             ${getActionsHTML(item)}
+            <div class="pt-1 border-t border-borderDark/50">${getRetryActionsHTML(item)}</div>
           </div>
         </div>
       `).join('');
@@ -786,10 +790,10 @@
       const hit = item.disposals.find(d => d.type === deviceType);
       if (hit) hit.status = '调度中';
       else item.disposals.push({ type: deviceType, status: '调度中' });
-      // 列表「最新事件状态」取该次重新派发
+      // 列表「最新事件状态」取该次重新处置
       item.eventStatus = '调度中';
       if (item.status === '待确认') item.status = '已确认';
-      showToast(`${typeLabel}重新派发触发成功，等待调度`);
+      showToast(`重新处置（${typeLabel}）触发成功，等待调度`);
       renderList();
       renderGrid();
     }

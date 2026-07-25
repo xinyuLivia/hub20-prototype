@@ -98,6 +98,7 @@
                     <th class="py-3 px-2 font-normal whitespace-nowrap">告警等级</th>
                     <th class="py-3 px-2 font-normal whitespace-nowrap">处置状态</th>
                     <th class="py-3 px-2 font-normal whitespace-nowrap">操作</th>
+                    <th class="py-3 px-2 font-normal whitespace-nowrap">重新处置</th>
                     <th class="py-3 px-2 font-normal whitespace-nowrap">处置任务</th>
                     <th class="py-3 px-2 font-normal whitespace-nowrap">处置过程照片</th>
                 </tr>
@@ -258,7 +259,7 @@
             else a.disposals.push({ type: deviceType, status: '处置中' });
             a.status = '处置中';
             a.action = '';
-            showToast(`${typeLabel}重新派发提交成功，等待调度`);
+            showToast(`重新处置（${typeLabel}）提交成功，等待调度`);
             renderList();
         }
 
@@ -277,17 +278,20 @@
             if (a.action === '立即处置') {
                 primary += `<button class="text-[#58a6ff] hover:underline text-xs" onclick="handleDispose('立即处置', '${a.id}')">立即处置</button>`;
             }
+            return `<div class="flex items-center gap-3">${primary}</div>`;
+        }
+
+        /** 「重新处置」独立列：上下排布，仅对应处置失败/已取消/已过期时出现 */
+        function renderRetryActions(a) {
             let retries = [];
             if (canRetryDevice(a, 'drone')) {
-                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'drone')">重新派发无人机</button>`);
+                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'drone')">重新处置（无人机）</button>`);
             }
             if (canRetryDevice(a, 'robot')) {
-                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'robot')">重新派发地面机器人</button>`);
+                retries.push(`<button class="text-[#58a6ff] hover:underline text-xs whitespace-nowrap" onclick="handleRetry('${a.id}', 'robot')">重新处置（地面机器人）</button>`);
             }
-            return `<div class="flex flex-col gap-1.5 items-start">
-                <div class="flex items-center gap-3">${primary}</div>
-                ${retries.length ? `<div class="flex flex-col gap-1">${retries.join('')}</div>` : ''}
-            </div>`;
+            if (!retries.length) return '<span class="text-gray-500">-</span>';
+            return `<div class="flex flex-col gap-1 items-start">${retries.join('')}</div>`;
         }
 
         function renderList() {
@@ -304,6 +308,7 @@
                         ${disposalChips(a)}
                     </td>
                     <td class="py-3 px-2">${renderActions(a)}</td>
+                    <td class="py-3 px-2">${renderRetryActions(a)}</td>
                     <td class="py-3 px-2 max-w-[200px]">
                         ${a.task === '-' ? '<span class="text-gray-500">-</span>' : `<a href="#" class="text-[#58a6ff] hover:underline truncate block" title="${a.task}">${a.task}</a>`}
                     </td>
