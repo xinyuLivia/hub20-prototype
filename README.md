@@ -1,6 +1,6 @@
 # HUB 2.0 原型（Avant 智慧巡检）
 
-Avant Hub 2.0 静态 HTML 原型合集，可本地打开或通过 GitHub Pages 在线预览。
+ 2.0 静态 HTML 原型合集，可本地打开或通过 GitHub Pages 在线预览。
 
 ## 在线访问
 
