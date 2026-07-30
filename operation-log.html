@@ -100,6 +100,23 @@
       justify-content: center;
     }
     .modal-mask.show { display: flex; }
+    .detail-modal-panel {
+      width: 720px;
+      max-width: 92vw;
+      height: 560px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    }
+    #detailBody {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
     .muted-label { color: #6b7280; }
     .active-label { color: #fff; }
     .filter-wrap { position: relative; display: inline-flex; }
@@ -269,18 +286,17 @@
   </div>
 
   <div id="detailModal" class="modal-mask" onclick="if(event.target===this)closeDetail()">
-    <div class="bg-[#1e1e1e] border border-[#30363d] rounded-lg w-[720px] max-w-[92vw] shadow-2xl">
-      <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#2d2d2d]">
+    <div class="detail-modal-panel">
+      <div class="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-[#2d2d2d]">
         <h2 class="text-white text-base font-medium">操作日志详情</h2>
         <button class="text-gray-400 hover:text-white text-lg" onclick="closeDetail()">&times;</button>
       </div>
-      <div class="px-5 py-4 space-y-3 text-sm" id="detailHeader"></div>
-      <div class="px-5 border-b border-[#2d2d2d] flex gap-6 text-sm">
+      <div class="shrink-0 px-5 py-4 space-y-3 text-sm" id="detailHeader"></div>
+      <div class="shrink-0 px-5 border-b border-[#2d2d2d] flex gap-6 text-sm">
         <button id="tabBasic" class="py-2.5 border-b-2 border-[#58a6ff] text-[#58a6ff]" onclick="switchTab('basic')">基本信息</button>
-        <button id="tabContent" class="py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200" onclick="switchTab('content')">操作内容</button>
         <button id="tabExc" class="py-2.5 border-b-2 border-transparent text-gray-400 hover:text-gray-200" onclick="switchTab('exc')">异常信息</button>
       </div>
-      <div class="px-5 py-5 min-h-[120px]" id="detailBody"></div>
+      <div class="px-5 py-5 custom-scrollbar" id="detailBody"></div>
     </div>
   </div>
 
@@ -605,11 +621,8 @@ function openDetail(id) {
   const person = r.name ? `${r.name}（${r.account}）` : r.account;
   document.getElementById('detailHeader').innerHTML = `
     <div class="flex items-start justify-between gap-4">
-      <div class="min-w-0 flex-1">
-        <div class="text-gray-500 text-xs mb-1">操作说明</div>
-        <div class="text-white text-base font-medium leading-relaxed">${r.desc}</div>
-      </div>
-      <div class="shrink-0 pt-4">${statusHtml}</div>
+      <div class="min-w-0 flex-1 text-white text-base font-medium leading-relaxed">${r.desc}</div>
+      <div class="shrink-0">${statusHtml}</div>
     </div>
     <div class="grid grid-cols-2 gap-x-8 gap-y-2.5 pt-1">
       <div><span class="text-gray-500">操作模块及类型：</span><span class="text-gray-200">${r.module} · ${r.type}</span></div>
@@ -632,46 +645,35 @@ function esc(v) {
   return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function renderContentTab(r) {
-  // 本期仅展示操作对象：类型 + ID（必写）+ 名称；不做字段级具体操作内容
-  return `
-    <div class="grid grid-cols-1 gap-y-4 text-sm">
-      <div>
-        <div class="text-gray-500 mb-1">操作对象类型</div>
-        <div class="text-gray-200">${esc(r.objectType || '—')}</div>
-      </div>
-      <div>
-        <div class="text-gray-500 mb-1">操作对象 ID</div>
-        <div class="text-gray-200 font-mono">${esc(r.objectId || '—')}</div>
-      </div>
-      <div>
-        <div class="text-gray-500 mb-1">操作对象名称</div>
-        <div class="text-gray-200">${esc(r.objectName || '—')}</div>
-      </div>
-    </div>`;
-}
-
 function switchTab(tab) {
   const r = currentDetail;
-  const contentBtn = document.getElementById('tabContent');
   const basicBtn = document.getElementById('tabBasic');
   const excBtn = document.getElementById('tabExc');
   const body = document.getElementById('detailBody');
-  contentBtn.className = TAB_IDLE;
   basicBtn.className = TAB_IDLE;
   excBtn.className = TAB_IDLE;
-  if (tab === 'content') {
-    contentBtn.className = TAB_ACTIVE;
-    body.innerHTML = renderContentTab(r);
-  } else if (tab === 'basic') {
+  if (tab === 'basic') {
     basicBtn.className = TAB_ACTIVE;
     const duration = (r.durationMs == null || r.durationMs === '') ? '—' : `${r.durationMs} ms`;
     body.innerHTML = `
-      <div class="grid grid-cols-2 gap-x-10 gap-y-4 text-sm">
-        <div><div class="text-gray-500 mb-1">所属项目名称</div><div class="text-gray-200">${r.projectName}</div></div>
-        <div><div class="text-gray-500 mb-1">所属项目编号</div><div class="text-gray-200">${r.projectCode}</div></div>
-        <div><div class="text-gray-500 mb-1">请求方法</div><span class="inline-block px-2 py-0.5 rounded bg-[#0c2d48] text-[#58a6ff] border border-[#1a4a6e]">${r.method}</span></div>
-        <div><div class="text-gray-500 mb-1">耗时</div><div class="text-gray-200">${duration}</div></div>
+      <div class="text-sm space-y-5">
+        <section>
+          <div class="grid grid-cols-2 gap-x-10 gap-y-4">
+            <div><div class="text-gray-500 mb-1">操作域</div><div class="text-gray-200">${esc(r.domain)}</div></div>
+            <div><div class="text-gray-500 mb-1">请求方法</div><span class="inline-block px-2 py-0.5 rounded bg-[#0c2d48] text-[#58a6ff] border border-[#1a4a6e]">${esc(r.method)}</span></div>
+            <div><div class="text-gray-500 mb-1">所属项目名称</div><div class="text-gray-200">${esc(r.projectName)}</div></div>
+            <div><div class="text-gray-500 mb-1">所属项目编号</div><div class="text-gray-200">${esc(r.projectCode)}</div></div>
+            <div><div class="text-gray-500 mb-1">耗时</div><div class="text-gray-200">${duration}</div></div>
+          </div>
+        </section>
+        <div class="border-t border-[#2d2d2d]"></div>
+        <section>
+          <div class="text-gray-400 text-xs mb-3 tracking-wide">操作对象</div>
+          <div class="grid grid-cols-2 gap-x-10 gap-y-4">
+            <div><div class="text-gray-500 mb-1">操作对象 ID</div><div class="text-gray-200 font-mono">${esc(r.objectId || '—')}</div></div>
+            <div><div class="text-gray-500 mb-1">操作对象名称</div><div class="text-gray-200">${esc(r.objectName || '—')}</div></div>
+          </div>
+        </section>
       </div>`;
   } else {
     excBtn.className = TAB_ACTIVE;
