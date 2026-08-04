@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工作流事件列表</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -185,11 +189,8 @@
             </div>
             <div class="p-6">
                 <div class="text-sm text-dark-textSecondary mb-3" id="mapCoord">经度 114.3050975，纬度 22.7352507</div>
-                <div class="h-72 rounded bg-dark-bg border border-dark-border flex items-center justify-center text-dark-textSecondary">
-                    <div class="text-center">
-                        <i class="fas fa-map-location-dot text-4xl mb-3 text-dark-primary"></i>
-                        <div>地图定位示意（Leaflet / OSM）</div>
-                    </div>
+                <div class="h-80 rounded border border-dark-border bg-[#0d1117] overflow-hidden relative">
+                    <div id="event-view-map" class="absolute inset-0"></div>
                 </div>
             </div>
         </div>
@@ -265,9 +266,11 @@
             render(device);
         }
 
+        const eventViewer = (typeof HubMap !== 'undefined') ? HubMap.createViewer('event-view-map') : null;
         function openMap(lat, lng) {
             document.getElementById('mapCoord').textContent = `经度 ${lng}，纬度 ${lat}`;
             document.getElementById('mapModal').classList.remove('hidden');
+            if (eventViewer) eventViewer.openAt(lng, lat);
         }
         function closeMap() { document.getElementById('mapModal').classList.add('hidden'); }
 

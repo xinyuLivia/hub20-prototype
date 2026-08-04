@@ -166,7 +166,10 @@
                         <i id="icon-node1" class="fas fa-caret-down w-4 text-center mr-1 mt-0.5"></i>
                         <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
                         <div class="flex flex-col min-w-0 flex-1">
-                            <span class="truncate font-medium" title="海康双光谱球机-北门">海康双光谱球机-北门</span>
+                            <div class="flex items-center min-w-0 gap-1.5">
+                                <span class="truncate font-medium" title="海康双光谱球机-北门">海康双光谱球机-北门</span>
+                                <span class="text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] px-1 rounded shrink-0">摄像头</span>
+                            </div>
                             <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000001">44030000001320000001</span>
                         </div>
                     </div>
@@ -193,7 +196,10 @@
                         <i id="icon-node2" class="fas fa-caret-right w-4 text-center mr-1 mt-0.5"></i>
                         <i class="fas fa-server text-gray-400 mr-2 mt-0.5"></i>
                         <div class="flex flex-col min-w-0 flex-1">
-                            <span class="truncate font-medium" title="大华枪机-东侧围墙">大华枪机-东侧围墙</span>
+                            <div class="flex items-center min-w-0 gap-1.5">
+                                <span class="truncate font-medium" title="大华枪机-东侧围墙">大华枪机-东侧围墙</span>
+                                <span class="text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] px-1 rounded shrink-0">摄像头</span>
+                            </div>
                             <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000002">44030000001320000002</span>
                         </div>
                     </div>
@@ -215,6 +221,7 @@
                         <div class="flex flex-col min-w-0 flex-1">
                             <div class="flex items-center min-w-0">
                                 <span class="truncate font-medium" title="海康全景-料场全景">海康全景-料场全景</span>
+                                <span class="ml-1 text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] px-1 rounded shrink-0">摄像头</span>
                                 <span class="ml-1 text-[10px] text-gray-500 bg-gray-800 px-1 py-0.5 rounded border border-gray-600 shrink-0">离线</span>
                             </div>
                             <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001320000003">44030000001320000003</span>
@@ -226,6 +233,36 @@
                             <div class="flex flex-col min-w-0">
                                 <span class="truncate">通道1</span>
                                 <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001310000004">44030000001310000004</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2 device-group" data-name="海康录像机-北区机房" data-gb="44030000001180000001">
+                    <div class="flex items-start px-2 py-1.5 text-sm text-gray-300 hover:bg-[#21262d] rounded cursor-pointer" onclick="toggleNode('node-nvr')">
+                        <i id="icon-node-nvr" class="fas fa-caret-right w-4 text-center mr-1 mt-0.5"></i>
+                        <i class="fas fa-hdd text-gray-400 mr-2 mt-0.5"></i>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center min-w-0 gap-1.5">
+                                <span class="truncate font-medium" title="海康录像机-北区机房">海康录像机-北区机房</span>
+                                <span class="text-[10px] text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-1 rounded shrink-0">硬盘录像机</span>
+                            </div>
+                            <span class="text-[10px] text-gray-500 font-mono truncate" title="44030000001180000001">44030000001180000001</span>
+                        </div>
+                    </div>
+                    <div id="node-nvr" class="pl-6 pr-2 mt-1 space-y-1 hidden">
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" data-name="通道1: 北门可见光" data-gb="44030000001310000011" onclick="selectPlaybackChannel('海康录像机-北区机房', '通道1: 北门可见光', this)">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道1: 北门可见光</span>
+                                <span class="text-[10px] text-gray-500 font-mono truncate">44030000001310000011</span>
+                            </div>
+                        </div>
+                        <div class="channel-item flex items-center px-2 py-1.5 text-sm text-gray-400 hover:bg-[#21262d] rounded cursor-pointer" data-name="通道3: 东围墙" data-gb="44030000001310000013" onclick="selectPlaybackChannel('海康录像机-北区机房', '通道3: 东围墙', this)">
+                            <i class="fas fa-video text-xs mr-2 shrink-0"></i>
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate">通道3: 东围墙</span>
+                                <span class="text-[10px] text-gray-500 font-mono truncate">44030000001310000013</span>
                             </div>
                         </div>
                     </div>

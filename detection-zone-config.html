@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>检测区域配置 · 高保真原型</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="leaflet-hub.js"></script>
 <style>
   :root{
     --bg:#0b0f14; --panel:#141a22; --panel2:#1b232e; --line:#26303c;
@@ -226,7 +229,8 @@
 
     <!-- 地图 -->
     <div class="map-wrap">
-      <canvas id="mapCanvas"></canvas>
+      <div id="zone-leaflet" style="position:absolute;inset:0;z-index:0"></div>
+      <canvas id="mapCanvas" style="position:absolute;inset:0;z-index:1;background:transparent"></canvas>
       <svg id="svg"></svg>
 
       <div class="maptools">
@@ -392,44 +396,12 @@ document.addEventListener("click",e=>{
   if(box && !box.contains(e.target))toggleAlgoMsel(false);
 });
 
-/* ---------- 仿卫星底图 ---------- */
+/* ---------- 底图由 Leaflet 承担；Canvas 仅透明清屏供绘制叠加 ---------- */
 function drawMap(){
   const w=canvas.clientWidth,h=canvas.clientHeight;
   canvas.width=w;canvas.height=h;
   const c=canvas.getContext("2d");
-  c.fillStyle="#2d3b32";c.fillRect(0,0,w,h);
-  // 大片绿地/地块
-  const blobs=[["#33463a",0.14],["#3a4a3d",0.10],["#2b3a44",0.09],["#414a37",0.08]];
-  let seed=42;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
-  for(let i=0;i<70;i++){
-    const b=blobs[i%blobs.length];
-    c.fillStyle=b[0];c.globalAlpha=.55;
-    const x=rnd()*w,y=rnd()*h,r=30+rnd()*90;
-    c.beginPath();c.ellipse(x,y,r,r*(.6+rnd()*.5),rnd()*6,0,7);c.fill();
-  }
-  c.globalAlpha=1;
-  // 水体
-  c.fillStyle="#22323f";
-  c.beginPath();c.moveTo(0,h*.72);
-  for(let x=0;x<=w;x+=40)c.lineTo(x,h*.72+Math.sin(x/70)*14);
-  c.lineTo(w,h);c.lineTo(0,h);c.fill();
-  // 路网
-  c.strokeStyle="#6b7480";c.globalAlpha=.5;
-  for(let i=0;i<7;i++){c.lineWidth=1+rnd()*2;c.beginPath();c.moveTo(rnd()*w,0);c.lineTo(rnd()*w,h);c.stroke();}
-  for(let i=0;i<6;i++){c.lineWidth=1+rnd()*2;c.beginPath();c.moveTo(0,rnd()*h);c.lineTo(w,rnd()*h);c.stroke();}
-  c.globalAlpha=1;
-  // 楼块
-  for(let i=0;i<140;i++){
-    c.fillStyle=rnd()>.5?"#3b444d":"#454e57";c.globalAlpha=.4+rnd()*.3;
-    const x=rnd()*w,y=rnd()*h*.72,bw=6+rnd()*20,bh=6+rnd()*20;
-    c.fillRect(x,y,bw,bh);
-  }
-  c.globalAlpha=1;
-  // 地名
-  c.fillStyle="rgba(210,220,230,.55)";c.font="12px sans-serif";
-  ["福田口岸","市民广场","中心公园","景田","梅林关","滨河大道","彩田路"].forEach((t,i)=>{
-    c.fillText(t,40+((i*180)%(w-120)),60+((i*97)%(h-120)));
-  });
+  c.clearRect(0,0,w,h);
 }
 
 /* ---------- 几何 ---------- */
@@ -837,7 +809,12 @@ function seed(){
   zones.forEach(z=>z.area=zoneArea(z));
 }
 
-function boot(){fillFilterAlgos();drawMap();seed();renderAlgoMsel();render();}
+let zoneLeafletMap=null;
+function initZoneLeaflet(){
+  if(!window.HubMap||zoneLeafletMap) return;
+  zoneLeafletMap=HubMap.createMap('zone-leaflet',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,zoom:13,center:[22.55,114.06]});
+}
+function boot(){initZoneLeaflet();fillFilterAlgos();drawMap();seed();renderAlgoMsel();render(); setTimeout(function(){if(zoneLeafletMap)zoneLeafletMap.invalidateSize();},100);}
 window.addEventListener("resize",()=>{drawMap();render();});
 boot();
 </script>

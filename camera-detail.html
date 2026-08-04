@@ -6,6 +6,9 @@
     <title>摄像头详情 - Avant Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
     <style>
         body {
             background-color: #141414;
@@ -37,26 +40,10 @@
             border-color: #2d2d2d;
             cursor: not-allowed;
         }
-        
-        /* Map Picker Styles */
-        .map-picker-bg {
-            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
-            position: relative;
-        }
-        .map-picker-bg::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: rgba(20, 20, 20, 0.2);
-        }
-        .center-marker {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -100%);
-            z-index: 10;
-            pointer-events: none;
-        }
+
+        .leaflet-container { font-family: inherit; background: #0d1117; }
+        .hub-map-fill { position: absolute; inset: 0; z-index: 0; }
+
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-[#141414]">
@@ -95,8 +82,9 @@
     <!-- 设备标题栏 -->
     <div class="px-6 py-4 flex justify-between items-center shrink-0">
         <div class="flex items-center">
-            <h1 class="text-lg font-medium text-white flex items-center">
+            <h1 class="text-lg font-medium text-white flex items-center" id="detail-page-title">
                 海康双光谱球机-北门
+                <span id="detail-page-type" class="ml-2 text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded font-normal">摄像头</span>
                 <span class="ml-3 text-xs flex items-center text-[#3fb950] font-normal">
                     <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
                 </span>
@@ -141,6 +129,10 @@
 
     <!-- 主体内容区 -->
     <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div id="detail-location-banner" class="hidden mb-4 max-w-4xl text-xs text-[#d29922] flex items-start bg-[#d29922]/10 border border-[#d29922]/30 rounded p-3">
+            <i class="fas fa-exclamation-triangle mt-0.5 mr-2"></i>
+            <span>有 <strong id="missing-loc-count">3</strong> 个通道未配置安装位置，请在通道列表中逐路配置。</span>
+        </div>
         
         <!-- Tab 1: 基本信息 -->
         <div id="tab-basic" class="block">
@@ -150,34 +142,46 @@
             <div id="basic-view" class="grid grid-cols-2 gap-y-8 gap-x-16 max-w-4xl">
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">设备名称</div>
-                    <div class="text-sm text-white">海康双光谱球机-北门</div>
+                    <div class="text-sm text-white" id="view-device-name">海康双光谱球机-北门</div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-500 mb-1.5">设备类型</div>
+                    <div class="text-sm text-white" id="view-device-type">摄像头</div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">国标编码</div>
-                    <div class="text-sm text-white font-mono">44030000001320000001</div>
+                    <div class="text-sm text-white font-mono" id="view-gb">44030000001320000001</div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
-                    <div class="text-sm text-white font-mono">192.168.1.100</div>
+                    <div class="text-sm text-white font-mono" id="view-ip">192.168.1.100</div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">厂商</div>
-                    <div class="text-sm text-white">Hikvision (海康威视)</div>
+                    <div class="text-sm text-white">海康威视</div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">型号</div>
-                    <div class="text-sm text-white">DS-2TD4136-25</div>
+                    <div class="text-sm text-white" id="view-model">DS-2TD4136-25</div>
                 </div>
-                <div>
-                    <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
-                    <div class="text-sm text-white flex items-center">
-                        <span><span id="view-lng">113.945231</span>, <span id="view-lat">22.573123</span></span>
-                        <button onclick="openMapView(document.getElementById('view-lng').innerText, document.getElementById('view-lat').innerText)" class="ml-2 text-[#58a6ff] hover:underline text-xs inline-flex items-center"><i class="fas fa-map-marker-alt mr-1"></i>查看地图</button>
+                <div id="view-loc-block">
+                    <div class="text-xs text-gray-500 mb-1.5" id="view-loc-label">安装位置（经纬度）</div>
+                    <div class="text-sm text-white font-mono" id="view-loc-value">
+                        <span id="view-lng">113.945231</span>, <span id="view-lat">22.573123</span>
                     </div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
                     <div class="text-sm text-white" id="view-protocol">TCP</div>
+                </div>
+            </div>
+            <div id="view-loc-map" class="mt-6 max-w-4xl">
+                <div class="text-xs text-gray-500 mb-2">安装位置地图</div>
+                <div class="h-56 w-full rounded-lg border border-[#333] overflow-hidden relative bg-[#0d1117]">
+                    <div id="inline-preview-map" class="absolute inset-0"></div>
+                    <div class="absolute bottom-3 left-3 bg-[#1e1e1e]/90 backdrop-blur border border-[#333] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-[500]">
+                        <span id="view-map-lng">113.945231</span>, <span id="view-map-lat">22.573123</span>
+                    </div>
                 </div>
             </div>
 
@@ -213,7 +217,7 @@
                     <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="TCP" disabled>
                 </div>
                 <div class="col-span-2">
-                    <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
+                    <div class="text-xs text-gray-500 mb-1.5" id="edit-loc-label">安装位置（经纬度）</div>
                     <div class="flex items-center space-x-4">
                         <input type="text" id="input-lng" class="form-input w-48" value="113.945231" placeholder="经度">
                         <input type="text" id="input-lat" class="form-input w-48" value="22.573123" placeholder="纬度">
@@ -221,6 +225,7 @@
                             <i class="fas fa-map-marker-alt mr-1.5"></i> 在地图中选点
                         </button>
                     </div>
+                    <p id="edit-loc-hint" class="text-[11px] text-gray-500 mt-1.5">业务点位；通道位置后台继承本位置，通道列表不展示。</p>
                 </div>
             </div>
         </div>
@@ -228,7 +233,7 @@
         <!-- Tab 2: 通道列表 -->
         <div id="tab-channels" class="hidden">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-base font-medium text-white">通道列表 <span class="text-gray-500 text-sm ml-1">(2)</span></h2>
+                <h2 class="text-base font-medium text-white">通道列表 <span class="text-gray-500 text-sm ml-1" id="channel-count-label">(2)</span></h2>
                 <span class="text-xs text-gray-500">上次同步: 2026-06-06 10:24:12</span>
             </div>
             
@@ -238,11 +243,12 @@
                         <tr class="bg-[#252525] border-b border-[#333] text-xs text-gray-400">
                             <th class="py-3 px-4 font-medium font-normal">通道名称</th>
                             <th class="py-3 px-4 font-medium font-normal">通道编码</th>
+                            <th class="py-3 px-4 font-medium font-normal channel-loc-col hidden">安装位置 <span class="text-[#f85149]">*</span></th>
                             <th class="py-3 px-4 font-medium font-normal">状态</th>
                             <th class="py-3 px-4 font-medium font-normal text-right">操作</th>
                         </tr>
                     </thead>
-                    <tbody class="text-sm divide-y divide-[#333]">
+                    <tbody id="channel-tbody" class="text-sm divide-y divide-[#333]">
                         <tr class="hover:bg-[#252525] transition-colors group channel-row">
                             <td class="py-3 px-4">
                                 <div class="channel-name-display flex items-center">
@@ -255,14 +261,16 @@
                                 </div>
                             </td>
                             <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001310000001</td>
+                            <td class="py-3 px-4 text-xs text-gray-300 channel-loc-col hidden">113.945231, 22.573123</td>
                             <td class="py-3 px-4">
                                 <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
                             </td>
-                            <td class="py-3 px-4 text-right">
+                            <td class="py-3 px-4 text-right whitespace-nowrap">
                                 <div class="channel-actions-display inline-block">
-                                    <button class="text-[#58a6ff] hover:underline text-xs mr-4" onclick="startEditChannelName(this)">编辑名称</button>
+                                    <button class="text-[#58a6ff] hover:underline text-xs mr-3" onclick="startEditChannelName(this)">编辑名称</button>
+                                    <button class="text-[#58a6ff] hover:underline text-xs mr-3 channel-loc-col hidden" onclick="showToast('打开通道位置选点（原型）', 'info')">编辑位置</button>
                                 </div>
-                                <div class="channel-actions-edit hidden inline-block space-x-3 mr-4">
+                                <div class="channel-actions-edit hidden inline-block space-x-3 mr-3">
                                     <button class="text-gray-400 hover:text-white text-xs" onclick="cancelEditChannelName(this)">取消</button>
                                     <button class="text-[#3fb950] hover:underline text-xs" onclick="saveChannelName(this)">保存</button>
                                 </div>
@@ -281,14 +289,16 @@
                                 </div>
                             </td>
                             <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001310000002</td>
+                            <td class="py-3 px-4 text-xs channel-loc-col hidden"><span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未配置（必填）</span></td>
                             <td class="py-3 px-4">
                                 <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
                             </td>
-                            <td class="py-3 px-4 text-right">
+                            <td class="py-3 px-4 text-right whitespace-nowrap">
                                 <div class="channel-actions-display inline-block">
-                                    <button class="text-[#58a6ff] hover:underline text-xs mr-4" onclick="startEditChannelName(this)">编辑名称</button>
+                                    <button class="text-[#58a6ff] hover:underline text-xs mr-3" onclick="startEditChannelName(this)">编辑名称</button>
+                                    <button class="text-[#58a6ff] hover:underline text-xs mr-3 channel-loc-col hidden" onclick="showToast('打开通道位置选点（原型）', 'info')">去配置</button>
                                 </div>
-                                <div class="channel-actions-edit hidden inline-block space-x-3 mr-4">
+                                <div class="channel-actions-edit hidden inline-block space-x-3 mr-3">
                                     <button class="text-gray-400 hover:text-white text-xs" onclick="cancelEditChannelName(this)">取消</button>
                                     <button class="text-[#3fb950] hover:underline text-xs" onclick="saveChannelName(this)">保存</button>
                                 </div>
@@ -297,43 +307,51 @@
                         </tr>
                     </tbody>
                 </table>
+                <div id="channel-pager" class="hidden px-4 py-3 border-t border-[#2d2d2d] flex items-center justify-end gap-3 text-xs text-gray-400">
+                    <span id="channel-page-label">第 1 / 2 页</span>
+                    <div class="flex items-center gap-1">
+                        <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40" id="channel-prev" onclick="gotoProjectChannelPage(projectChannelPage-1)">‹</button>
+                        <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40" id="channel-next" onclick="gotoProjectChannelPage(projectChannelPage+1)">›</button>
+                    </div>
+                    <select id="channel-page-size" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-gray-300" onchange="projectChannelPageSize=+this.value; projectChannelPage=1; renderProjectChannels();">
+                        <option value="10" selected>10/页</option>
+                        <option value="20">20/页</option>
+                        <option value="50">50/页</option>
+                    </select>
+                </div>
             </div>
         </div>
 
     </div>
 
-    <!-- 地图选点 Modal -->
+    <!-- 地图选点 Modal（可手改经纬度） -->
     <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[800px] h-[600px] flex flex-col overflow-hidden">
+        <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[800px] h-[620px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center bg-[#252525]">
-                <h3 class="text-sm font-medium text-white">在地图中选点</h3>
+                <h3 class="text-sm font-medium text-white" id="map-picker-title">配置安装位置</h3>
                 <button onclick="closeMapPicker()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            
-            <!-- 模拟地图区域 -->
-            <div class="flex-1 map-picker-bg cursor-crosshair relative" id="map-area" onclick="updateMarker(event)">
-                <!-- 顶部搜索 -->
-                <div class="absolute top-4 left-4 right-4 flex justify-center z-10">
-                    <div class="relative w-96 shadow-lg">
-                        <input type="text" placeholder="搜索地点" class="w-full bg-[#1e1e1e]/90 backdrop-blur border border-[#333] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
+            <div class="flex-1 relative bg-[#0d1117] min-h-0" id="map-area">
+                <div id="picker-map" class="absolute inset-0 z-0"></div>
+                <div class="absolute top-4 left-4 right-4 flex justify-center z-[500] pointer-events-none">
+                    <div class="relative w-96 shadow-lg pointer-events-auto">
+                        <input type="text" placeholder="搜索地点（原型示意）" class="w-full bg-[#1e1e1e]/90 backdrop-blur border border-[#333] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
                         <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
                     </div>
                 </div>
-                
-                <!-- 中心定位图标 (模拟选中的点) -->
-                <div class="center-marker text-[#58a6ff] text-3xl drop-shadow-md" id="map-marker">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                
-                <!-- 底部坐标显示 -->
-                <div class="absolute bottom-4 left-4 bg-[#1e1e1e]/90 backdrop-blur border border-[#333] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg">
-                    <span id="temp-lng">113.945231</span>, <span id="temp-lat">22.573123</span>
-                </div>
             </div>
-            
-            <div class="px-4 py-3 border-t border-[#333] flex justify-end space-x-3 bg-[#252525]">
-                <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#333] transition-colors text-xs">取消</button>
-                <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">确认坐标</button>
+            <div class="px-4 py-3 border-t border-[#333] bg-[#252525] flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 text-xs">
+                    <label class="text-gray-400">经度</label>
+                    <input id="picker-lng" type="text" class="w-32 bg-[#0d1117] border border-[#333] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <label class="text-gray-400">纬度</label>
+                    <input id="picker-lat" type="text" class="w-32 bg-[#0d1117] border border-[#333] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <span class="text-gray-500">也可在地图上点击选点</span>
+                </div>
+                <div class="flex space-x-3 shrink-0">
+                    <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#333] transition-colors text-xs">取消</button>
+                    <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">确认</button>
+                </div>
             </div>
         </div>
     </div>
@@ -391,16 +409,14 @@
         <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center bg-[#252525]">
                 <div class="flex items-center">
-                    <h3 class="text-sm font-medium text-white">安装位置</h3>
+                    <h3 class="text-sm font-medium text-white" id="map-view-title">安装位置</h3>
                     <span class="ml-3 px-1.5 py-0.5 rounded text-[10px] bg-[#1f6feb]/10 text-[#58a6ff] border border-[#1f6feb]/20">只读查看</span>
                 </div>
                 <button onclick="closeMapView()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex-1 map-picker-bg relative">
-                <div class="center-marker text-[#f85149] text-3xl drop-shadow-md">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div class="absolute bottom-4 left-4 bg-[#1e1e1e]/90 backdrop-blur border border-[#333] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg">
+            <div class="flex-1 relative bg-[#0d1117] min-h-0">
+                <div id="view-map" class="absolute inset-0"></div>
+                <div class="absolute bottom-4 left-4 bg-[#1e1e1e]/90 backdrop-blur border border-[#333] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-[500]">
                     <span id="map-view-lng">113.945231</span>, <span id="map-view-lat">22.573123</span>
                 </div>
             </div>
@@ -473,6 +489,7 @@
         // 编辑模式切换
         function enterEditMode() {
             document.getElementById('basic-view').classList.add('hidden');
+            document.getElementById('view-loc-map').classList.add('hidden');
             document.getElementById('basic-edit').classList.remove('hidden');
             
             document.getElementById('btn-edit').classList.add('hidden');
@@ -483,6 +500,10 @@
         function cancelEditMode() {
             document.getElementById('basic-edit').classList.add('hidden');
             document.getElementById('basic-view').classList.remove('hidden');
+            const locBlock = document.getElementById('view-loc-block');
+            if (locBlock && !locBlock.classList.contains('hidden')) {
+                document.getElementById('view-loc-map').classList.remove('hidden');
+            }
             
             document.getElementById('btn-edit').classList.remove('hidden');
             document.getElementById('btn-cancel').classList.add('hidden');
@@ -495,6 +516,9 @@
             const lat = document.getElementById('input-lat').value;
             document.getElementById('view-lng').innerText = lng;
             document.getElementById('view-lat').innerText = lat;
+            document.getElementById('view-map-lng').innerText = lng;
+            document.getElementById('view-map-lat').innerText = lat;
+            ensureInlinePreview(lng, lat);
             
             cancelEditMode();
             showToast('设备信息已保存', 'success');
@@ -551,57 +575,114 @@
             toggleIcon.title = '显示密码';
         }
 
-        // 地图选点 Modal
+
+        // Leaflet 选点 / 只读查看
+        const hubPicker = HubMap.createPicker('picker-map', 'picker-lng', 'picker-lat');
+        const hubViewer = HubMap.createViewer('view-map');
+        let hubInline = null;
+
+        function ensureInlinePreview(lng, lat) {
+            const el = document.getElementById('inline-preview-map');
+            if (!el) return;
+            const la = parseFloat(lat), ln = parseFloat(lng);
+            if (isNaN(la) || isNaN(ln)) return;
+            if (!hubInline) {
+                hubInline = HubMap.createInline('inline-preview-map', { lat: la, lng: ln, zoom: 15, color: '#f85149' });
+            } else {
+                hubInline.setPoint(la, ln);
+                hubInline.invalidate();
+            }
+        }
+
+        function updateMarker() { /* leaflet 点击由 HubMap 处理 */ }
+        function syncMarkerFromInputs() { hubPicker.syncFromInputs(); }
+
+        // 地图选点 Modal（设备编辑 / 通道配置共用）
+        let mapPickerMode = 'device'; // 'device' | 'channel'
+        let editingChannelIndex = -1;
+
         function openMapPicker() {
+            mapPickerMode = 'device';
+            editingChannelIndex = -1;
+            document.getElementById('map-picker-title').textContent = '配置安装位置';
+            const lng = document.getElementById('input-lng')?.value || '113.945231';
+            const lat = document.getElementById('input-lat')?.value || '22.573123';
+            document.getElementById('picker-lng').value = lng;
+            document.getElementById('picker-lat').value = lat;
             document.getElementById('map-modal').classList.remove('hidden');
-            // 初始化临时坐标显示
-            document.getElementById('temp-lng').innerText = document.getElementById('input-lng').value;
-            document.getElementById('temp-lat').innerText = document.getElementById('input-lat').value;
+            hubPicker.openAt(lng, lat);
+        }
+
+        function openChannelLocPicker(index) {
+            mapPickerMode = 'channel';
+            editingChannelIndex = index;
+            const ch = projectNvrChannels[index];
+            const noLoc = !ch || ch.loc === '未配置位置';
+            let lng = '113.945231';
+            let lat = '22.573123';
+            if (!noLoc) {
+                const parts = ch.loc.split(',').map(s => s.trim());
+                lng = parts[0] || lng;
+                lat = parts[1] || lat;
+            }
+            document.getElementById('map-picker-title').textContent = '配置安装位置 · ' + (ch ? ch.name : '');
+            document.getElementById('picker-lng').value = lng;
+            document.getElementById('picker-lat').value = lat;
+            document.getElementById('map-modal').classList.remove('hidden');
+            hubPicker.openAt(lng, lat);
         }
 
         function closeMapPicker() {
             document.getElementById('map-modal').classList.add('hidden');
+            editingChannelIndex = -1;
+            mapPickerMode = 'device';
         }
 
         // 地图查看 (只读)
-        function openMapView(lng, lat) {
+        function openMapView(lng, lat, label) {
             document.getElementById('map-view-lng').innerText = lng;
             document.getElementById('map-view-lat').innerText = lat;
+            const title = document.getElementById('map-view-title');
+            if (title) title.textContent = label ? ('安装位置 · ' + label) : '安装位置';
             document.getElementById('map-view-modal').classList.remove('hidden');
+            hubViewer.openAt(lng, lat);
         }
         function closeMapView() {
             document.getElementById('map-view-modal').classList.add('hidden');
         }
 
         function confirmMapPicker() {
-            // 将临时坐标写回 input
-            document.getElementById('input-lng').value = document.getElementById('temp-lng').innerText;
-            document.getElementById('input-lat').value = document.getElementById('temp-lat').innerText;
+            const lng = document.getElementById('picker-lng').value.trim();
+            const lat = document.getElementById('picker-lat').value.trim();
+            if (!lng || !lat || isNaN(parseFloat(lng)) || isNaN(parseFloat(lat))) {
+                showToast('请填写有效的经纬度', 'error');
+                return;
+            }
+            if (mapPickerMode === 'channel' && editingChannelIndex >= 0 && projectNvrChannels[editingChannelIndex]) {
+                projectNvrChannels[editingChannelIndex].loc = lng + ', ' + lat;
+                renderProjectChannels();
+                updateProjectMissingBanner();
+                showToast('通道安装位置已更新', 'success');
+            } else {
+                const lngEl = document.getElementById('input-lng');
+                const latEl = document.getElementById('input-lat');
+                if (lngEl) lngEl.value = lng;
+                if (latEl) latEl.value = lat;
+            }
             closeMapPicker();
         }
 
-        // 模拟在地图上点击更新坐标
-        function updateMarker(e) {
-            const mapArea = document.getElementById('map-area');
-            const marker = document.getElementById('map-marker');
-            
-            // 获取点击位置相对于地图容器的坐标
-            const rect = mapArea.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            // 移动 Marker
-            marker.style.left = x + 'px';
-            marker.style.top = y + 'px';
-            
-            // 模拟生成经纬度 (基于点击位置的简单映射)
-            const baseLng = 113.94;
-            const baseLat = 22.57;
-            const newLng = (baseLng + (x / rect.width) * 0.02).toFixed(6);
-            const newLat = (baseLat - (y / rect.height) * 0.02).toFixed(6);
-            
-            document.getElementById('temp-lng').innerText = newLng;
-            document.getElementById('temp-lat').innerText = newLat;
+
+        function updateProjectMissingBanner() {
+            const banner = document.getElementById('detail-location-banner');
+            if (!banner || !projectNvrChannels.length) return;
+            const missing = projectNvrChannels.filter(c => c.loc === '未配置位置').length;
+            if (missing > 0) {
+                banner.classList.remove('hidden');
+                banner.querySelector('span').innerHTML = '有 <strong id="missing-loc-count">' + missing + '</strong> 个通道未配置安装位置，请在通道列表中逐路配置。';
+            } else {
+                banner.classList.add('hidden');
+            }
         }
 
 
@@ -663,6 +744,94 @@
     </script>
 
 <script>
+var projectChannelPage = 1;
+var projectChannelPageSize = 10;
+var projectNvrChannels = [];
+
+function renderProjectChannels() {
+  if (!projectNvrChannels.length) return;
+  var total = projectNvrChannels.length;
+  var pages = Math.max(1, Math.ceil(total / projectChannelPageSize));
+  if (projectChannelPage > pages) projectChannelPage = pages;
+  var start = (projectChannelPage - 1) * projectChannelPageSize;
+  var slice = projectNvrChannels.slice(start, start + projectChannelPageSize);
+  var tbody = document.getElementById('channel-tbody');
+  tbody.innerHTML = slice.map(function (c, i) {
+    var absIndex = start + i;
+    var noLoc = c.loc === '未配置位置';
+    var safeName = c.name.replace(/'/g, '');
+    var locCell = noLoc
+      ? '<div class="flex flex-col items-start gap-1.5"><span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未配置</span><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker('+absIndex+')">配置安装位置</button></div>'
+      : '<div class="flex flex-col items-start gap-1"><button type="button" class="font-mono text-[#58a6ff] hover:underline text-left" title="在地图中查看" onclick="openMapView(\''+c.loc.split(',')[0].trim()+'\',\''+c.loc.split(',')[1].trim()+'\',\''+safeName+'\')">' + c.loc + '</button><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker('+absIndex+')">编辑位置</button></div>';
+    return '<tr class="hover:bg-[#252525] transition-colors group channel-row" data-channel-index="'+absIndex+'">' +
+      '<td class="py-3 px-4"><div class="channel-name-display flex items-center"><i class="fas fa-video text-gray-500 mr-3"></i><span class="text-white name-text">' + c.name + '</span></div>' +
+      '<div class="channel-name-edit hidden flex items-center"><i class="fas fa-video text-gray-500 mr-3"></i><input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="' + c.name + '"></div></td>' +
+      '<td class="py-3 px-4 font-mono text-gray-400 text-xs">' + c.code + '</td>' +
+      '<td class="py-3 px-4 text-xs text-gray-300 channel-loc-col">' + locCell + '</td>' +
+      '<td class="py-3 px-4"><span class="text-xs flex items-center ' + (c.online ? 'text-[#3fb950]' : 'text-gray-500') + '"><span class="w-1.5 h-1.5 rounded-full mr-1.5 ' + (c.online ? 'bg-[#3fb950]' : 'bg-gray-500') + '"></span>' + (c.online ? '在线' : '离线') + '</span></td>' +
+      '<td class="py-3 px-4 text-right whitespace-nowrap">' +
+      '<div class="channel-actions-display inline-block"><button class="text-[#58a6ff] hover:underline text-xs mr-3" onclick="startEditChannelName(this)">编辑名称</button></div>' +
+      '<div class="channel-actions-edit hidden inline-block space-x-3 mr-3"><button class="text-gray-400 hover:text-white text-xs" onclick="cancelEditChannelName(this)">取消</button><button class="text-[#3fb950] hover:underline text-xs" onclick="saveChannelName(this)">保存</button></div>' +
+      '<a href="camera-monitor.html?view=live" class="text-gray-400 hover:text-white text-xs"><i class="fas fa-play-circle mr-1"></i> 实况</a></td></tr>';
+  }).join('');
+  document.getElementById('channel-page-label').textContent = '第 ' + projectChannelPage + ' / ' + pages + ' 页';
+  document.getElementById('channel-prev').disabled = projectChannelPage <= 1;
+  document.getElementById('channel-next').disabled = projectChannelPage >= pages;
+}
+
+function gotoProjectChannelPage(p) {
+  var pages = Math.max(1, Math.ceil(projectNvrChannels.length / projectChannelPageSize));
+  projectChannelPage = Math.min(Math.max(1, p), pages);
+  renderProjectChannels();
+}
+
+(function () {
+  var params = new URLSearchParams(location.search);
+  var isNvr = params.get('type') === 'nvr';
+  if (!isNvr) {
+    document.querySelectorAll('.channel-loc-col').forEach(function (el) { el.classList.add('hidden'); });
+    var bannerCam = document.getElementById('detail-location-banner');
+    if (bannerCam) bannerCam.classList.add('hidden');
+    return;
+  }
+  var title = document.getElementById('detail-page-title');
+  if (title) {
+    title.childNodes[0].textContent = '海康录像机-北区机房 ';
+  }
+  var typeBadge = document.getElementById('detail-page-type');
+  if (typeBadge) {
+    typeBadge.textContent = '硬盘录像机';
+    typeBadge.className = 'ml-2 text-[10px] text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-1.5 py-0.5 rounded font-normal';
+  }
+  document.getElementById('view-device-name').textContent = '海康录像机-北区机房';
+  document.getElementById('view-device-type').textContent = '硬盘录像机';
+  document.getElementById('view-gb').textContent = '44030000001180000001';
+  document.getElementById('view-ip').textContent = '192.168.1.200';
+  document.getElementById('view-model').textContent = 'DS-8816N-R8';
+  document.getElementById('view-loc-block').classList.add('hidden');
+  document.getElementById('view-loc-map').classList.add('hidden');
+  document.getElementById('edit-loc-label').closest('div').classList.add('hidden');
+  document.getElementById('channel-count-label').textContent = '(16)';
+  document.querySelectorAll('.channel-loc-col').forEach(function (el) { el.classList.remove('hidden'); });
+  var banner = document.getElementById('detail-location-banner');
+  banner.classList.remove('hidden');
+  banner.querySelector('span').innerHTML = '有 <strong id="missing-loc-count">15</strong> 个通道未配置安装位置，请在通道列表中逐路配置。';
+  var names = ['北门可见光','仓库入口','东围墙','卸货区','南门球机','停车场A','停车场B','周界1','周界2','机房门口','办公楼大厅','货梯口','充电棚','油库区','装卸台','门禁通道'];
+  projectNvrChannels = names.map(function (n, i) {
+    return {
+      name: '通道' + (i + 1) + ': ' + n,
+      code: '440300000013100000' + String(11 + i).padStart(2, '0'),
+      loc: i === 0 ? '113.945231, 22.573123' : '未配置位置',
+      online: !(i === 2 || i === 9)
+    };
+  });
+  document.getElementById('channel-pager').classList.remove('hidden');
+  document.getElementById('channel-pager').classList.add('flex');
+  renderProjectChannels();
+})();
+</script>
+
+<script>
 (function(){
   document.addEventListener('click', function(e){
     var dd = document.getElementById('breadcrumbDropdown');
@@ -674,5 +843,8 @@
 </script>
 
 <script src="custom-select.js"></script>
+<script>
+        document.addEventListener('DOMContentLoaded', function(){ ensureInlinePreview(document.getElementById('view-map-lng')?.innerText, document.getElementById('view-map-lat')?.innerText); });
+</script>
 </body>
 </html>

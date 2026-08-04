@@ -6,6 +6,9 @@
     <title>设备管理（平台级·设备池） - Avant Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
     <style>
         body {
             background-color: #141414;
@@ -61,7 +64,7 @@
         <!-- 统计条 -->
         <div class="px-6 py-3 flex space-x-3 shrink-0">
         <div class="flex-1 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg px-4 py-3">
-            <div class="text-xs text-gray-500 mb-1">摄像头总数</div>
+            <div class="text-xs text-gray-500 mb-1">设备总数</div>
             <div class="text-2xl font-bold text-white mb-1">128</div>
             <div class="text-xs text-gray-500">96 在线 / 32 离线</div>
         </div>
@@ -88,6 +91,14 @@
                 <span class="text-xs text-white">全部</span>
                 <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
             </div>
+            <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 flex items-center space-x-2 hover:border-[#555]">
+                <span class="text-xs text-gray-400">设备类型</span>
+                <select class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                    <option class="bg-[#1e1e1e]">全部</option>
+                    <option class="bg-[#1e1e1e]">摄像头</option>
+                    <option class="bg-[#1e1e1e]">硬盘录像机</option>
+                </select>
+            </div>
             <div class="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 flex items-center space-x-2 cursor-pointer hover:border-[#555]">
                 <span class="text-xs text-gray-400">所属项目</span>
                 <span class="text-xs text-white">全部</span>
@@ -106,7 +117,7 @@
                 <i class="fas fa-book-open mr-1.5 text-[10px]"></i> 摄像头接入指南
             </button>
             <button onclick="openAddModal()" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center">
-                <i class="fas fa-plus mr-1.5 text-[10px]"></i> 添加摄像头
+                <i class="fas fa-plus mr-1.5 text-[10px]"></i> 添加监控设备
             </button>
         </div>
     </div>
@@ -119,6 +130,7 @@
                     <tr class="bg-[#252525] border-b border-[#333] text-xs text-gray-400">
                         <th class="py-3 px-4 font-normal">序号</th>
                         <th class="py-3 px-4 font-normal">设备名称</th>
+                        <th class="py-3 px-4 font-normal">设备类型</th>
                         <th class="py-3 px-4 font-normal">国标编码</th>
                         <th class="py-3 px-4 font-normal">IP地址</th>
                         <th class="py-3 px-4 font-normal">传输协议</th>
@@ -131,12 +143,13 @@
                     </tr>
                 </thead>
                 <tbody class="text-sm divide-y divide-[#2d2d2d]">
-                    <!-- 行 1: 在线 + 单项目 -->
+                    <!-- 行 1: 摄像头 · 在线 -->
                     <tr class="hover:bg-[#252525] transition-colors">
                         <td class="py-3 px-4 text-gray-400">1</td>
                         <td class="py-3 px-4">
                             <span class="text-white">海康双光谱球机-北门</span>
                         </td>
+                        <td class="py-3 px-4"><span class="text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">摄像头</span></td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001320000001</td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">192.168.1.100</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">UDP</td>
@@ -148,17 +161,18 @@
                         <td class="py-3 px-4 text-gray-400 text-xs">2</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
                         <td class="py-3 px-4 text-right whitespace-nowrap">
-                            <a href="#" onclick="openDetailModal('海康双光谱球机-北门', '在线')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="platform-camera-detail.html?name=%E6%B5%B7%E5%BA%B7%E5%8F%8C%E5%85%89%E8%B0%B1%E7%90%83%E6%9C%BA-%E5%8C%97%E9%97%A8&status=%E5%9C%A8%E7%BA%BF" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
                             <a href="#" onclick="openAssignModal('海康双光谱球机-北门')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
                             <a href="#" onclick="openDeleteModal('海康双光谱球机-北门', '44030000001320000001')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
                         </td>
                     </tr>
-                    <!-- 行 2: 未注册 + 深圳铁路公安 -->
+                    <!-- 行 2: 摄像头 · 未注册 -->
                     <tr class="hover:bg-[#252525] transition-colors">
                         <td class="py-3 px-4 text-gray-400">2</td>
                         <td class="py-3 px-4">
                             <span class="text-white">大华枪机-东侧围墙</span>
                         </td>
+                        <td class="py-3 px-4"><span class="text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">摄像头</span></td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001310000002</td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">-</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">-</td>
@@ -170,17 +184,18 @@
                         <td class="py-3 px-4 text-gray-400 text-xs">1</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
                         <td class="py-3 px-4 text-right whitespace-nowrap">
-                            <a href="#" onclick="openDetailModal('大华枪机-东侧围墙', '未注册')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="platform-camera-detail.html?name=%E5%A4%A7%E5%8D%8E%E6%9E%AA%E6%9C%BA-%E4%B8%9C%E4%BE%A7%E5%9B%B4%E5%A2%99&status=%E6%9C%AA%E6%B3%A8%E5%86%8C" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
                             <a href="#" onclick="openAssignModal('大华枪机-东侧围墙')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
                             <a href="#" onclick="openDeleteModal('大华枪机-东侧围墙', '44030000001310000002')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
                         </td>
                     </tr>
-                    <!-- 行 3: 离线 + 深圳铁路公安 -->
+                    <!-- 行 3: 摄像头 · 离线 -->
                     <tr class="hover:bg-[#252525] transition-colors">
                         <td class="py-3 px-4 text-gray-400">3</td>
                         <td class="py-3 px-4">
                             <span class="text-white">宇视球机-停车场入口</span>
                         </td>
+                        <td class="py-3 px-4"><span class="text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">摄像头</span></td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001320000004</td>
                         <td class="py-3 px-4 font-mono text-gray-400 text-xs">172.16.0.20</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">TCP</td>
@@ -192,9 +207,32 @@
                         <td class="py-3 px-4 text-gray-400 text-xs">1</td>
                         <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
                         <td class="py-3 px-4 text-right whitespace-nowrap">
-                            <a href="#" onclick="openDetailModal('宇视球机-停车场入口', '离线')" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="platform-camera-detail.html?name=%E5%AE%87%E8%A7%86%E7%90%83%E6%9C%BA-%E5%81%9C%E8%BD%A6%E5%9C%BA%E5%85%A5%E5%8F%A3&status=%E7%A6%BB%E7%BA%BF" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
                             <a href="#" onclick="openAssignModal('宇视球机-停车场入口')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
                             <a href="#" onclick="openDeleteModal('宇视球机-停车场入口', '44030000001320000004')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                        </td>
+                    </tr>
+                    <!-- 行 4: 硬盘录像机 · 在线 · 多通道 -->
+                    <tr class="hover:bg-[#252525] transition-colors">
+                        <td class="py-3 px-4 text-gray-400">4</td>
+                        <td class="py-3 px-4">
+                            <span class="text-white">海康录像机-北区机房</span>
+                        </td>
+                        <td class="py-3 px-4"><span class="text-[10px] text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-1.5 py-0.5 rounded">硬盘录像机</span></td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">44030000001180000001</td>
+                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">192.168.1.200</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">TCP</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">海康威视 / DS-8816N-R8</td>
+                        <td class="py-3 px-4">
+                            <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">深圳铁路公安</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">16</td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">2025-06-12 09:30:00</td>
+                        <td class="py-3 px-4 text-right whitespace-nowrap">
+                            <a href="platform-camera-detail.html?type=nvr&name=%E6%B5%B7%E5%BA%B7%E5%BD%95%E5%83%8F%E6%9C%BA-%E5%8C%97%E5%8C%BA%E6%9C%BA%E6%88%BF&status=%E5%9C%A8%E7%BA%BF" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
+                            <a href="#" onclick="openAssignModal('海康录像机-北区机房')" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                            <a href="#" onclick="openDeleteModal('海康录像机-北区机房', '44030000001180000001', 'nvr')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
                         </td>
                     </tr>
                 </tbody>
@@ -269,13 +307,13 @@
                             <th class="py-3 px-4 font-normal">状态</th>
                             <th class="py-3 px-4 font-normal">所属项目</th>
                             <th class="py-3 px-4 font-normal">创建时间</th>
-                            <th class="py-3 px-4 font-normal text-right">操作</th>
+                            <th class="py-3 px-4 font-normal text-right" colspan="2">操作</th>
                         </tr>
                     </thead>
-                    <tbody class="text-sm divide-y divide-[#2d2d2d]">
-                        <!-- 行 1 -->
-                        <tr class="hover:bg-[#252525] transition-colors">
-                            <td class="py-3 px-4 text-gray-400">1</td>
+                    <tbody class="text-sm">
+                        <!-- 绑定组 1：机巢 ↔ 无人机对等绑定（修改项目 / 删除跨两行居中） -->
+                        <tr class="hover:bg-[#252525] transition-colors border-t border-[#2d2d2d]">
+                            <td class="py-3 px-4 text-gray-400 align-middle border-l-2 border-[#58a6ff]" rowspan="2">1</td>
                             <td class="py-3 px-4">
                                 <span class="text-white">007机巢576号677</span>
                             </td>
@@ -285,17 +323,17 @@
                             <td class="py-3 px-4">
                                 <span class="text-[#3fb950] text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
                             </td>
-                            <td class="py-3 px-4 text-gray-400 text-xs">青海油田管道巡检项目</td>
+                            <td class="py-3 px-4 text-gray-400 text-xs align-middle" rowspan="2">青海油田管道巡检项目</td>
                             <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
                             <td class="py-3 px-4 text-right whitespace-nowrap">
-                                <a href="drone-detail.html?from=platform" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
-                                <a href="#" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
-                                <a href="#" onclick="openDeleteModal('007机巢576号677', '1581F4BFC1234567', 'drone')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                                <a href="drone-detail.html?from=platform&id=nest-007" class="text-[#58a6ff] hover:underline text-xs">查看详情</a>
+                            </td>
+                            <td class="py-3 px-4 text-right whitespace-nowrap align-middle" rowspan="2">
+                                <a href="#" onclick="openAssignModal('007机巢576号677 / M350 RTK - 01', true)" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
+                                <a href="#" onclick="openDeleteModal('007机巢576号677', '1581F4BFC1234567', 'drone-pair', 'M350 RTK - 01')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
                             </td>
                         </tr>
-                        <!-- 行 2 -->
                         <tr class="hover:bg-[#252525] transition-colors">
-                            <td class="py-3 px-4 text-gray-400">2</td>
                             <td class="py-3 px-4">
                                 <span class="text-white">M350 RTK - 01</span>
                             </td>
@@ -305,12 +343,9 @@
                             <td class="py-3 px-4">
                                 <span class="text-gray-400 text-xs flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>离线</span>
                             </td>
-                            <td class="py-3 px-4 text-gray-400 text-xs">青海油田管道巡检项目</td>
                             <td class="py-3 px-4 text-gray-400 text-xs">2025-05-05 12:00:00</td>
                             <td class="py-3 px-4 text-right whitespace-nowrap">
-                                <a href="drone-detail.html?from=platform" class="text-[#58a6ff] hover:underline text-xs mr-3">查看详情</a>
-                                <a href="#" class="text-[#58a6ff] hover:underline text-xs mr-3">修改项目</a>
-                                <a href="#" onclick="openDeleteModal('M350 RTK - 01', '1581F4BFC7654321', 'drone')" class="text-[#58a6ff] hover:underline text-xs">删除</a>
+                                <a href="drone-detail.html?from=platform&id=drone-m350-01" class="text-[#58a6ff] hover:underline text-xs">查看详情</a>
                             </td>
                         </tr>
                     </tbody>
@@ -319,11 +354,11 @@
         </div>
     </div> <!-- end tab-content-drone -->
 
-    <!-- ============ 添加摄像头 Modal ============ -->
+    <!-- ============ 添加监控设备 Modal ============ -->
     <div id="modal-add-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[560px] flex flex-col max-h-[85vh]">
             <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
-                <h3 class="text-base font-medium text-white">添加摄像头</h3>
+                <h3 class="text-base font-medium text-white">添加监控设备</h3>
                 <button onclick="closeAddModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
             <!-- 步骤指示 -->
@@ -339,6 +374,19 @@
             <!-- 步骤一 -->
             <div id="add-step-form" class="p-4 space-y-4 overflow-y-auto custom-scrollbar">
                 <div>
+                    <label class="block text-xs text-gray-400 mb-1.5">设备类型 <span class="text-[#f85149]">*</span></label>
+                    <div class="flex space-x-3">
+                        <label class="flex-1 flex items-center px-3 py-2.5 bg-[#0d1117] border border-[#58a6ff] rounded cursor-pointer">
+                            <input type="radio" name="add-device-type" value="camera" class="mr-2 accent-[#1f6feb]" checked onchange="onAddDeviceTypeChange()">
+                            <span class="text-sm text-white">摄像头</span>
+                        </label>
+                        <label class="flex-1 flex items-center px-3 py-2.5 bg-[#0d1117] border border-[#30363d] rounded cursor-pointer" id="add-type-nvr-label">
+                            <input type="radio" name="add-device-type" value="nvr" class="mr-2 accent-[#1f6feb]" onchange="onAddDeviceTypeChange()">
+                            <span class="text-sm text-white">硬盘录像机</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
                     <label class="block text-xs text-gray-400 mb-1">设备名称 <span class="text-[#f85149]">*</span></label>
                     <input id="add-name" type="text" placeholder="如：海康双光谱球机-北门" class="form-input">
                 </div>
@@ -346,10 +394,10 @@
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">厂商 <span class="text-[#f85149]">*</span></label>
                         <select id="add-vendor" class="form-input">
-                            <option>Hikvision (海康威视)</option>
-                            <option>Dahua (大华)</option>
-                            <option>Uniview (宇视)</option>
-                            <option>其他 (标准 GB28181)</option>
+                            <option>海康威视</option>
+                            <option>大华</option>
+                            <option>宇视</option>
+                            <option>其他（标准国标接入）</option>
                         </select>
                     </div>
                     <div>
@@ -357,8 +405,8 @@
                         <input id="add-model" type="text" placeholder="如：DS-2TD4136-25" class="form-input">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">安装位置 (经纬度)<span class="text-[#f85149]">*</span></label>
+                <div id="add-location-block">
+                    <label id="add-location-label" class="block text-xs text-gray-400 mb-1">安装位置（经纬度）<span class="text-[#f85149]" id="add-location-required">*</span></label>
                     <div class="flex space-x-2">
                         <input id="add-lng" type="text" placeholder="经度" class="form-input flex-1">
                         <input id="add-lat" type="text" placeholder="纬度" class="form-input flex-1">
@@ -366,6 +414,7 @@
                             <i class="fas fa-map-marker-alt mr-1.5"></i> 选点
                         </button>
                     </div>
+                    <p id="add-location-hint" class="text-[11px] text-gray-500 mt-1.5">摄像头的业务点位；同步后也可在通道中单独调整。</p>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">分配项目 (可选，也可稍后分配)</label>
@@ -378,13 +427,13 @@
                 </div>
                 <div class="text-xs text-gray-500 flex items-start bg-[#0d1117] border border-[#30363d] rounded p-3">
                     <i class="fas fa-info-circle mt-0.5 mr-2 text-[#58a6ff]"></i>
-                    <span>保存后，平台将自动生成<strong class="text-gray-300">国标编码</strong>与<strong class="text-gray-300">接入密码</strong>，需在摄像头后台抄录凭证完成注册。</span>
+                    <span id="add-info-tip">保存后，平台将自动生成<strong class="text-gray-300">国标编码</strong>与<strong class="text-gray-300">接入密码</strong>，需在摄像头后台抄录凭证完成注册。</span>
                 </div>
             </div>
             <!-- 步骤二 -->
             <div id="add-step-cred" class="p-4 space-y-4 overflow-y-auto custom-scrollbar hidden">
                 <div class="flex items-center text-sm text-[#3fb950] bg-[#238636]/10 border border-[#2ea043]/30 rounded p-3">
-                    <i class="fas fa-check-circle mr-2"></i> 设备已添加成功（状态：<span class="text-gray-300 ml-1">未注册</span>）。请抄录以下凭证至摄像头后台。
+                    <i class="fas fa-check-circle mr-2"></i> 设备已添加成功（状态：<span class="text-gray-300 ml-1">未注册</span>）。请抄录以下凭证至设备后台。
                 </div>
                 <div class="text-xs text-gray-500 flex items-center justify-between">
                     <span>提示：后期可在设备详情的「国标配置」中再次查看此凭证。</span>
@@ -409,7 +458,7 @@
                 </div>
                 <div class="text-xs text-gray-500 flex items-start">
                     <i class="fas fa-lightbulb mt-0.5 mr-2 text-[#d29922]"></i>
-                    <span>海康路径参考：配置 → 网络 → 高级配置 → 平台接入 → 选择 GB28181，填入以上信息并保存。注册成功后状态将变为「在线」。</span>
+                    <span id="add-cred-hint">海康路径参考：配置 → 网络 → 高级配置 → 平台接入 → 选择国标协议，填入以上信息并保存。注册成功后状态将变为「在线」。</span>
                 </div>
             </div>
             <div class="p-4 border-t border-[#30363d] flex justify-end space-x-2 shrink-0">
@@ -431,7 +480,7 @@
                     <div class="ml-4 mt-0 text-left flex-1 min-w-0">
                         <h3 class="text-base font-medium text-white mb-2" id="delete-modal-title">确认删除该摄像头吗？</h3>
                         <div class="text-sm text-gray-400 space-y-2">
-                            <p id="delete-desc">删除后，设备 <span id="delete-device-name" class="text-white font-medium">—</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。</p>
+                            <p id="delete-desc">删除后，摄像头设备 <span id="delete-device-name" class="text-white font-medium">—</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。</p>
                         </div>
                         <!-- 二次确认：需输入设备名称 + 国标编码 / 设备SN -->
                         <div id="delete-confirm-fields" class="mt-4 space-y-3">
@@ -485,7 +534,7 @@
                 <button onclick="closeAssignModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-4 space-y-3">
-                <p class="text-xs text-gray-400">为设备 <span id="assign-device-name" class="text-white font-medium">—</span> 选择所属项目（单选，一台摄像头仅可归属一个项目）。</p>
+                <p class="text-xs text-gray-400">为设备 <span id="assign-device-name" class="text-white font-medium">—</span> 选择所属项目（单选）。<span id="assign-pair-hint" class="hidden text-[#58a6ff]">绑定双方将一并改派。</span></p>
                 
                 <!-- 搜索框 -->
                 <div class="relative">
@@ -567,7 +616,7 @@
                 <div id="guide-step-2" class="guide-step text-center hidden">
                     <div class="text-sm text-white mb-6">新增摄像头并生成接入凭证</div>
                     <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
-                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加摄像头</span></div>
+                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加监控设备</span></div>
                         <div class="space-y-2 text-xs text-gray-500">
                             <div><span class="text-gray-300">1.</span> 录入设备名称、厂商、型号、安装位置</div>
                             <div><span class="text-gray-300">2.</span> 保存后平台自动生成设备国标编码与接入密码</div>
@@ -581,7 +630,7 @@
                     <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
                         <div class="text-left text-xs text-gray-500 leading-7">
                             <div class="text-gray-300 mb-2"><i class="fas fa-desktop mr-2 text-[#58a6ff]"></i>通过浏览器访问摄像头 Web 后台</div>
-                            <div>海康参考路径：配置 → 网络 → 高级配置 → 平台接入</div>
+                            <div>海康路径参考：配置 → 网络 → 高级配置 → 平台接入</div>
                             <div>大华/宇视路径略有差异，但均需选择 GB28181/国标协议</div>
                         </div>
                     </div>
@@ -717,6 +766,7 @@
             <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
                 <div class="flex items-center">
                     <h3 class="text-base font-medium text-white" id="detail-device-name">海康双光谱球机-北门</h3>
+                    <span id="detail-type-badge" class="ml-2 text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">摄像头</span>
                     <span id="detail-status" class="ml-3 text-xs flex items-center text-[#3fb950] font-normal">
                         <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
                     </span>
@@ -739,17 +789,25 @@
 
             <!-- Content -->
             <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div id="detail-location-banner" class="hidden mb-4 text-xs text-[#d29922] flex items-start bg-[#d29922]/10 border border-[#d29922]/30 rounded p-3">
+                    <i class="fas fa-exclamation-triangle mt-0.5 mr-2"></i>
+                    <span id="detail-location-banner-text">有 <strong id="detail-missing-loc-count">3</strong> 个通道未配置安装位置，请在通道列表中逐路配置。</span>
+                </div>
                 <!-- Basic -->
                 <div id="detail-content-basic" class="space-y-6">
                     <!-- 浏览模式 -->
                     <div id="detail-basic-view" class="grid grid-cols-2 gap-6">
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">设备名称</div>
-                            <div class="text-sm text-white">海康双光谱球机-北门</div>
+                            <div class="text-sm text-white" id="detail-view-name">海康双光谱球机-北门</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500 mb-1.5">设备类型</div>
+                            <div class="text-sm text-white" id="detail-view-type">摄像头</div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">国标编码</div>
-                            <div class="text-sm text-white font-mono">44030000001320000001</div>
+                            <div class="text-sm text-white font-mono" id="detail-view-gb">44030000001320000001</div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
@@ -759,21 +817,27 @@
                             <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
                             <div class="text-sm text-white">UDP</div>
                         </div>
-                        <div>
-                            <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
-                            <div class="text-sm text-white flex items-center">
+                        <div id="detail-loc-view-block">
+                            <div class="text-xs text-gray-500 mb-1.5" id="detail-loc-label-view">安装位置（经纬度）</div>
+                            <div class="text-sm text-white font-mono" id="detail-loc-value-view">
                                 <span>113.945231, 22.573123</span>
-                                <button onclick="openMapView('113.945231', '22.573123')" class="ml-2 text-[#58a6ff] hover:underline text-xs inline-flex items-center"><i class="fas fa-map-marker-alt mr-1"></i>查看地图</button>
                             </div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">厂商</div>
-                            <div class="text-sm text-white">Hikvision (海康威视)</div>
+                            <div class="text-sm text-white">海康威视</div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">型号</div>
                             <div class="text-sm text-white">DS-2TD4136-25</div>
                         </div>
+                    </div>
+                    <div id="detail-loc-map" class="mt-6">
+                        <div class="text-xs text-gray-500 mb-2">安装位置地图</div>
+                        <div class="h-48 w-full rounded-lg border border-[#30363d] overflow-hidden relative bg-[#0d1117]">
+                            <div id="inline-preview-map" class="absolute inset-0"></div>
+                        </div>
+                    </div>
                     </div>
 
                     <!-- 编辑模式 (默认隐藏) -->
@@ -796,7 +860,7 @@
                                 <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="UDP" disabled>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div>
+                                <div class="text-xs text-gray-500 mb-1.5" id="detail-loc-label-edit">安装位置（经纬度）</div>
                                 <div class="flex space-x-2">
                                     <input type="text" id="detail-lng" class="form-input flex-1" value="113.945231">
                                     <input type="text" id="detail-lat" class="form-input flex-1" value="22.573123">
@@ -804,6 +868,7 @@
                                         <i class="fas fa-map-marker-alt mr-1.5"></i> 选点
                                     </button>
                                 </div>
+                                <p id="detail-loc-hint-edit" class="text-[11px] text-gray-500 mt-1.5">业务点位；通道位置后台继承本位置，通道列表不展示。</p>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-500 mb-1.5">厂商</div>
@@ -877,11 +942,12 @@
                                 <tr class="bg-[#21262d] border-b border-[#30363d] text-xs text-gray-400">
                                     <th class="py-2 px-4 font-normal">通道名称</th>
                                     <th class="py-2 px-4 font-normal">通道编码</th>
+                                    <th class="py-2 px-4 font-normal channel-loc-col hidden">安装位置 <span class="text-[#f85149]">*</span></th>
                                     <th class="py-2 px-4 font-normal">状态</th>
                                     <th class="py-2 px-4 font-normal text-right">操作</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-xs divide-y divide-[#30363d]">
+                            <tbody class="text-xs divide-y divide-[#30363d]" id="detail-channel-tbody">
                                 <tr class="hover:bg-[#21262d] transition-colors channel-row">
                                     <td class="py-2 px-4 text-white">
                                         <div class="channel-name-display flex items-center">
@@ -889,14 +955,16 @@
                                         </div>
                                         <div class="channel-name-edit hidden flex items-center">
                                             <i class="fas fa-video text-gray-500 mr-2"></i>
-                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="通道1: 可见光">
+                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-40 focus:outline-none focus:border-[#58a6ff]" value="通道1: 可见光">
                                         </div>
                                     </td>
                                     <td class="py-2 px-4 font-mono text-gray-400">44030000001310000001</td>
+                                    <td class="py-2 px-4 text-gray-300 channel-loc-col hidden">113.945231, 22.573123</td>
                                     <td class="py-2 px-4 channel-status-cell text-[#3fb950]">在线</td>
-                                    <td class="py-2 px-4 text-right">
+                                    <td class="py-2 px-4 text-right whitespace-nowrap">
                                         <div class="channel-actions-display">
                                             <button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>
+                                            <button class="text-[#58a6ff] hover:underline ml-3 channel-loc-col hidden" onclick="showToast('打开通道位置选点（原型）', 'info')">编辑位置</button>
                                             <button type="button" class="channel-preview-btn text-[#58a6ff] hover:underline ml-3" data-channel-online="true" onclick="openChannelPreview('通道1: 可见光', '44030000001310000001')">实况预览</button>
                                         </div>
                                         <div class="channel-actions-edit hidden space-x-3">
@@ -912,14 +980,16 @@
                                         </div>
                                         <div class="channel-name-edit hidden flex items-center">
                                             <i class="fas fa-video text-gray-500 mr-2"></i>
-                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="通道2: 红外">
+                                            <input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-40 focus:outline-none focus:border-[#58a6ff]" value="通道2: 红外">
                                         </div>
                                     </td>
                                     <td class="py-2 px-4 font-mono text-gray-400">44030000001310000002</td>
+                                    <td class="py-2 px-4 text-gray-300 channel-loc-col hidden">113.945231, 22.573123</td>
                                     <td class="py-2 px-4 channel-status-cell text-[#3fb950]">在线</td>
-                                    <td class="py-2 px-4 text-right">
+                                    <td class="py-2 px-4 text-right whitespace-nowrap">
                                         <div class="channel-actions-display">
                                             <button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>
+                                            <button class="text-[#58a6ff] hover:underline ml-3 channel-loc-col hidden" onclick="showToast('打开通道位置选点（原型）', 'info')">编辑位置</button>
                                             <button type="button" class="channel-preview-btn text-[#58a6ff] hover:underline ml-3" data-channel-online="true" onclick="openChannelPreview('通道2: 红外', '44030000001310000002')">实况预览</button>
                                         </div>
                                         <div class="channel-actions-edit hidden space-x-3">
@@ -930,37 +1000,52 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <div id="detail-channel-pager" class="hidden px-4 py-3 border-t border-[#30363d] flex items-center justify-end gap-3 text-xs text-gray-400">
+                            <span id="detail-channel-page-label">第 1 / 2 页</span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40" id="detail-channel-prev" onclick="gotoDetailChannelPage(detailChannelPage-1)">‹</button>
+                                <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40" id="detail-channel-next" onclick="gotoDetailChannelPage(detailChannelPage+1)">›</button>
+                            </div>
+                            <select id="detail-channel-page-size" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-gray-300" onchange="detailChannelPageSize=+this.value; detailChannelPage=1; renderDetailChannels();">
+                                <option value="10" selected>10/页</option>
+                                <option value="20">20/页</option>
+                                <option value="50">50/页</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ============ 地图选点 Modal ============ -->
+    <!-- ============ 地图选点 Modal（可手改经纬度） ============ -->
     <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center">
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[600px] flex flex-col overflow-hidden">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[620px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
-                <h3 class="text-sm font-medium text-white">在地图中选点</h3>
+                <h3 class="text-sm font-medium text-white" id="map-picker-title">配置安装位置</h3>
                 <button onclick="closeMapPicker()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex-1 bg-[#0d1117] relative cursor-crosshair" id="map-area" onclick="updateMarker(event)" style="background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;">
-                <div class="absolute inset-0 bg-black/20"></div>
-                <div class="absolute top-4 left-4 right-4 flex justify-center z-10">
-                    <div class="relative w-96 shadow-lg">
-                        <input type="text" placeholder="搜索地点" class="w-full bg-[#161b22]/90 backdrop-blur border border-[#30363d] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
+                        <div class="flex-1 relative bg-[#0d1117] min-h-0" id="map-area">
+                <div id="picker-map" class="absolute inset-0 z-0"></div>
+                <div class="absolute top-4 left-4 right-4 flex justify-center z-[500] pointer-events-none">
+                    <div class="relative w-96 shadow-lg pointer-events-auto">
+                        <input type="text" placeholder="搜索地点（原型示意）" class="w-full bg-[#161b22]/90 backdrop-blur border border-[#30363d] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
                         <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
                     </div>
                 </div>
-                <div class="absolute z-10 pointer-events-none text-[#58a6ff] text-3xl drop-shadow-md transform -translate-x-1/2 -translate-y-full" id="map-marker" style="top: 50%; left: 50%;">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-10">
-                    <span id="temp-lng">113.945231</span>, <span id="temp-lat">22.573123</span>
-                </div>
             </div>
-            <div class="px-4 py-3 border-t border-[#30363d] flex justify-end space-x-3 bg-[#21262d]">
-                <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#30363d] transition-colors text-xs">取消</button>
-                <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">确认坐标</button>
+<div class="px-4 py-3 border-t border-[#30363d] bg-[#21262d] flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 text-xs">
+                    <label class="text-gray-400">经度</label>
+                    <input id="picker-lng" type="text" class="w-32 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <label class="text-gray-400">纬度</label>
+                    <input id="picker-lat" type="text" class="w-32 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <span class="text-gray-500">也可在地图上点击选点</span>
+                </div>
+                <div class="flex space-x-3 shrink-0">
+                    <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#30363d] transition-colors text-xs">取消</button>
+                    <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">确认</button>
+                </div>
             </div>
         </div>
     </div>
@@ -970,21 +1055,18 @@
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
                 <div class="flex items-center">
-                    <h3 class="text-sm font-medium text-white">安装位置</h3>
+                    <h3 class="text-sm font-medium text-white" id="map-view-title">安装位置</h3>
                     <span class="ml-3 px-1.5 py-0.5 rounded text-[10px] bg-[#1f6feb]/10 text-[#58a6ff] border border-[#1f6feb]/20">只读查看</span>
                 </div>
                 <button onclick="closeMapView()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex-1 bg-[#0d1117] relative" style="background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;">
-                <div class="absolute inset-0 bg-black/20"></div>
-                <div class="absolute z-10 pointer-events-none text-[#f85149] text-3xl drop-shadow-md transform -translate-x-1/2 -translate-y-full" style="top: 50%; left: 50%;">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-10">
+                        <div class="flex-1 relative bg-[#0d1117] min-h-0">
+                <div id="view-map" class="absolute inset-0"></div>
+                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-[500]">
                     <span id="map-view-lng">113.945231</span>, <span id="map-view-lat">22.573123</span>
                 </div>
             </div>
-            <div class="px-4 py-3 border-t border-[#30363d] flex justify-end bg-[#21262d]">
+<div class="px-4 py-3 border-t border-[#30363d] flex justify-end bg-[#21262d]">
                 <button onclick="closeMapView()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs">关闭</button>
             </div>
         </div>
@@ -1191,7 +1273,43 @@
             setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
-        // 添加摄像头
+        // 添加监控设备
+        function getAddDeviceType() {
+            const el = document.querySelector('input[name="add-device-type"]:checked');
+            return el ? el.value : 'camera';
+        }
+        function onAddDeviceTypeChange() {
+            const isNvr = getAddDeviceType() === 'nvr';
+            document.querySelectorAll('input[name="add-device-type"]').forEach(r => {
+                const lab = r.closest('label');
+                if (!lab) return;
+                if (r.checked) {
+                    lab.classList.add('border-[#58a6ff]');
+                    lab.classList.remove('border-[#30363d]');
+                } else {
+                    lab.classList.remove('border-[#58a6ff]');
+                    lab.classList.add('border-[#30363d]');
+                }
+            });
+            const locLabel = document.getElementById('add-location-label');
+            const locHint = document.getElementById('add-location-hint');
+            const tip = document.getElementById('add-info-tip');
+            const credHint = document.getElementById('add-cred-hint');
+            const nameInput = document.getElementById('add-name');
+            const locBlock = document.getElementById('add-location-block');
+            credHint.textContent = '海康路径参考：配置 → 网络 → 高级配置 → 平台接入 → 选择国标协议，填入以上信息并保存。注册成功后状态将变为「在线」。';
+            if (isNvr) {
+                locBlock.classList.add('hidden');
+                tip.innerHTML = '保存后将生成凭证。请抄录至<strong class="text-gray-300">硬盘录像机</strong>后台完成国标注册；注册并同步通道后，须为<strong class="text-gray-300">每一路通道</strong>配置安装位置。';
+                nameInput.placeholder = '如：海康录像机-北区机房';
+            } else {
+                locBlock.classList.remove('hidden');
+                locLabel.innerHTML = '安装位置（经纬度）<span class="text-[#f85149]" id="add-location-required">*</span>';
+                locHint.textContent = '摄像头的业务点位；通道位置后台继承，通道列表不展示。';
+                tip.innerHTML = '保存后，平台将自动生成<strong class="text-gray-300">国标编码</strong>与<strong class="text-gray-300">接入密码</strong>，需在摄像头后台抄录凭证完成注册。';
+                nameInput.placeholder = '如：海康双光谱球机-北门';
+            }
+        }
         function openAddModal() {
             document.getElementById('add-step-form').classList.remove('hidden');
             document.getElementById('add-step-cred').classList.add('hidden');
@@ -1202,14 +1320,22 @@
             document.getElementById('add-step-2-num').classList.add('bg-[#30363d]', 'text-gray-400');
             document.getElementById('add-step-2-num').classList.remove('bg-[#1f6feb]', 'text-white');
             ['add-name','add-model','add-lng','add-lat'].forEach(id => document.getElementById(id).value = '');
+            const cameraRadio = document.querySelector('input[name="add-device-type"][value="camera"]');
+            if (cameraRadio) { cameraRadio.checked = true; onAddDeviceTypeChange(); }
             document.getElementById('modal-add-overlay').classList.remove('hidden');
         }
         function closeAddModal() { document.getElementById('modal-add-overlay').classList.add('hidden'); }
         function submitAddDevice() {
             const name = document.getElementById('add-name').value.trim();
             if (!name) { showToast('请填写设备名称', 'error'); return; }
+            if (getAddDeviceType() === 'camera') {
+                const lng = document.getElementById('add-lng').value.trim();
+                const lat = document.getElementById('add-lat').value.trim();
+                if (!lng || !lat) { showToast('请填写摄像头安装位置', 'error'); return; }
+            }
             const serial = String(Math.floor(1000000 + Math.random() * 8999999));
-            document.getElementById('cred-gbid').innerText = '44030000001320' + serial;
+            const prefix = getAddDeviceType() === 'nvr' ? '44030000001180' : '44030000001320';
+            document.getElementById('cred-gbid').innerText = prefix + serial;
             document.getElementById('cred-pwd').innerText = Math.random().toString(36).slice(-8);
             document.getElementById('add-step-form').classList.add('hidden');
             document.getElementById('add-step-cred').classList.remove('hidden');
@@ -1222,9 +1348,11 @@
             showToast('设备已添加成功（未注册）', 'success');
         }
 
-        // 分配项目
-        function openAssignModal(name) {
+        // 分配项目；isPair=true 表示机巢+绑定无人机成对改派
+        function openAssignModal(name, isPair) {
             document.getElementById('assign-device-name').innerText = name;
+            const pairHint = document.getElementById('assign-pair-hint');
+            if (pairHint) pairHint.classList.toggle('hidden', !isPair);
             document.getElementById('modal-assign-overlay').classList.remove('hidden');
         }
         function closeAssignModal() { document.getElementById('modal-assign-overlay').classList.add('hidden'); }
@@ -1292,16 +1420,21 @@
         // 删除确认：摄像头输入「名称 + 国标编码」；无人机/机巢输入「名称 + 设备SN」
         let pendingDelete = { name: '', code: '', requireInput: false, kind: 'camera' };
 
-        function openDeleteModal(deviceName, code, kind) {
+        function openDeleteModal(deviceName, code, kind, pairName) {
             kind = kind || 'camera';
             pendingDelete = {
                 name: deviceName || '',
                 code: code || '',
                 requireInput: !!code,
-                kind: kind
+                kind: kind,
+                pairName: pairName || ''
             };
             const isCamera = kind === 'camera';
-            const codeLabel = isCamera ? '国标编码' : '设备SN';
+            const isNvr = kind === 'nvr';
+            const isVideoDevice = isCamera || isNvr;
+            const isPair = kind === 'drone-pair';
+            const typeLabel = isNvr ? '硬盘录像机' : '摄像头';
+            const codeLabel = isVideoDevice ? '国标编码' : '设备SN';
 
             const titleEl = document.getElementById('delete-modal-title');
             const descEl = document.getElementById('delete-desc');
@@ -1313,14 +1446,24 @@
             const errName = document.getElementById('delete-error-name');
             const errGb = document.getElementById('delete-error-gb');
 
-            if (titleEl) titleEl.textContent = isCamera ? '确认删除该摄像头吗？' : '确认删除该设备吗？';
-            if (descEl) descEl.innerHTML = isCamera
-                ? '删除后，设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。'
-                : '删除后，设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 将从平台设备池移除，且操作不可恢复。';
-            if (labelName) labelName.textContent = '请输入设备名称以确认删除';
-            if (labelGb) labelGb.textContent = '请输入' + codeLabel + '以确认删除';
-            if (inputName) inputName.placeholder = '请输入设备名称';
-            if (inputGb) inputGb.placeholder = '请输入' + codeLabel;
+            if (titleEl) {
+                titleEl.textContent = isVideoDevice
+                    ? ('确认删除该' + typeLabel + '吗？')
+                    : (isPair ? '确认删除该绑定设备吗？' : '确认删除该设备吗？');
+            }
+            if (descEl) {
+                if (isVideoDevice) {
+                    descEl.innerHTML = '删除后，' + typeLabel + '设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 及其全部通道、实况与回放入口将从平台移除，且操作不可恢复。';
+                } else if (isPair) {
+                    descEl.innerHTML = '删除后，绑定设备 <span class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 与 <span class="text-white font-medium">' + (pendingDelete.pairName || '—') + '</span> 将一并从平台设备池移除，且操作不可恢复。请输入其中<strong class="text-gray-300 font-normal">任一方</strong>的设备名称与设备SN以确认。';
+                } else {
+                    descEl.innerHTML = '删除后，设备 <span id="delete-device-name" class="text-white font-medium">' + (pendingDelete.name || '—') + '</span> 将从平台设备池移除，且操作不可恢复。';
+                }
+            }
+            if (labelName) labelName.textContent = isPair ? '请输入任一方设备名称以确认删除' : '请输入设备名称以确认删除';
+            if (labelGb) labelGb.textContent = isPair ? ('请输入对应' + codeLabel + '以确认删除') : ('请输入' + codeLabel + '以确认删除');
+            if (inputName) inputName.placeholder = isPair ? '请输入任一方设备名称' : '请输入设备名称';
+            if (inputGb) inputGb.placeholder = isPair ? ('请输入对应' + codeLabel) : ('请输入' + codeLabel);
             if (errName) errName.textContent = '设备名称不匹配';
             if (errGb) errGb.textContent = codeLabel + '不匹配';
 
@@ -1407,11 +1550,125 @@
             });
         }
 
-        // 摄像头详情 Modal
-        function openDetailModal(name, status) {
+        // 监控设备详情 Modal · 通道分页
+        let detailChannelPage = 1;
+        let detailChannelPageSize = 10;
+        let detailChannelRows = [];
+        let detailChannelIsNvr = false;
+        const detailNvrNames = ['北门可见光','仓库入口','东围墙','卸货区','南门球机','停车场A','停车场B','周界1','周界2','机房门口','办公楼大厅','货梯口','充电棚','油库区','装卸台','门禁通道'];
+        const detailIpcRowsHtml = document.getElementById('detail-channel-tbody') ? document.getElementById('detail-channel-tbody').innerHTML : '';
+
+        function renderDetailChannels() {
+            const tbody = document.getElementById('detail-channel-tbody');
+            const pager = document.getElementById('detail-channel-pager');
+            if (!detailChannelIsNvr) {
+                tbody.innerHTML = detailIpcRowsHtml;
+                pager.classList.add('hidden');
+                pager.classList.remove('flex');
+                return;
+            }
+            const total = detailChannelRows.length;
+            const pages = Math.max(1, Math.ceil(total / detailChannelPageSize));
+            if (detailChannelPage > pages) detailChannelPage = pages;
+            const start = (detailChannelPage - 1) * detailChannelPageSize;
+            const slice = detailChannelRows.slice(start, start + detailChannelPageSize);
+            tbody.innerHTML = slice.map((c, i) => {
+                const absIndex = start + i;
+                const noLoc = c.loc === '未配置位置';
+                const safeName = c.name.replace(/'/g, '');
+                const locCell = noLoc
+                    ? `<div class="flex flex-col items-start gap-1.5"><span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未配置</span><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker(${absIndex})">配置安装位置</button></div>`
+                    : `<div class="flex flex-col items-start gap-1"><button type="button" class="font-mono text-[#58a6ff] hover:underline text-left" title="在地图中查看" onclick="openMapView('${c.loc.split(',')[0].trim()}','${c.loc.split(',')[1].trim()}','${safeName}')">${c.loc}</button><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker(${absIndex})">编辑位置</button></div>`;
+                return `<tr class="hover:bg-[#21262d] transition-colors channel-row" data-channel-index="${absIndex}">
+                    <td class="py-2 px-4 text-white">
+                        <div class="channel-name-display flex items-center"><i class="fas fa-video text-gray-500 mr-2"></i><span class="name-text">${c.name}</span></div>
+                        <div class="channel-name-edit hidden flex items-center"><i class="fas fa-video text-gray-500 mr-2"></i><input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="${c.name}"></div>
+                    </td>
+                    <td class="py-2 px-4 font-mono text-gray-400">${c.code}</td>
+                    <td class="py-2 px-4 text-gray-300 channel-loc-col">${locCell}</td>
+                    <td class="py-2 px-4 channel-status-cell ${c.online ? 'text-[#3fb950]' : 'text-gray-500'}">${c.online ? '在线' : '离线'}</td>
+                    <td class="py-2 px-4 text-right whitespace-nowrap">
+                        <div class="channel-actions-display inline-block">
+                            <button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>
+                        </div>
+                        <div class="channel-actions-edit hidden inline-block space-x-3">
+                            <button class="text-gray-400 hover:text-white" onclick="cancelEditChannelName(this)">取消</button>
+                            <button class="text-[#3fb950] hover:underline" onclick="saveChannelName(this)">保存</button>
+                        </div>
+                        <button type="button" class="channel-preview-btn text-[#58a6ff] hover:underline ml-3" data-channel-online="${c.online}" onclick="openChannelPreview('${c.name}', '${c.code}')">实况预览</button>
+                    </td>
+                </tr>`;
+            }).join('');
+            document.getElementById('detail-channel-page-label').textContent = '第 ' + detailChannelPage + ' / ' + pages + ' 页';
+            document.getElementById('detail-channel-prev').disabled = detailChannelPage <= 1;
+            document.getElementById('detail-channel-next').disabled = detailChannelPage >= pages;
+            pager.classList.remove('hidden');
+            pager.classList.add('flex');
+        }
+
+        function gotoDetailChannelPage(p) {
+            const pages = Math.max(1, Math.ceil(detailChannelRows.length / detailChannelPageSize));
+            detailChannelPage = Math.min(Math.max(1, p), pages);
+            renderDetailChannels();
+        }
+
+        // 监控设备详情 Modal
+        function openDetailModal(name, status, type) {
             currentDetailDeviceName = name;
             currentDetailDeviceStatus = status;
+            const isNvr = type === 'nvr';
+            detailChannelIsNvr = isNvr;
             document.getElementById('detail-device-name').innerText = name;
+            document.getElementById('detail-view-name').innerText = name;
+            document.getElementById('detail-view-type').innerText = isNvr ? '硬盘录像机' : '摄像头';
+            const typeBadge = document.getElementById('detail-type-badge');
+            typeBadge.innerText = isNvr ? '硬盘录像机' : '摄像头';
+            typeBadge.className = isNvr
+                ? 'ml-2 text-[10px] text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-1.5 py-0.5 rounded'
+                : 'ml-2 text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded';
+            const locViewWrap = document.getElementById('detail-loc-view-block');
+            const locEditWrap = document.getElementById('detail-loc-label-edit').closest('div');
+            const locMap = document.getElementById('detail-loc-map');
+            if (isNvr) {
+                locViewWrap.classList.add('hidden');
+                locEditWrap.classList.add('hidden');
+                locMap.classList.add('hidden');
+            } else {
+                locViewWrap.classList.remove('hidden');
+                locEditWrap.classList.remove('hidden');
+                locMap.classList.remove('hidden');
+                setTimeout(function(){ ensureInlinePreview(document.getElementById('detail-lng')?.value||'113.945231', document.getElementById('detail-lat')?.value||'22.573123'); }, 50);
+                document.getElementById('detail-loc-label-view').innerText = '安装位置（经纬度）';
+                document.getElementById('detail-loc-label-edit').innerText = '安装位置（经纬度）';
+                document.getElementById('detail-loc-hint-edit').textContent = '业务点位；通道位置后台继承本位置，通道列表不展示。';
+                document.getElementById('detail-loc-value-view').innerHTML = '<span>113.945231, 22.573123</span>';
+            }
+            document.querySelectorAll('#detail-content-channels .channel-loc-col').forEach(el => {
+                el.classList.toggle('hidden', !isNvr);
+            });
+            const banner = document.getElementById('detail-location-banner');
+            const tabChannels = document.getElementById('detail-tab-channels');
+            if (isNvr) {
+                banner.classList.remove('hidden');
+                document.getElementById('detail-location-banner-text').innerHTML = '有 <strong id="detail-missing-loc-count">15</strong> 个通道未配置安装位置，请在通道列表中逐路配置。';
+                document.getElementById('detail-channel-count').innerText = '16';
+                tabChannels.innerHTML = '通道列表 <span class="text-xs">(16)</span>';
+                document.getElementById('detail-view-gb').innerText = '44030000001180000001';
+                detailChannelRows = detailNvrNames.map((n, i) => ({
+                    name: '通道' + (i + 1) + ': ' + n,
+                    code: '440300000013100000' + String(11 + i).padStart(2, '0'),
+                    loc: i === 0 ? '113.945231, 22.573123' : '未配置位置',
+                    online: !(i === 2 || i === 9)
+                }));
+                detailChannelPage = 1;
+            } else {
+                banner.classList.add('hidden');
+                document.getElementById('detail-channel-count').innerText = '2';
+                tabChannels.innerHTML = '通道列表 <span class="text-xs">(2)</span>';
+                document.getElementById('detail-view-gb').innerText = '44030000001320000001';
+                detailChannelRows = [];
+            }
+            renderDetailChannels();
             const statusEl = document.getElementById('detail-status');
             if (status === '在线') {
                 statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线`;
@@ -1438,17 +1695,23 @@
             const viewMode = document.getElementById('detail-basic-view');
             const editMode = document.getElementById('detail-basic-edit');
             const editBtn = document.getElementById('detail-edit-btn');
+            const locMap = document.getElementById('detail-loc-map');
+            const locViewWrap = document.getElementById('detail-loc-view-block');
             
             if (viewMode.classList.contains('hidden')) {
                 // 切换到浏览模式
                 viewMode.classList.remove('hidden');
                 editMode.classList.add('hidden');
                 editBtn.classList.remove('hidden');
+                if (locViewWrap && !locViewWrap.classList.contains('hidden')) {
+                    locMap.classList.remove('hidden');
+                }
             } else {
                 // 切换到编辑模式
                 viewMode.classList.add('hidden');
                 editMode.classList.remove('hidden');
                 editBtn.classList.add('hidden');
+                locMap.classList.add('hidden');
             }
         }
 
@@ -1571,40 +1834,100 @@
             switchGuideStep(guideStep - 1);
         }
 
-        // 地图选点
+
+        // 地图选点（Leaflet）
+        const hubPicker = (typeof HubMap !== 'undefined') ? HubMap.createPicker('picker-map', 'picker-lng', 'picker-lat') : null;
+        const hubViewer = (typeof HubMap !== 'undefined') ? HubMap.createViewer('view-map') : null;
+        let hubInline = null;
         let currentMapSource = '';
+        let editingChannelIndex = -1;
+
+        function ensureInlinePreview(lng, lat) {
+            const el = document.getElementById('inline-preview-map');
+            if (!el || typeof HubMap === 'undefined') return;
+            const la = parseFloat(lat), ln = parseFloat(lng);
+            if (isNaN(la) || isNaN(ln)) return;
+            if (!hubInline) hubInline = HubMap.createInline('inline-preview-map', { lat: la, lng: ln, zoom: 15, color: '#f85149' });
+            else { hubInline.setPoint(la, ln); hubInline.invalidate(); }
+        }
+        function updateMarker() {}
+        function syncMarkerFromInputs() { if (hubPicker) hubPicker.syncFromInputs(); }
+
         function openMapPicker(source) {
-            currentMapSource = source;
+            currentMapSource = source || 'add';
+            editingChannelIndex = -1;
             let lng = '113.945231';
             let lat = '22.573123';
-            if (source === 'add') {
+            if (currentMapSource === 'add') {
                 lng = document.getElementById('add-lng').value || lng;
                 lat = document.getElementById('add-lat').value || lat;
-            } else if (source === 'detail') {
+                document.getElementById('map-picker-title').textContent = '配置安装位置';
+            } else if (currentMapSource === 'detail') {
                 lng = document.getElementById('detail-lng').value || lng;
                 lat = document.getElementById('detail-lat').value || lat;
+                document.getElementById('map-picker-title').textContent = '配置安装位置';
             }
-            document.getElementById('temp-lng').innerText = lng;
-            document.getElementById('temp-lat').innerText = lat;
+            document.getElementById('picker-lng').value = lng;
+            document.getElementById('picker-lat').value = lat;
             document.getElementById('map-modal').classList.remove('hidden');
+            if (hubPicker) hubPicker.openAt(lng, lat);
+        }
+        function openChannelLocPicker(index) {
+            currentMapSource = 'channel';
+            editingChannelIndex = index;
+            const ch = detailChannelRows[index];
+            const noLoc = !ch || ch.loc === '未配置位置';
+            let lng = '113.945231';
+            let lat = '22.573123';
+            if (!noLoc) {
+                const parts = ch.loc.split(',').map(s => s.trim());
+                lng = parts[0] || lng;
+                lat = parts[1] || lat;
+            }
+            document.getElementById('map-picker-title').textContent = '配置安装位置 · ' + (ch ? ch.name : '');
+            document.getElementById('picker-lng').value = lng;
+            document.getElementById('picker-lat').value = lat;
+            document.getElementById('map-modal').classList.remove('hidden');
+            if (hubPicker) hubPicker.openAt(lng, lat);
         }
         function closeMapPicker() {
             document.getElementById('map-modal').classList.add('hidden');
+            editingChannelIndex = -1;
         }
 
         // 地图查看 (只读)
-        function openMapView(lng, lat) {
+        function openMapView(lng, lat, label) {
             document.getElementById('map-view-lng').innerText = lng;
             document.getElementById('map-view-lat').innerText = lat;
+            const title = document.getElementById('map-view-title');
+            if (title) title.textContent = label ? ('安装位置 · ' + label) : '安装位置';
             document.getElementById('map-view-modal').classList.remove('hidden');
+            if (hubViewer) hubViewer.openAt(lng, lat);
         }
         function closeMapView() {
             document.getElementById('map-view-modal').classList.add('hidden');
         }
         function confirmMapPicker() {
-            const lng = document.getElementById('temp-lng').innerText;
-            const lat = document.getElementById('temp-lat').innerText;
-            if (currentMapSource === 'add') {
+            const lng = document.getElementById('picker-lng').value.trim();
+            const lat = document.getElementById('picker-lat').value.trim();
+            if (!lng || !lat || isNaN(parseFloat(lng)) || isNaN(parseFloat(lat))) {
+                showToast('请填写有效的经纬度', 'error');
+                return;
+            }
+            if (currentMapSource === 'channel' && editingChannelIndex >= 0 && detailChannelRows[editingChannelIndex]) {
+                detailChannelRows[editingChannelIndex].loc = lng + ', ' + lat;
+                const missing = detailChannelRows.filter(c => c.loc === '未配置位置').length;
+                const bannerText = document.getElementById('detail-location-banner-text');
+                const banner = document.getElementById('detail-location-banner');
+                if (missing > 0) {
+                    banner.classList.remove('hidden');
+                    bannerText.innerHTML = '有 <strong id="detail-missing-loc-count">' + missing + '</strong> 个通道未配置安装位置，请在通道列表中逐路配置。';
+                } else {
+                    banner.classList.add('hidden');
+                }
+                renderDetailChannels();
+                showToast('通道安装位置已更新', 'success');
+            } else if (currentMapSource === 'add') {
                 document.getElementById('add-lng').value = lng;
                 document.getElementById('add-lat').value = lat;
             } else if (currentMapSource === 'detail') {
@@ -1612,21 +1935,6 @@
                 document.getElementById('detail-lat').value = lat;
             }
             closeMapPicker();
-        }
-        function updateMarker(e) {
-            const mapArea = document.getElementById('map-area');
-            const marker = document.getElementById('map-marker');
-            const rect = mapArea.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            marker.style.left = x + 'px';
-            marker.style.top = y + 'px';
-            const baseLng = 113.94;
-            const baseLat = 22.57;
-            const newLng = (baseLng + (x / rect.width) * 0.02).toFixed(6);
-            const newLat = (baseLat - (y / rect.height) * 0.02).toFixed(6);
-            document.getElementById('temp-lng').innerText = newLng;
-            document.getElementById('temp-lat').innerText = newLat;
         }
     </script>
 <script src="custom-select.js"></script>

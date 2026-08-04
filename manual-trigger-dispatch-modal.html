@@ -472,6 +472,7 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
+  <script src="leaflet-hub.js"></script>
   <script>
     (function () {
       /** 默认：深圳附近（截图经纬度标签有误，此处按正确语义：纬≈22.7°，经≈114.3°） */
@@ -566,9 +567,10 @@
           attributionControl: true,
         });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+          attribution: 'Carto',
+          subdomains: 'abcd',
         }).addTo(map);
 
         marker = L.marker([DEFAULT_LAT, DEFAULT_LNG], {

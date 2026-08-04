@@ -94,7 +94,7 @@
                     <div id="imageTag" class="text-white text-xs px-1.5 py-0.5 -mt-6 rounded-t font-medium">行人闯入 0.92</div>
                 </div>
                 <button onclick="goPlayback()" class="absolute bottom-4 right-4 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-1.5 transition-colors">
-                    <i class="fas fa-play"></i> 查看录像回放并定位至告警时刻
+                    <i class="fas fa-play"></i> 查看录像回放
                 </button>
             </div>
         </div>
@@ -271,7 +271,7 @@
                 ${disposalChips(item)}`;
 
             // Header actions：主操作与按设备重新处置分组，重新处置降为描边次级按钮
-            let actions = `<button onclick="goPlayback()" class="px-3 py-1.5 bg-transparent text-[#58a6ff] border border-[#30363d] rounded hover:bg-[#252525] transition-colors text-xs flex items-center gap-1"><i class="fas fa-play-circle"></i>查看录像回放</button>`;
+            let actions = '';
             if (item.status === '待处置') {
                 actions += `<button onclick="showToast('未找到已启用的摄像头告警自动化工作流，请检查工作流配置后重试')" class="px-3 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] transition-colors text-xs flex items-center gap-1"><i class="fas fa-bolt"></i>立即处置</button>`;
             }
@@ -283,7 +283,7 @@
                 retryBtns += `<button onclick="handleRetry('robot')" class="h-8 px-3 bg-[#1a1a1a] border border-[#30363d] text-gray-200 rounded hover:border-[#58a6ff] hover:text-[#58a6ff] hover:bg-[#58a6ff]/10 transition-colors text-xs flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-redo"></i>重新处置（地面机器人）</button>`;
             }
             if (retryBtns) {
-                actions += `<div class="h-6 w-px bg-[#2d2d2d] mx-1"></div><div class="flex items-center gap-1.5">${retryBtns}</div>`;
+                actions += `${actions ? '<div class="h-6 w-px bg-[#2d2d2d] mx-1"></div>' : ''}<div class="flex items-center gap-1.5">${retryBtns}</div>`;
             }
             document.getElementById('headerActions').innerHTML = actions;
 

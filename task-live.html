@@ -6,6 +6,9 @@
     <title>任务实况 - Avant Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
     <style>
         body {
             background: #0f0f0f;
@@ -548,10 +551,9 @@
                 <span class="text-white text-sm">事件位置</span>
                 <button class="text-gray-400 hover:text-white" onclick="closeMap()"><i class="fas fa-times"></i></button>
             </div>
-            <div class="h-64 bg-[#0d1117] relative flex items-center justify-center" style="background:url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=900&auto=format&fit=crop') center/cover;">
-                <div class="absolute inset-0 bg-black/30"></div>
-                <i class="fas fa-map-marker-alt text-3xl text-[#f85149] relative z-10 drop-shadow"></i>
-                <div class="absolute bottom-3 left-3 bg-black/70 text-xs text-gray-200 font-mono px-2 py-1 rounded z-10" id="mapCoord">—</div>
+            <div class="h-64 bg-[#0d1117] relative overflow-hidden">
+                <div id="task-live-map" class="absolute inset-0"></div>
+                <div class="absolute bottom-3 left-3 bg-black/70 text-xs text-gray-200 font-mono px-2 py-1 rounded z-[500]" id="mapCoord">—</div>
             </div>
         </div>
     </div>
@@ -920,11 +922,13 @@ function switchCtrlTab(tab) {
     });
 }
 
+const taskLiveViewer = (typeof HubMap !== 'undefined') ? HubMap.createViewer('task-live-map') : null;
 function openMap(lat, lng) {
     document.getElementById('mapCoord').textContent = lat + ', ' + lng;
     const m = document.getElementById('mapModal');
     m.classList.remove('hidden');
     m.classList.add('flex');
+    if (taskLiveViewer) taskLiveViewer.openAt(lng, lat);
 }
 function closeMap() {
     const m = document.getElementById('mapModal');
@@ -1037,6 +1041,16 @@ function openMapCoord(coord) {
     const m = document.getElementById('mapModal');
     m.classList.remove('hidden');
     m.classList.add('flex');
+    const parts = String(coord).split(/[,，\s]+/).map(s => s.trim()).filter(Boolean);
+    if (taskLiveViewer && parts.length >= 2) {
+        const a = parseFloat(parts[0]), b = parseFloat(parts[1]);
+        // 支持「纬度,经度」或「经度,纬度」：纬度绝对值通常 < 90
+        if (!isNaN(a) && !isNaN(b)) {
+            const lat = Math.abs(a) <= 90 ? a : b;
+            const lng = Math.abs(a) <= 90 ? b : a;
+            taskLiveViewer.openAt(lng, lat);
+        }
+    }
 }
 
 function renderConfirm() {

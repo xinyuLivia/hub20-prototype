@@ -6,6 +6,9 @@
     <title>设备管理 - 摄像头列表 - Avant Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
     <style>
         body {
             background-color: #141414;
@@ -16,27 +19,221 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
-        .map-bg {
-            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
+        .map-panel {
             position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #0d1117;
         }
-        .map-bg::before {
-            content: '';
+        #leaflet-map {
             position: absolute;
             inset: 0;
-            background: rgba(20, 20, 20, 0.4);
             z-index: 0;
+            background: #0d1117;
         }
-        .camera-marker {
-            position: absolute;
-            transform: translate(-50%, -100%);
-            cursor: pointer;
-            z-index: 10;
+        .leaflet-container { font-family: inherit; background: #0d1117; }
+        .leaflet-popup-content-wrapper {
+            background: #161b22;
+            color: #d4d4d4;
+            border: 1px solid #58a6ff;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.45);
+            padding: 0;
         }
+        .leaflet-popup-content { margin: 0; width: 280px !important; }
+        .leaflet-popup-tip { background: #161b22; border: 1px solid #58a6ff; }
+        .leaflet-popup-close-button { color: #8b949e !important; }
+        .map-iw {
+            width: 280px;
+            background: #161b22;
+            padding: 10px;
+            color: #d4d4d4;
+            font-size: 12px;
+        }
+        .map-iw .tag {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #30363d;
+            margin-bottom: 6px;
+        }
+        .map-iw .tag.nvr {
+            color: #58a6ff;
+            background: rgba(31,111,235,.1);
+            border-color: rgba(31,111,235,.3);
+        }
+        .map-iw .tag.ipc {
+            color: #d4d4d4;
+            background: #21262d;
+        }
+        .map-iw .title { color: #fff; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .map-iw .sub { color: #8b949e; font-size: 10px; margin-bottom: 4px; }
+        .map-iw .meta { color: #8b949e; margin-bottom: 8px; }
+        .map-iw .online { color: #3fb950; }
+        .map-iw .offline { color: #6e7681; }
+        .map-iw .actions {
+            display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; align-items: center;
+            padding-top: 8px; border-top: 1px solid #30363d;
+        }
+        .map-iw .btn {
+            font-size: 11px; color: #58a6ff; background: rgba(88,166,255,.1);
+            border: 1px solid rgba(88,166,255,.2); border-radius: 4px; padding: 4px 8px; text-decoration: none;
+        }
+        .map-iw .btn.disabled {
+            color: #484f58; background: #21262d; border-color: #30363d; cursor: not-allowed; pointer-events: none;
+        }
+        .map-iw .link { font-size: 11px; color: #8b949e; text-decoration: none; }
+        .map-iw .link:hover { color: #fff; }
         .custom-tab.active {
             color: #58a6ff;
             border-bottom: 2px solid #58a6ff;
         }
+        .device-group.collapsed .group-channels { display: none; }
+        .device-group.collapsed .group-chevron { transform: rotate(180deg); }
+        /* 方案 B：列表=通道；设备头轻量分组；通道名是视觉重点 */
+        .device-group {
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #161b22;
+        }
+        .device-group[data-type="nvr"] {
+            border-left: 2px solid #1f6feb;
+        }
+        .device-group-header {
+            padding: 6px 8px 6px 10px;
+            background: #0d1117;
+            border-bottom: 1px solid #21262d;
+        }
+        .device-group[data-type="camera"] .device-group-header {
+            cursor: pointer;
+        }
+        .device-group[data-type="camera"] .device-group-header:hover {
+            background: #12171e;
+        }
+        .device-group[data-type="nvr"] .device-group-header {
+            cursor: default;
+            user-select: none;
+        }
+        .device-group.is-selected {
+            border-color: #388bfd;
+        }
+        .device-group.is-selected > .device-group-header {
+            background: rgba(88,166,255,0.06);
+        }
+        .dg-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: #e6edf3;
+            line-height: 1.25;
+        }
+        .dg-meta {
+            margin-top: 2px;
+            font-size: 10px;
+            color: #6e7681;
+            line-height: 1.2;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .dg-meta .hint { font-family: inherit; color: #8b949e; }
+        .dg-meta .warn { font-family: inherit; color: #d29922; }
+        .dg-actions {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .dg-actions a,
+        .dg-actions button {
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #6e7681;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .dg-actions a:hover,
+        .dg-actions button:hover { color: #58a6ff; background: rgba(88,166,255,0.08); }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.on { background: #3fb950; }
+        .status-dot.off { background: #6e7681; }
+        .status-dot.warn { background: #d29922; }
+        .channel-row {
+            cursor: pointer;
+            padding: 5px 10px 5px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 2px solid transparent;
+            min-height: 36px;
+        }
+        .channel-row:hover { background: #1c2128; }
+        .channel-row.is-selected {
+            background: rgba(88,166,255,0.1);
+            border-left-color: #58a6ff;
+        }
+        .channel-row.is-selected .ch-name { color: #58a6ff; font-weight: 600; }
+        .channel-row.no-loc { opacity: 0.72; }
+        .channel-row .ch-name {
+            font-size: 12px;
+            color: #f0f6fc;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+        .channel-row .ch-gb {
+            font-size: 10px;
+            color: #6e7681;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            line-height: 1.2;
+            margin-top: 1px;
+        }
+        .channel-row .ch-status {
+            font-size: 10px;
+            flex-shrink: 0;
+            min-width: 2em;
+            text-align: right;
+        }
+        .ch-badge {
+            font-size: 9px;
+            padding: 0 4px;
+            border-radius: 3px;
+            color: #d29922;
+            background: rgba(210,153,34,0.12);
+            margin-left: 4px;
+            vertical-align: 1px;
+        }
+        .type-pill {
+            font-size: 9px;
+            padding: 0 5px;
+            border-radius: 3px;
+            color: #58a6ff;
+            background: rgba(31,111,235,0.15);
+            flex-shrink: 0;
+            line-height: 16px;
+        }
+        #device-list { min-height: 0; }
+        .map-addr-item {
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #d4d4d4;
+            cursor: pointer;
+            border-bottom: 1px solid #21262d;
+        }
+        .map-addr-item:hover { background: rgba(88,166,255,0.1); color: #fff; }
+        .map-addr-item:last-child { border-bottom: none; }
+        .map-addr-item .name { color: #fff; margin-bottom: 2px; }
+        .map-addr-item .sub { color: #8b949e; font-size: 10px; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -85,227 +282,219 @@
     <div class="flex-1 flex overflow-hidden">
         
         <!-- 左侧列表区 -->
-        <div class="w-96 bg-[#141414] border-r border-[#2d2d2d] flex flex-col z-10 shrink-0">
+        <div class="w-96 bg-[#141414] border-r border-[#2d2d2d] flex flex-col z-10 shrink-0 min-h-0">
             <!-- 标题与添加 -->
             <div class="px-3 pt-3 pb-2 flex justify-between items-center shrink-0">
-                <span class="text-sm font-medium text-white">摄像头设备 <span class="text-gray-500 font-normal">(4)</span></span>
+                <span class="text-sm font-medium text-white">监控通道 <span class="text-gray-500 font-normal" id="channel-count">(—)</span></span>
                 <button onclick="location.href='camera-monitor.html'" class="text-xs bg-[#1f6feb] hover:bg-[#388bfd] text-white px-2.5 py-1 rounded transition-colors flex items-center">
                     <i class="fas fa-desktop mr-1.5"></i> 监控中心
                 </button>
             </div>
             <!-- 筛选栏 -->
-            <div class="p-3 border-b border-[#2d2d2d] flex space-x-2 shrink-0">
-                <div class="w-24 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center justify-between cursor-pointer hover:border-[#555] shrink-0">
-                    <span class="text-xs text-gray-400">状态</span>
-                    <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+            <div class="p-3 border-b border-[#2d2d2d] flex flex-wrap gap-2 shrink-0">
+                <div class="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center space-x-1.5 shrink-0 hover:border-[#555]">
+                    <span class="text-xs text-gray-400 whitespace-nowrap">设备类型</span>
+                    <select id="filter-device-type" onchange="filterDeviceList()" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer max-w-[5.5rem]">
+                        <option value="all" class="bg-[#1e1e1e]">全部</option>
+                        <option value="camera" class="bg-[#1e1e1e]">摄像头</option>
+                        <option value="nvr" class="bg-[#1e1e1e]">硬盘录像机</option>
+                    </select>
+                </div>
+                <div class="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 flex items-center space-x-1.5 shrink-0 hover:border-[#555]">
+                    <span class="text-xs text-gray-400 whitespace-nowrap">状态</span>
+                    <select id="filter-status" onchange="filterDeviceList()" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer max-w-[4.5rem]">
+                        <option value="all" class="bg-[#1e1e1e]">全部</option>
+                        <option value="online" class="bg-[#1e1e1e]">在线</option>
+                        <option value="offline" class="bg-[#1e1e1e]">离线</option>
+                        <option value="unregistered" class="bg-[#1e1e1e]">未注册</option>
+                    </select>
                 </div>
                 <div class="relative flex-1 min-w-0">
-                    <input type="text" placeholder="搜索名称/IP/国标编码" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-2 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
+                    <input type="text" id="filter-search" placeholder="搜索设备/通道/国标/IP" oninput="filterDeviceList()" class="w-full bg-[#1e1e1e] border border-[#333] text-xs rounded pl-2 pr-8 py-1.5 focus:outline-none focus:border-[#58a6ff] text-white">
                     <i class="fas fa-search absolute right-2.5 top-2 text-gray-500 text-xs"></i>
                 </div>
             </div>
 
-            <!-- 设备列表 -->
-            <div class="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-hide">
-                
-                <!-- 卡片 1 -->
-                <div class="bg-[#0d1117] border border-[#58a6ff] rounded-lg p-3 hover:border-[#58a6ff] transition-colors cursor-pointer relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-1 h-full bg-[#58a6ff]"></div>
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-video text-gray-400"></i>
-                            <span class="font-medium text-white text-sm">海康双光谱球机-北门</span>
+            <!-- 设备列表：方案 B — 列表=通道；设备头轻量分组；通道名是重点 -->
+            <div class="flex-1 overflow-y-auto px-2.5 py-2 space-y-1.5 scrollbar-hide" id="device-list">
+
+                <!-- IPC 组：海康双光谱 -->
+                <div class="device-group" data-type="camera" data-status="online" data-name="海康双光谱球机-北门" data-ip="192.168.1.105" data-gb="44030000001320000001" data-device-id="ipc-1" data-channels="通道1: 可见光,通道2: 热成像">
+                    <div class="device-group-header" onclick="selectIpcDevice('ipc-1')" title="点选摄像头：地图定位（下属通道同点）">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot on"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="dg-name truncate">海康双光谱球机-北门</div>
+                                <div class="dg-meta truncate"><span>44030000001320000001</span> <span class="hint">· 2 路</span></div>
+                            </div>
+                            <div class="dg-actions" onclick="event.stopPropagation()">
+                                <a href="camera-detail.html" title="详情"><i class="fas fa-external-link-alt text-[9px]"></i></a>
+                                <button type="button" onclick="toggleGroup(this)" title="收起/展开"><i class="fas fa-chevron-up group-chevron text-[9px] transition-transform"></i></button>
+                            </div>
                         </div>
-                        <span class="text-xs text-[#3fb950] bg-[#2ea043]/10 px-2 py-0.5 rounded border border-[#2ea043]/30 flex items-center">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
-                        </span>
                     </div>
-                    <div class="text-xs text-gray-400 space-y-1.5 mb-3">
-                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-300">192.168.1.105</span></div>
-                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-300 font-mono">44030000001320000001</span></div>
-                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-300">2</span></div>
-                    </div>
-                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
-                        <div class="flex space-x-2">
-                            <a href="camera-monitor.html?view=live" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] font-medium bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
-                                进入监控
-                            </a>
-                            <a href="camera-playback.html" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] font-medium bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
-                                录像回放
-                            </a>
+                    <div class="group-channels">
+                        <div class="channel-row is-selected" data-channel-id="ipc-1-ch1" data-device-id="ipc-1" data-status="online" data-has-loc="1" data-ch-name="通道1: 可见光" data-gb="44030000001320000101" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate">通道1: 可见光</div>
+                                <div class="ch-gb truncate">44030000001320000101</div>
+                            </div>
+                            <span class="ch-status text-[#3fb950]">在线</span>
                         </div>
-                        <div class="flex items-center">
-                            <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                        <div class="channel-row" data-channel-id="ipc-1-ch2" data-device-id="ipc-1" data-status="online" data-has-loc="1" data-ch-name="通道2: 热成像" data-gb="44030000001320000102" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate">通道2: 热成像</div>
+                                <div class="ch-gb truncate">44030000001320000102</div>
+                            </div>
+                            <span class="ch-status text-[#3fb950]">在线</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 卡片 2 -->
-                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 hover:border-gray-500 transition-colors cursor-pointer">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-video text-gray-400"></i>
-                            <span class="font-medium text-white text-sm">大华枪机-东侧围墙</span>
+                <!-- IPC 组：大华枪机 -->
+                <div class="device-group" data-type="camera" data-status="online" data-name="大华枪机-东侧围墙" data-ip="10.242.40.11" data-gb="44030000001310000002" data-device-id="ipc-2" data-channels="通道1">
+                    <div class="device-group-header" onclick="selectIpcDevice('ipc-2')" title="点选摄像头：地图定位（下属通道同点）">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot on"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="dg-name truncate">大华枪机-东侧围墙</div>
+                                <div class="dg-meta truncate"><span>44030000001310000002</span> <span class="hint">· 1 路</span></div>
+                            </div>
+                            <div class="dg-actions" onclick="event.stopPropagation()">
+                                <a href="camera-detail.html" title="详情"><i class="fas fa-external-link-alt text-[9px]"></i></a>
+                                <button type="button" onclick="toggleGroup(this)" title="收起/展开"><i class="fas fa-chevron-up group-chevron text-[9px] transition-transform"></i></button>
+                            </div>
                         </div>
-                        <span class="text-xs text-[#3fb950] bg-[#2ea043]/10 px-2 py-0.5 rounded border border-[#2ea043]/30 flex items-center">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span> 在线
-                        </span>
                     </div>
-                    <div class="text-xs text-gray-400 space-y-1.5 mb-3">
-                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-300">10.242.40.11</span></div>
-                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-300 font-mono">44030000001310000002</span></div>
-                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-300">1</span></div>
-                    </div>
-                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
-                        <div class="flex space-x-2">
-                            <a href="camera-monitor.html?view=live" class="text-xs text-gray-400 hover:text-[#58a6ff] font-medium bg-[#252525] px-2 py-1 rounded border border-[#333] transition-colors">
-                                进入监控
-                            </a>
-                            <a href="camera-playback.html" class="text-xs text-gray-400 hover:text-[#58a6ff] font-medium bg-[#252525] px-2 py-1 rounded border border-[#333] transition-colors">
-                                录像回放
-                            </a>
-                        </div>
-                        <div class="flex items-center">
-                            <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                    <div class="group-channels">
+                        <div class="channel-row" data-channel-id="ipc-2-ch1" data-device-id="ipc-2" data-status="online" data-has-loc="1" data-ch-name="通道1" data-gb="44030000001310000101" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate">通道1</div>
+                                <div class="ch-gb truncate">44030000001310000101</div>
+                            </div>
+                            <span class="ch-status text-[#3fb950]">在线</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 卡片 3 (离线) -->
-                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 hover:border-gray-500 transition-colors cursor-pointer opacity-75">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-video text-gray-500"></i>
-                            <span class="font-medium text-gray-300 text-sm">海康全景-料场全景</span>
+                <!-- IPC 离线 -->
+                <div class="device-group opacity-80" data-type="camera" data-status="offline" data-name="海康全景-料场全景" data-ip="192.168.1.108" data-gb="44030000001320000005" data-device-id="ipc-3" data-channels="通道1,通道2,通道3">
+                    <div class="device-group-header" onclick="selectIpcDevice('ipc-3')" title="点选摄像头：地图定位（下属通道同点）">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot off"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="dg-name truncate text-gray-400">海康全景-料场全景</div>
+                                <div class="dg-meta truncate"><span>44030000001320000005</span> <span class="hint">· 3 路</span></div>
+                            </div>
+                            <div class="dg-actions" onclick="event.stopPropagation()">
+                                <a href="camera-detail.html" title="详情"><i class="fas fa-external-link-alt text-[9px]"></i></a>
+                                <button type="button" onclick="toggleGroup(this)" title="收起/展开"><i class="fas fa-chevron-up group-chevron text-[9px] transition-transform"></i></button>
+                            </div>
                         </div>
-                        <span class="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded border border-gray-600 flex items-center">
-                            <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span> 离线
-                        </span>
                     </div>
-                    <div class="text-xs text-gray-500 space-y-1.5 mb-3">
-                        <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-400">192.168.1.108</span></div>
-                        <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-400 font-mono">44030000001320000005</span></div>
-                        <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-400">3</span></div>
-                    </div>
-                    <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
-                        <div class="flex space-x-2">
-                            <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="设备离线，无法播放实况">
-                                进入监控
-                            </button>
-                            <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="设备离线，无法拉取设备端录像">
-                                录像回放
-                            </button>
+                    <div class="group-channels">
+                        <div class="channel-row" data-channel-id="ipc-3-ch1" data-device-id="ipc-3" data-status="offline" data-has-loc="1" data-ch-name="通道1" data-gb="44030000001320000501" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate text-gray-400">通道1</div>
+                                <div class="ch-gb truncate">44030000001320000501</div>
+                            </div>
+                            <span class="ch-status text-gray-500">离线</span>
                         </div>
-                        <div class="flex items-center">
-                            <button class="text-xs text-gray-500 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                        <div class="channel-row" data-channel-id="ipc-3-ch2" data-device-id="ipc-3" data-status="offline" data-has-loc="1" data-ch-name="通道2" data-gb="44030000001320000502" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate text-gray-400">通道2</div>
+                                <div class="ch-gb truncate">44030000001320000502</div>
+                            </div>
+                            <span class="ch-status text-gray-500">离线</span>
+                        </div>
+                        <div class="channel-row" data-channel-id="ipc-3-ch3" data-device-id="ipc-3" data-status="offline" data-has-loc="1" data-ch-name="通道3" data-gb="44030000001320000503" onclick="selectChannel(this)">
+                            <div class="min-w-0 flex-1">
+                                <div class="ch-name truncate text-gray-400">通道3</div>
+                                <div class="ch-gb truncate">44030000001320000503</div>
+                            </div>
+                            <span class="ch-status text-gray-500">离线</span>
                         </div>
                     </div>
                 </div>
 
-            <!-- 卡片 4 (未注册) -->
-            <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 transition-colors cursor-default opacity-60">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center space-x-2">
-                        <i class="fas fa-video text-gray-500"></i>
-                        <span class="font-medium text-gray-300 text-sm">大华球机-西门</span>
+                <!-- NVR 组：设备头不可点选地图 -->
+                <div class="device-group" data-type="nvr" data-status="online" data-name="海康录像机-北区机房" data-ip="192.168.1.200" data-gb="44030000001180000001" data-device-id="nvr-1" data-channels="">
+                    <div class="device-group-header" title="硬盘录像机本身不可点选地图，请点下属通道">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot on"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <div class="dg-name truncate">海康录像机-北区机房</div>
+                                    <span class="type-pill">录像机</span>
+                                </div>
+                                <div class="dg-meta truncate"><span>44030000001180000001</span> <span class="hint">· 16 路</span> <span class="warn">· 1 待配</span></div>
+                            </div>
+                            <div class="dg-actions">
+                                <a href="camera-detail.html?type=nvr" title="详情"><i class="fas fa-external-link-alt text-[9px]"></i></a>
+                                <button type="button" onclick="toggleGroup(this)" title="收起/展开"><i class="fas fa-chevron-up group-chevron text-[9px] transition-transform"></i></button>
+                            </div>
+                        </div>
                     </div>
-                    <span class="text-xs text-[#d29922] bg-[#d29922]/10 px-2 py-0.5 rounded border border-[#d29922]/30 flex items-center">
-                        <span class="w-1.5 h-1.5 rounded-full bg-[#d29922] mr-1.5"></span> 未注册
-                    </span>
-                </div>
-                <div class="text-xs text-gray-500 space-y-1.5 mb-3">
-                    <div class="flex justify-between"><span>IP地址:</span> <span class="text-gray-400">—</span></div>
-                    <div class="flex justify-between"><span>国标编码:</span> <span class="text-gray-400 font-mono">44030000001320000006</span></div>
-                    <div class="flex justify-between"><span>通道数量:</span> <span class="text-gray-400">—</span></div>
-                </div>
-                <div class="flex justify-between border-t border-[#30363d] pt-2 mt-2">
-                    <div class="flex space-x-2">
-                        <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="未注册设备无法进入监控">
-                            进入监控
-                        </button>
-                        <button class="text-xs text-gray-500 font-medium bg-gray-800 px-2 py-1 rounded border border-gray-700 cursor-not-allowed" title="未注册设备无法录像回放">
-                            录像回放
-                        </button>
-                    </div>
-                    <div class="flex items-center">
-                        <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center cursor-pointer" onclick="location.href='camera-detail.html'">查看详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
+                    <div class="group-channels">
+                        <div id="nvr-1-channel-list" class="max-h-72 overflow-y-auto scrollbar-hide"></div>
                     </div>
                 </div>
-            </div>
+
+                <!-- 未注册：无通道 -->
+                <div class="device-group opacity-70" data-type="camera" data-status="unregistered" data-name="大华球机-西门" data-ip="—" data-gb="44030000001320000006" data-device-id="ipc-4" data-channels="">
+                    <div class="device-group-header" onclick="selectIpcDevice('ipc-4')" title="未注册暂无落点">
+                        <div class="flex items-center gap-2">
+                            <span class="status-dot warn"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="dg-name truncate text-gray-400">大华球机-西门</div>
+                                <div class="dg-meta truncate"><span>44030000001320000006</span> <span class="hint">· 暂无通道</span></div>
+                            </div>
+                            <div class="dg-actions" onclick="event.stopPropagation()">
+                                <a href="camera-detail.html" title="详情"><i class="fas fa-external-link-alt text-[9px]"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </div>
 
-        <!-- 右侧地图区 -->
-        <div class="flex-1 map-bg relative">
-            <!-- 顶部操作栏 -->
-            <div class="absolute top-4 right-4 z-10">
+        <!-- 右侧地图区：Leaflet + Carto dark（免 Key，与告警详情一致） -->
+        <div class="flex-1 map-panel relative min-w-0 min-h-0">
+            <div id="leaflet-map"></div>
+
+            <div class="absolute top-4 right-4 z-[500]">
                 <button class="bg-[#238636] hover:bg-[#2ea043] text-white text-sm px-4 py-2 rounded shadow-lg transition-colors" onclick="openGuideModal()">
                     <i class="fas fa-book mr-1"></i> 摄像头接入指南
                 </button>
             </div>
 
-            <!-- 地图控件 -->
-            <div class="absolute right-4 bottom-4 flex flex-col space-y-2 z-10">
-                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
-                    <i class="fas fa-plus"></i>
-                </button>
-                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center mt-4">
-                    <i class="fas fa-crosshairs"></i>
-                </button>
-                <button class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center">
-                    <i class="fas fa-layer-group"></i>
-                </button>
+            <div class="absolute right-4 bottom-10 flex flex-col space-y-2 z-[500]">
+                <button type="button" onclick="mapZoom(1)" class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                <button type="button" onclick="mapZoom(-1)" class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center"><i class="fas fa-minus"></i></button>
+                <button type="button" onclick="mapFitAll()" class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center mt-4" title="视野适配全部通道"><i class="fas fa-crosshairs"></i></button>
+                <button type="button" onclick="mapToggleType()" class="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded text-gray-300 hover:text-white hover:bg-[#21262d] shadow-lg flex items-center justify-center" title="深色/影像切换"><i class="fas fa-layer-group"></i></button>
             </div>
 
-            <!-- 摄像头标记 1 (选中状态) -->
-            <div class="camera-marker" style="top: 45%; left: 50%;">
-                <div class="relative flex flex-col items-center">
-                        <!-- 气泡信息框 -->
-                        <div class="absolute bottom-full mb-2 w-56 bg-[#161b22] border border-[#58a6ff] rounded shadow-2xl p-2.5 z-20">
-                            <div class="text-sm font-medium text-white mb-1 truncate">海康双光谱球机-北门</div>
-                            <div class="text-xs text-gray-400 mb-2.5">状态: <span class="text-[#3fb950]">在线</span> | 通道: 2</div>
-                            <div class="flex justify-between items-center pt-2 border-t border-[#30363d]">
-                                <div class="flex space-x-2">
-                                    <a href="camera-monitor.html?view=live" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
-                                        进入监控
-                                    </a>
-                                    <a href="camera-playback.html" class="text-xs text-[#58a6ff] hover:text-[#79c0ff] bg-[#58a6ff]/10 px-2 py-1 rounded border border-[#58a6ff]/20 transition-colors">
-                                        录像回放
-                                    </a>
-                                </div>
-                                <button class="text-xs text-gray-400 hover:text-white transition-colors flex items-center" onclick="location.href='camera-detail.html'">详情 <i class="fas fa-chevron-right ml-1 text-[10px]"></i></button>
-                            </div>
-                            <!-- 气泡小尾巴 -->
-                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#58a6ff]"></div>
-                    </div>
-                    <!-- 图标 -->
-                    <div class="w-10 h-10 rounded-full bg-[#58a6ff]/20 border-2 border-[#58a6ff] flex items-center justify-center text-[#58a6ff] shadow-[0_0_15px_rgba(88,166,255,0.5)]">
-                        <i class="fas fa-video"></i>
-                    </div>
+            <div class="absolute top-4 left-4 z-[500] w-72 pointer-events-auto">
+                <div class="relative">
+                    <input id="map-addr-search" type="text" placeholder="搜索地图地址…" autocomplete="off"
+                        class="w-full bg-[#161b22]/95 border border-[#30363d] text-xs text-white rounded pl-8 pr-8 py-2 focus:outline-none focus:border-[#58a6ff] shadow-lg"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();searchMapAddress();}">
+                    <i class="fas fa-map-marker-alt absolute left-2.5 top-2.5 text-gray-500 text-xs"></i>
+                    <button type="button" onclick="searchMapAddress()" class="absolute right-1.5 top-1 text-gray-400 hover:text-[#58a6ff] w-6 h-6 flex items-center justify-center" title="搜索">
+                        <i class="fas fa-search text-xs"></i>
+                    </button>
                 </div>
+                <div id="map-addr-results" class="hidden mt-1 max-h-56 overflow-y-auto bg-[#161b22]/95 border border-[#30363d] rounded shadow-lg"></div>
             </div>
 
-            <!-- 摄像头标记 2 -->
-            <div class="camera-marker" style="top: 60%; left: 35%;">
-                <div class="relative flex flex-col items-center">
-                    <div class="w-8 h-8 rounded-full bg-[#161b22] border border-gray-400 flex items-center justify-center text-gray-300 shadow-lg hover:border-white hover:text-white transition-colors">
-                        <i class="fas fa-video text-sm"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 底部状态栏 -->
-            <div class="absolute bottom-0 left-0 right-0 h-6 bg-[#161b22]/80 backdrop-blur text-[10px] text-gray-400 flex items-center px-4 justify-between z-10">
+            <div class="absolute bottom-0 left-0 right-0 h-6 bg-[#161b22]/80 backdrop-blur text-[10px] text-gray-400 flex items-center px-4 justify-between z-[500] pointer-events-none">
                 <div class="flex space-x-4">
-                    <span>比例尺: 50m</span>
-                    <span>经度: 113.945231</span>
-                    <span>纬度: 22.573123</span>
+                    <span>Leaflet · Carto dark</span>
+                    <span id="map-coord">经度: — · 纬度: —</span>
                 </div>
-                <div>WGS84</div>
+                <div>Leaflet 1.9.4</div>
             </div>
         </div>
     </div>
@@ -313,8 +502,30 @@
     <!-- Toast 容器 -->
     <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>
 
+    <!-- 地图查看 Modal (只读) -->
+    <div id="map-view-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <div class="flex items-center">
+                    <h3 class="text-sm font-medium text-white" id="map-view-title">安装位置</h3>
+                    <span class="ml-3 px-1.5 py-0.5 rounded text-[10px] bg-[#1f6feb]/10 text-[#58a6ff] border border-[#1f6feb]/20">只读查看</span>
+                </div>
+                <button onclick="closeMapView()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 relative bg-[#0d1117] min-h-0">
+                <div id="list-view-map" class="absolute inset-0"></div>
+                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-[500]">
+                    <span id="map-view-lng">113.945231</span>, <span id="map-view-lat">22.573123</span>
+                </div>
+            </div>
+            <div class="px-4 py-3 border-t border-[#30363d] flex justify-end bg-[#21262d]">
+                <button onclick="closeMapView()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] text-xs">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ 摄像头接入指南 Modal ============ -->
-    <div id="modal-guide-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div id="modal-guide-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[720px] h-[520px] flex flex-col overflow-hidden">
             <div class="p-4 border-b border-[#30363d] flex justify-between items-center shrink-0">
                 <div class="flex items-center space-x-3">
@@ -364,7 +575,7 @@
                 <div id="guide-step-2" class="guide-step text-center hidden">
                     <div class="text-sm text-white mb-6">新增摄像头并生成接入凭证</div>
                     <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] p-5 text-left">
-                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加摄像头</span></div>
+                        <div class="text-xs text-gray-400 mb-3">点击右上角 <span class="text-white bg-[#1f6feb] px-2 py-1 rounded">添加监控设备</span></div>
                         <div class="space-y-2 text-xs text-gray-500">
                             <div><span class="text-gray-300">1.</span> 录入设备名称、厂商、型号、安装位置</div>
                             <div><span class="text-gray-300">2.</span> 保存后平台自动生成设备国标编码与接入密码</div>
@@ -378,7 +589,7 @@
                     <div class="mx-auto w-[420px] h-44 border border-[#30363d] rounded-lg bg-[#0d1117] flex items-center justify-center">
                         <div class="text-left text-xs text-gray-500 leading-7">
                             <div class="text-gray-300 mb-2"><i class="fas fa-desktop mr-2 text-[#58a6ff]"></i>通过浏览器访问摄像头 Web 后台</div>
-                            <div>海康参考路径：配置 → 网络 → 高级配置 → 平台接入</div>
+                            <div>海康路径参考：配置 → 网络 → 高级配置 → 平台接入</div>
                             <div>大华/宇视路径略有差异，但均需选择 GB28181/国标协议</div>
                         </div>
                     </div>
@@ -512,16 +723,522 @@
             document.getElementById('modal-overlay').classList.add('hidden');
         }
 
+
+        // 方案 B + Leaflet（Carto dark，免 Key）
+        let selectedDeviceId = 'ipc-1';
+        let selectedChannelId = 'ipc-1-ch1';
+        let leafletMap = null;
+        let baseDark = null;
+        let baseImg = null;
+        let usingImg = false;
+        const markerByChannel = {};
+
+        // 演示坐标（深圳南山区一带，仅原型）
+        const CHANNEL_GEO = {
+            // IPC：同一设备下多通道共享同一安装位置（继承设备位置）
+            'ipc-1-ch1': { lng: 113.945231, lat: 22.573123, kind: 'ipc', chName: '通道1: 可见光', gb: '44030000001320000101', devLabel: '所属：海康双光谱球机-北门', status: '在线', detail: 'camera-detail.html', online: true },
+            'ipc-1-ch2': { lng: 113.945231, lat: 22.573123, kind: 'ipc', chName: '通道2: 热成像', gb: '44030000001320000102', devLabel: '所属：海康双光谱球机-北门', status: '在线', detail: 'camera-detail.html', online: true },
+            'ipc-2-ch1': { lng: 113.947100, lat: 22.571800, kind: 'ipc', chName: '通道1', gb: '44030000001310000101', devLabel: '所属：大华枪机-东侧围墙', status: '在线', detail: 'camera-detail.html', online: true },
+            'ipc-3-ch1': { lng: 113.943800, lat: 22.570900, kind: 'ipc', chName: '通道1', gb: '44030000001320000501', devLabel: '所属：海康全景-料场全景', status: '离线', detail: 'camera-detail.html', online: false },
+            'ipc-3-ch2': { lng: 113.943800, lat: 22.570900, kind: 'ipc', chName: '通道2', gb: '44030000001320000502', devLabel: '所属：海康全景-料场全景', status: '离线', detail: 'camera-detail.html', online: false },
+            'ipc-3-ch3': { lng: 113.943800, lat: 22.570900, kind: 'ipc', chName: '通道3', gb: '44030000001320000503', devLabel: '所属：海康全景-料场全景', status: '离线', detail: 'camera-detail.html', online: false }
+        };
+
+        // NVR：15 路可落点（仅通道2 未配），散开分布便于点选
+        (function expandNvrGeo() {
+            const names = ['北门可见光','仓库入口','东围墙','卸货区','南门球机','停车场A','停车场B','周界1','周界2','机房门口','办公楼大厅','货梯口','充电棚','油库区','装卸台','门禁通道'];
+            const noLoc = { 2:1 }; // 仅 1 路未配，其余均上图
+            const offline = { 3:1, 10:1, 14:1 };
+            const centerLng = 113.944200;
+            const centerLat = 22.573600;
+            // 两圈散点，避免挤成一团
+            const placed = [];
+            for (let i = 1; i <= 16; i++) {
+                if (noLoc[i]) continue;
+                placed.push(i);
+            }
+            placed.forEach(function (i, idx) {
+                const id = 'nvr-1-ch' + i;
+                const ring = idx < 8 ? 0 : 1;
+                const inRing = ring === 0 ? idx : idx - 8;
+                const count = ring === 0 ? Math.min(8, placed.length) : (placed.length - 8);
+                const ang = (inRing / Math.max(count, 1)) * Math.PI * 2 - Math.PI / 2;
+                const radiusLng = ring === 0 ? 0.0036 : 0.0058;
+                const radiusLat = ring === 0 ? 0.0028 : 0.0045;
+                CHANNEL_GEO[id] = {
+                    lng: centerLng + Math.cos(ang) * radiusLng,
+                    lat: centerLat + Math.sin(ang) * radiusLat,
+                    kind: 'nvr',
+                    chName: '通道' + i + ': ' + names[i - 1],
+                    gb: '4403000000131800' + String(i).padStart(4, '0'),
+                    devLabel: '所属：海康录像机-北区机房',
+                    status: offline[i] ? '离线' : '在线',
+                    detail: 'camera-detail.html?type=nvr',
+                    online: !offline[i]
+                };
+            });
+        })();
+
+
+        function buildBubbleHtml(meta) {
+            const isNvr = meta.kind === 'nvr';
+            const tagCls = isNvr ? 'nvr' : 'ipc';
+            const tag = isNvr ? '硬盘录像机 · 通道' : '摄像头 · 通道';
+            const stCls = meta.online ? 'online' : 'offline';
+            const actions = meta.online
+                ? `<a class="btn" href="camera-monitor.html?view=live">进入监控</a><a class="btn" href="camera-playback.html">录像回放</a>`
+                : `<span class="btn disabled">进入监控</span><span class="btn disabled">录像回放</span>`;
+            const dev = (meta.devLabel || '') + (meta.devLabel && meta.devLabel.includes('·') ? '' : (isNvr ? ' · 硬盘录像机' : ' · 摄像头'));
+            return `<div class="map-iw">
+                <div class="tag ${tagCls}">${tag}</div>
+                <div class="title">${meta.chName || ''}</div>
+                <div class="sub">${dev}</div>
+                ${meta.gb ? `<div class="sub" style="font-family:ui-monospace,monospace">${meta.gb}</div>` : ''}
+                <div class="meta">状态: <span class="${stCls}">${meta.status || ''}</span></div>
+                <div class="actions"><div style="display:flex;gap:6px;flex-wrap:wrap">${actions}</div>
+                <a class="link" href="${meta.detail || 'camera-detail.html'}">详情 ›</a></div>
+            </div>`;
+        }
+
+        function initLeafletMap() {
+            if (!window.L) {
+                showToast('Leaflet 未就绪', 'error');
+                return;
+            }
+            leafletMap = L.map('leaflet-map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([22.573123, 113.945231], 16);
+
+            baseDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20,
+                subdomains: 'abcd'
+            }).addTo(leafletMap);
+            baseImg = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            });
+
+            leafletMap.on('mousemove', function (e) {
+                const c = document.getElementById('map-coord');
+                if (c && e.latlng) c.textContent = '经度: ' + e.latlng.lng.toFixed(6) + ' · 纬度: ' + e.latlng.lat.toFixed(6);
+            });
+
+            const ipcMarkerByDevice = {};
+            Object.keys(CHANNEL_GEO).forEach(function (channelId) {
+                const meta = CHANNEL_GEO[channelId];
+                const parts = channelId.split('-');
+                const deviceId = parts[0] + '-' + parts[1];
+                if (meta.kind === 'ipc') {
+                    if (ipcMarkerByDevice[deviceId]) {
+                        markerByChannel[channelId] = ipcMarkerByDevice[deviceId];
+                        ipcMarkerByDevice[deviceId].__channelIds.push(channelId);
+                        return;
+                    }
+                    const marker = addChannelMarker(channelId, meta, deviceId);
+                    marker.__channelIds = [channelId];
+                    ipcMarkerByDevice[deviceId] = marker;
+                    markerByChannel[channelId] = marker;
+                } else {
+                    markerByChannel[channelId] = addChannelMarker(channelId, meta, deviceId);
+                }
+            });
+
+            setTimeout(function () { if (leafletMap) leafletMap.invalidateSize(); }, 80);
+
+            const first = document.querySelector('.channel-row[data-channel-id="ipc-1-ch1"]');
+            if (first) selectChannel(first);
+            else focusChannelOnMap('ipc-1-ch1', true);
+
+            bindMapAddressSearch();
+        }
+
+        let mapAddrTimer = null;
+        let mapSearchMarker = null;
+
+        function bindMapAddressSearch() {
+            const input = document.getElementById('map-addr-search');
+            if (!input) return;
+            input.addEventListener('input', function () {
+                clearTimeout(mapAddrTimer);
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    hideMapAddrResults();
+                    return;
+                }
+                mapAddrTimer = setTimeout(function () { searchMapAddress(q); }, 400);
+            });
+            document.addEventListener('click', function (e) {
+                const box = document.getElementById('map-addr-results');
+                if (!box || box.classList.contains('hidden')) return;
+                if (e.target.closest('#map-addr-search') || e.target.closest('#map-addr-results')) return;
+                hideMapAddrResults();
+            });
+        }
+
+        function hideMapAddrResults() {
+            const box = document.getElementById('map-addr-results');
+            if (box) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+            }
+        }
+
+        async function searchMapAddress(forcedQ) {
+            const input = document.getElementById('map-addr-search');
+            const box = document.getElementById('map-addr-results');
+            if (!input || !box || !leafletMap) return;
+            const q = (forcedQ != null ? forcedQ : input.value).trim();
+            if (!q) {
+                showToast('请输入地址关键词', 'warning');
+                return;
+            }
+            box.classList.remove('hidden');
+            box.innerHTML = '<div class="map-addr-item" style="cursor:default;color:#8b949e">搜索中…</div>';
+            try {
+                const center = leafletMap.getCenter();
+                const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8'
+                    + '&accept-language=zh-CN'
+                    + '&q=' + encodeURIComponent(q)
+                    + '&viewbox=' + (center.lng - 0.35) + ',' + (center.lat + 0.25) + ',' + (center.lng + 0.35) + ',' + (center.lat - 0.25)
+                    + '&bounded=0';
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const list = await res.json();
+                if (!list || !list.length) {
+                    box.innerHTML = '<div class="map-addr-item" style="cursor:default;color:#8b949e">未找到相关地址</div>';
+                    return;
+                }
+                box.innerHTML = list.map(function (item, i) {
+                    const name = item.name || (item.display_name || '').split(',')[0] || '地点';
+                    const sub = item.display_name || '';
+                    return '<div class="map-addr-item" data-idx="' + i + '">'
+                        + '<div class="name">' + escapeHtml(name) + '</div>'
+                        + '<div class="sub">' + escapeHtml(sub) + '</div></div>';
+                }).join('');
+                box.querySelectorAll('.map-addr-item[data-idx]').forEach(function (el) {
+                    el.addEventListener('click', function () {
+                        const item = list[Number(el.dataset.idx)];
+                        if (!item) return;
+                        goToMapAddress(Number(item.lat), Number(item.lon), item.display_name || q);
+                    });
+                });
+            } catch (err) {
+                box.innerHTML = '<div class="map-addr-item" style="cursor:default;color:#f85149">地址搜索失败，请稍后重试</div>';
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function goToMapAddress(lat, lng, label) {
+            if (!leafletMap) return;
+            hideMapAddrResults();
+            leafletMap.setView([lat, lng], Math.max(leafletMap.getZoom(), 16));
+            if (mapSearchMarker) {
+                leafletMap.removeLayer(mapSearchMarker);
+                mapSearchMarker = null;
+            }
+            mapSearchMarker = L.circleMarker([lat, lng], {
+                radius: 8,
+                color: '#58a6ff',
+                weight: 2,
+                fillColor: '#58a6ff',
+                fillOpacity: 0.35
+            }).addTo(leafletMap);
+            if (label) mapSearchMarker.bindPopup(escapeHtml(label)).openPopup();
+            const c = document.getElementById('map-coord');
+            if (c) c.textContent = '经度: ' + lng.toFixed(6) + ' · 纬度: ' + lat.toFixed(6);
+        }
+
+        function addChannelMarker(channelId, meta, deviceId) {
+            const icon = L.icon({
+                iconUrl: buildMarkerDataUrl(meta, 'dim'),
+                iconSize: [36, 36],
+                iconAnchor: [18, 36],
+                popupAnchor: [0, -32]
+            });
+            const marker = L.marker([meta.lat, meta.lng], { icon: icon }).addTo(leafletMap);
+            marker.__channelId = channelId;
+            marker.__deviceId = deviceId;
+            marker.__meta = meta;
+            marker.__state = 'dim';
+            marker.bindPopup('', { maxWidth: 300, className: 'map-popup' });
+            marker.on('click', function () {
+                let openId = channelId;
+                if (meta.kind === 'ipc' && selectedDeviceId === deviceId && selectedChannelId && markerByChannel[selectedChannelId] === marker) {
+                    openId = selectedChannelId;
+                } else if (meta.kind === 'ipc') {
+                    openId = (marker.__channelIds && marker.__channelIds[0]) || channelId;
+                }
+                focusChannelOnMap(openId, true);
+                clearListSelection();
+                const row = document.querySelector('.channel-row[data-channel-id="' + openId + '"]');
+                if (row) {
+                    row.classList.add('is-selected');
+                    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+                const group = document.querySelector('.device-group[data-device-id="' + deviceId + '"]');
+                if (group) group.classList.add('is-selected');
+                selectedDeviceId = deviceId;
+                selectedChannelId = openId;
+            });
+            return marker;
+        }
+
+        function buildMarkerDataUrl(meta, state) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 72; canvas.height = 72;
+            const ctx = canvas.getContext('2d');
+            const focus = state === 'focus';
+            const dim = state === 'dim';
+            const r = focus ? 28 : 24;
+            ctx.translate(36, 36);
+            if (dim) ctx.globalAlpha = 0.45;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = meta.online ? 'rgba(88,166,255,0.25)' : 'rgba(22,27,34,0.9)';
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = meta.online ? '#58a6ff' : '#6e7681';
+            ctx.stroke();
+            ctx.globalAlpha = dim ? 0.45 : 1;
+            ctx.fillStyle = meta.online ? '#58a6ff' : '#8b949e';
+            ctx.fillRect(-12, -8, 18, 14);
+            ctx.beginPath();
+            ctx.moveTo(6, -4); ctx.lineTo(14, -8); ctx.lineTo(14, 8); ctx.lineTo(6, 4); ctx.closePath();
+            ctx.fill();
+            if (focus) {
+                ctx.beginPath();
+                ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(88,166,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            return canvas.toDataURL('image/png');
+        }
+
+        function setMarkerStateObj(marker, state) {
+            if (!marker || !marker.__meta) return;
+            if (marker.__state === state) return;
+            marker.__state = state;
+            marker.setIcon(L.icon({
+                iconUrl: buildMarkerDataUrl(marker.__meta, state),
+                iconSize: [36, 36],
+                iconAnchor: [18, 36],
+                popupAnchor: [0, -32]
+            }));
+        }
+
+        function updateMapHighlight(deviceId, channelId) {
+            const focusMarker = channelId ? markerByChannel[channelId] : null;
+            const seen = new Set();
+            Object.keys(markerByChannel).forEach(function (id) {
+                const m = markerByChannel[id];
+                if (!m || seen.has(m)) return;
+                seen.add(m);
+                setMarkerStateObj(m, (focusMarker && m === focusMarker) ? 'focus' : 'dim');
+            });
+            document.querySelectorAll('.device-group.is-selected').forEach(el => el.classList.remove('is-selected'));
+            if (deviceId) {
+                const group = document.querySelector('.device-group[data-device-id="' + deviceId + '"]');
+                if (group) group.classList.add('is-selected');
+            }
+        }
+
+        function focusChannelOnMap(channelId, openBubble) {
+            const meta = CHANNEL_GEO[channelId];
+            const marker = markerByChannel[channelId];
+            if (!meta || !marker || !leafletMap) return false;
+            const parts = channelId.split('-');
+            const deviceId = parts[0] + '-' + parts[1];
+            selectedDeviceId = deviceId;
+            selectedChannelId = channelId;
+            updateMapHighlight(deviceId, channelId);
+            leafletMap.panTo([meta.lat, meta.lng]);
+            if (openBubble) {
+                marker.setPopupContent(buildBubbleHtml(meta));
+                marker.openPopup();
+            }
+            const c = document.getElementById('map-coord');
+            if (c) c.textContent = '经度: ' + meta.lng.toFixed(6) + ' · 纬度: ' + meta.lat.toFixed(6);
+            return true;
+        }
+
+        function clearListSelection() {
+            document.querySelectorAll('.channel-row.is-selected').forEach(el => el.classList.remove('is-selected'));
+            document.querySelectorAll('.device-group.is-selected').forEach(el => el.classList.remove('is-selected'));
+        }
+
+        function selectIpcDevice(deviceId) {
+            const group = document.querySelector('.device-group[data-device-id="' + deviceId + '"]');
+            if (!group || group.dataset.type !== 'camera') return;
+            if (group.dataset.status === 'unregistered') {
+                clearListSelection();
+                group.classList.add('is-selected');
+                selectedDeviceId = deviceId;
+                selectedChannelId = null;
+                updateMapHighlight(null, null);
+                if (leafletMap) leafletMap.closePopup();
+                showToast('设备未注册，暂无通道落点', 'warning');
+                return;
+            }
+            const first = group.querySelector('.channel-row[data-has-loc="1"]') || group.querySelector('.channel-row');
+            if (first) selectChannel(first);
+            else showToast('暂无通道', 'warning');
+        }
+
+        function selectChannel(rowEl) {
+            if (!rowEl) return;
+            const deviceId = rowEl.dataset.deviceId;
+            const channelId = rowEl.dataset.channelId;
+            const hasLoc = rowEl.dataset.hasLoc === '1';
+            selectedDeviceId = deviceId;
+            clearListSelection();
+            rowEl.classList.add('is-selected');
+            if (!hasLoc) {
+                selectedChannelId = null;
+                updateMapHighlight(deviceId, null);
+                if (leafletMap) leafletMap.closePopup();
+                showToast('未配置安装位置，无法在地图落点，请至详情配置', 'warning');
+                return;
+            }
+            selectedChannelId = channelId;
+            if (!focusChannelOnMap(channelId, true)) {
+                updateMapHighlight(deviceId, channelId);
+                showToast('该通道暂无地图落点', 'warning');
+            }
+        }
+
+        function hideBubble() {
+            if (leafletMap) leafletMap.closePopup();
+        }
+
+        function mapZoom(delta) {
+            if (!leafletMap) return;
+            if (delta > 0) leafletMap.zoomIn();
+            else leafletMap.zoomOut();
+        }
+
+        function mapFitAll() {
+            if (!leafletMap) return;
+            const keyset = new Set();
+            const pts = [];
+            Object.values(CHANNEL_GEO).forEach(function (m) {
+                const k = m.lng.toFixed(6) + ',' + m.lat.toFixed(6);
+                if (keyset.has(k)) return;
+                keyset.add(k);
+                pts.push([m.lat, m.lng]);
+            });
+            if (!pts.length) return;
+            leafletMap.fitBounds(pts, { padding: [40, 40], maxZoom: 17 });
+        }
+
+        function mapToggleType() {
+            if (!leafletMap || !baseDark || !baseImg) return;
+            usingImg = !usingImg;
+            if (usingImg) {
+                leafletMap.removeLayer(baseDark);
+                baseImg.addTo(leafletMap);
+                showToast('已切换影像底图', 'info');
+            } else {
+                leafletMap.removeLayer(baseImg);
+                baseDark.addTo(leafletMap);
+                showToast('已切换深色底图', 'info');
+            }
+        }
+
+        function toggleGroup(btn) {
+            const group = btn.closest('.device-group');
+            if (!group) return;
+            group.classList.toggle('collapsed');
+        }
+
+        // NVR 下属通道：16 路（仅通道2 未配位置，其余 15 路上图可点）
+        (function renderNvrChannels() {
+            const names = ['北门可见光','仓库入口','东围墙','卸货区','南门球机','停车场A','停车场B','周界1','周界2','机房门口','办公楼大厅','货梯口','充电棚','油库区','装卸台','门禁通道'];
+            const noLoc = { 2:1 };
+            const offline = { 3:1, 10:1, 14:1 };
+            const box = document.getElementById('nvr-1-channel-list');
+            const group = document.querySelector('.device-group[data-device-id="nvr-1"]');
+            if (!box) return;
+            const chNames = [];
+            box.innerHTML = names.map((n, i) => {
+                const idx = i + 1;
+                const id = 'nvr-1-ch' + idx;
+                const hasLoc = !noLoc[idx];
+                const online = !offline[idx];
+                const stCls = online ? 'text-[#3fb950]' : 'text-gray-500';
+                const st = online ? '在线' : '离线';
+                const status = online ? 'online' : 'offline';
+                const label = '通道' + idx + ': ' + n;
+                const gb = '4403000000131800' + String(idx).padStart(4, '0');
+                chNames.push(label);
+                const noLocCls = hasLoc ? '' : ' no-loc';
+                const badge = hasLoc ? '' : '<span class="ch-badge shrink-0">未配</span>';
+                return '<div class="channel-row' + noLocCls + '" data-channel-id="'+id+'" data-device-id="nvr-1" data-status="'+status+'" data-has-loc="'+(hasLoc?'1':'0')+'" data-ch-name="'+label+'" data-gb="'+gb+'" onclick="selectChannel(this)">' +
+                    '<div class="min-w-0 flex-1"><div class="flex items-center gap-1 min-w-0"><div class="ch-name truncate">'+label+'</div>'+badge+'</div>' +
+                    '<div class="ch-gb truncate">'+gb+'</div></div>' +
+                    '<span class="ch-status '+stCls+'">'+st+'</span></div>';
+            }).join('');
+            if (group) {
+                group.dataset.channels = chNames.join(',');
+                group.dataset.channelGbs = names.map((_, i) => '4403000000131800' + String(i + 1).padStart(4, '0')).join(',');
+            }
+        })();
+
+        function filterDeviceList() {
+            const type = document.getElementById('filter-device-type')?.value || 'all';
+            const status = document.getElementById('filter-status')?.value || 'all';
+            const q = (document.getElementById('filter-search')?.value || '').trim().toLowerCase();
+            let visibleChannels = 0;
+            document.querySelectorAll('.device-group').forEach(group => {
+                const matchType = type === 'all' || group.dataset.type === type;
+                const deviceHay = [group.dataset.name, group.dataset.ip, group.dataset.gb, group.dataset.channels, group.dataset.channelGbs].join(' ').toLowerCase();
+                const matchDeviceSearch = !q || deviceHay.includes(q);
+                const rows = group.querySelectorAll('.channel-row');
+                if (!rows.length) {
+                    const matchStatus = status === 'all' || group.dataset.status === status;
+                    const show = matchType && matchStatus && matchDeviceSearch;
+                    group.classList.toggle('hidden', !show);
+                    return;
+                }
+                let anyRowVisible = false;
+                rows.forEach(row => {
+                    const matchStatus = status === 'all' || row.dataset.status === status;
+                    const chHay = [(row.dataset.chName || ''), (row.dataset.gb || '')].join(' ').toLowerCase();
+                    const matchSearch = !q || deviceHay.includes(q) || chHay.includes(q);
+                    const show = matchType && matchStatus && matchSearch;
+                    row.classList.toggle('hidden', !show);
+                    if (show) { anyRowVisible = true; visibleChannels++; }
+                });
+                group.classList.toggle('hidden', !(matchType && anyRowVisible));
+            });
+            const countEl = document.getElementById('channel-count');
+            if (countEl) countEl.textContent = '(' + visibleChannels + ')';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            filterDeviceList();
+            initLeafletMap();
+        });
+
         // 摄像头接入指南
         let guideStep = 1;
 
         function openGuideModal() {
-            document.getElementById('modal-guide-overlay').classList.remove('hidden');
+            const el = document.getElementById('modal-guide-overlay');
+            el.classList.remove('hidden');
+            el.classList.add('flex');
             switchGuideStep(1);
         }
 
         function closeGuideModal() {
-            document.getElementById('modal-guide-overlay').classList.add('hidden');
+            const el = document.getElementById('modal-guide-overlay');
+            el.classList.add('hidden');
+            el.classList.remove('flex');
         }
 
         function switchGuideStep(step) {
@@ -574,6 +1291,22 @@
         function saveEdit() {
             closeModal();
             showToast('设备信息保存成功', 'success');
+        }
+
+        const listViewer = (typeof HubMap !== 'undefined') ? HubMap.createViewer('list-view-map') : null;
+        function openMapView(lng, lat, label) {
+            document.getElementById('map-view-lng').innerText = lng;
+            document.getElementById('map-view-lat').innerText = lat;
+            document.getElementById('map-view-title').textContent = label ? ('安装位置 · ' + label) : '安装位置';
+            const modal = document.getElementById('map-view-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (listViewer) listViewer.openAt(lng, lat);
+        }
+        function closeMapView() {
+            const modal = document.getElementById('map-view-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
     </script>

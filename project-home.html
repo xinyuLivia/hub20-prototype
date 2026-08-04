@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,9 @@
     <title>项目首页 - Avant 智慧巡检</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
     <style>
         body {
             background-color: #141414;
@@ -23,17 +26,20 @@
             background: #333;
             border-radius: 2px;
         }
-        .map-bg {
-            background: url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2000&auto=format&fit=crop') center/cover no-repeat;
-            position: relative;
+        .leaflet-container { font-family: inherit; background: #0d1117; }
+        /* 缩放控件避开顶栏搜索条与底栏坐标条 */
+        .leaflet-bottom.leaflet-right { bottom: 36px; right: 12px; }
+        .leaflet-control-zoom a {
+            background: #1e1e1e !important;
+            color: #d4d4d4 !important;
+            border-color: #333 !important;
+            width: 28px !important;
+            height: 28px !important;
+            line-height: 28px !important;
         }
-        .map-bg::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: rgba(20, 20, 20, 0.4);
-            z-index: 0;
-        }
+        .leaflet-control-zoom a:hover { background: #2d2d2d !important; color: #fff !important; }
+        .map-panel { position: relative; min-width:0; min-height:0; overflow:hidden; background:#0d1117; }
+
         .panel-bg {
             background-color: #1e1e1e;
             border: 1px solid #2d2d2d;
@@ -287,7 +293,7 @@
         </div>
 
         <!-- 中间地图区 -->
-        <div class="flex-1 map-bg relative z-0">
+        <div class="flex-1 map-panel relative z-0"><div id="project-home-map" class="absolute inset-0 z-0"></div>
             <!-- 顶部悬浮工具 -->
             <div class="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
                 <div class="flex bg-[#1e1e1e]/90 backdrop-blur border border-[#333] rounded p-1 space-x-1">
@@ -484,5 +490,14 @@
     </div>
 
 <script src="custom-select.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  if (!window.HubMap) return;
+  var map = HubMap.createMap('project-home-map', { zoomControl: false, attributionControl: false, zoom: 14, center: [22.524734, 113.965810] });
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  setTimeout(function(){ map.invalidateSize(); }, 100);
+});
+</script>
 </body>
 </html>

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控设备详情（平台级） - Avant Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet-hub.js"></script>
+    <style>
+        body { background:#141414; color:#d4d4d4; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; font-size:13px; }
+        .form-input { width:100%; background:#0d1117; border:1px solid #30363d; color:#fff; border-radius:4px; padding:7px 12px; }
+        .form-input:focus { outline:none; border-color:#58a6ff; }
+        .custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
+        .leaflet-container { font-family: inherit; background: #0d1117; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+    <header class="h-12 px-6 flex items-center justify-between border-b border-[#2d2d2d] shrink-0">
+        <div class="flex items-center text-xs text-gray-400">
+            <a href="platform-device-management.html" class="hover:text-white"><i class="fas fa-arrow-left mr-3"></i></a>
+            <a href="home-dashboard.html" class="hover:text-white">全局首页</a>
+            <span class="mx-2">/</span>
+            <a href="platform-device-management.html" class="hover:text-white">设备管理</a>
+            <span class="mx-2">/</span>
+            <span class="text-white">设备详情</span>
+        </div>
+        <i class="fas fa-times cursor-pointer text-gray-400 hover:text-white text-lg" onclick="location.href='platform-device-management.html'"></i>
+    </header>
+
+    <div class="px-6 py-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center">
+            <h1 id="device-name" class="text-lg font-medium text-white">海康双光谱球机-北门</h1>
+            <span id="type-badge" class="ml-2 text-[10px] text-gray-300 bg-[#21262d] border border-[#30363d] px-1.5 py-0.5 rounded">摄像头</span>
+            <span id="device-status" class="ml-3 text-xs text-[#3fb950] flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>在线</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="edit-btn" class="text-xs text-[#58a6ff] hover:underline" onclick="toggleEdit()"><i class="fas fa-edit mr-1"></i>编辑</button>
+            <button class="text-xs text-[#58a6ff] hover:underline" onclick="showToast('正在同步设备状态与通道...', 'info')"><i class="fas fa-sync-alt mr-1"></i>同步</button>
+            <button id="restart-btn" class="text-xs text-[#58a6ff] hover:underline" onclick="openRestart()"><i class="fas fa-redo mr-1"></i>重启设备</button>
+        </div>
+    </div>
+
+    <nav class="px-6 border-b border-[#30363d] flex space-x-8 text-sm shrink-0">
+        <button id="tab-basic" class="py-3 border-b-2 border-[#58a6ff] text-[#58a6ff] font-medium" onclick="switchTab('basic')">基本信息</button>
+        <button id="tab-config" class="py-3 border-b-2 border-transparent text-gray-400" onclick="switchTab('config')">国标配置</button>
+        <button id="tab-channels" class="py-3 border-b-2 border-transparent text-gray-400" onclick="switchTab('channels')">通道列表 <span id="tab-channel-count" class="text-xs">(2)</span></button>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div id="location-banner" class="hidden max-w-6xl mb-4 text-xs text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 rounded p-3">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            有 <strong>3</strong> 个通道未配置安装位置，请在通道列表中逐路配置。
+        </div>
+
+        <section id="content-basic" class="max-w-6xl">
+            <div id="basic-view" class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-6">
+                <div class="grid grid-cols-3 gap-x-16 gap-y-8">
+                    <div><div class="text-xs text-gray-500 mb-1.5">设备名称</div><div id="view-name" class="text-sm text-white">海康双光谱球机-北门</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">设备类型</div><div id="view-type" class="text-sm text-white">摄像头</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">所属项目</div><div class="text-sm text-white">深圳物流园区</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">国标编码</div><div id="view-gb" class="text-sm text-white font-mono">44030000001320000001</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><div class="text-sm text-white font-mono">192.168.1.100</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">传输协议</div><div class="text-sm text-white">UDP</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">厂商</div><div class="text-sm text-white">海康威视</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">型号</div><div class="text-sm text-white">DS-2TD4136-25</div></div>
+                    <div id="location-coords"><div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div><div class="text-sm text-white font-mono">113.945231, 22.573123</div></div>
+                </div>
+                <div id="location-view" class="mt-6 pt-6 border-t border-[#2d2d2d]">
+                    <div class="text-xs text-gray-500 mb-2">安装位置地图</div>
+                    <div class="h-56 w-full rounded-lg border border-[#30363d] overflow-hidden relative bg-[#0d1117]">
+                        <div id="inline-preview-map" class="absolute inset-0"></div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <div id="basic-edit" class="hidden bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-6">
+                <div class="grid grid-cols-3 gap-x-8 gap-y-6">
+                    <div><div class="text-xs text-gray-500 mb-1.5">设备名称</div><input class="form-input" value="海康双光谱球机-北门"></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">设备类型</div><input class="form-input text-gray-500" value="摄像头" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">所属项目</div><input class="form-input text-gray-500" value="深圳物流园区" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">国标编码</div><input class="form-input text-gray-500" value="44030000001320000001" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><input class="form-input text-gray-500" value="192.168.1.100" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">传输协议</div><input class="form-input text-gray-500" value="UDP" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">厂商</div><select class="form-input"><option>海康威视</option><option>大华</option><option>宇视</option><option>其他（标准 GB28181）</option></select></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">型号</div><input class="form-input" value="DS-2TD4136-25"></div>
+                    <div id="location-edit"><div class="text-xs text-gray-500 mb-1.5">安装位置（经纬度）</div><div class="flex space-x-2"><input class="form-input" value="113.945231"><input class="form-input" value="22.573123"></div></div>
+                </div>
+                <div class="flex justify-end mt-6 space-x-2"><button class="px-4 py-1.5 border border-[#30363d] rounded" onclick="toggleEdit()">取消</button><button class="px-4 py-1.5 bg-[#238636] text-white rounded" onclick="saveEdit()">保存修改</button></div>
+            </div>
+        </section>
+
+        <section id="content-config" class="hidden max-w-6xl">
+            <div class="text-xs text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 rounded p-3 mb-4"><i class="fas fa-info-circle mr-2"></i>以下信息由平台在设备接入时统一生成，请抄录至设备后台完成注册。</div>
+            <div class="grid grid-cols-2 gap-x-12 gap-y-7 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-6">
+                <div><div class="text-xs text-gray-500 mb-1.5">SIP 服务器 ID</div><div class="font-mono text-gray-300"><span id="sip-id">44030000002000000001</span><button class="ml-2 text-gray-500 hover:text-white" onclick="copyText('sip-id')"><i class="far fa-copy"></i></button></div></div>
+                <div><div class="text-xs text-gray-500 mb-1.5">SIP 服务器 IP:Port</div><div class="font-mono text-gray-300"><span id="sip-ip">10.242.40.96:5060</span><button class="ml-2 text-gray-500 hover:text-white" onclick="copyText('sip-ip')"><i class="far fa-copy"></i></button></div></div>
+                <div><div class="text-xs text-gray-500 mb-1.5">设备国标编码</div><div class="font-mono text-[#58a6ff]"><span id="config-gb">44030000001320000001</span><button class="ml-2 text-gray-500 hover:text-white" onclick="copyText('config-gb')"><i class="far fa-copy"></i></button></div></div>
+                <div><div class="text-xs text-gray-500 mb-1.5">设备接入密码</div><div class="font-mono text-[#58a6ff]"><span id="password-display">••••••••</span><span id="password-value" class="hidden">admin12345</span><button class="ml-2 text-gray-500 hover:text-white" onclick="togglePassword()"><i id="password-icon" class="fas fa-eye"></i></button><button class="ml-2 text-gray-500 hover:text-white" onclick="copyText('password-value')"><i class="far fa-copy"></i></button></div></div>
+            </div>
+        </section>
+
+        <section id="content-channels" class="hidden max-w-6xl">
+            <div class="flex justify-between mb-3 text-xs text-gray-500">
+                <span>共 <span id="channel-count">2</span> 路通道</span>
+                <span>上次同步：2026-06-06 10:24:12</span>
+            </div>
+            <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr id="channel-head" class="bg-[#21262d] border-b border-[#30363d] text-xs text-gray-400"></tr>
+                        </thead>
+                        <tbody id="channel-body" class="text-xs divide-y divide-[#30363d]"></tbody>
+                    </table>
+                </div>
+                <div id="channel-pager" class="px-4 py-3 border-t border-[#2d2d2d] flex items-center justify-end gap-3 text-xs text-gray-400">
+                    <span id="channel-page-label">第 1 / 1 页</span>
+                    <div class="flex items-center gap-1">
+                        <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40 disabled:cursor-not-allowed" id="channel-prev" onclick="gotoChannelPage(channelPage-1)">‹</button>
+                        <button type="button" class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500 disabled:opacity-40 disabled:cursor-not-allowed" id="channel-next" onclick="gotoChannelPage(channelPage+1)">›</button>
+                    </div>
+                    <select id="channel-page-size" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-gray-300" onchange="channelPageSize=+this.value; channelPage=1; renderChannels();">
+                        <option value="10" selected>10/页</option>
+                        <option value="20">20/页</option>
+                        <option value="50">50/页</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="restart-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+        <div class="w-[430px] bg-[#161b22] border border-[#30363d] rounded-lg">
+            <div class="p-5"><h3 class="text-base text-white mb-3">确认重启该设备吗？</h3><p class="text-sm text-gray-400">设备将短暂离线并自动重新注册，期间实况与设备端回放不可用。</p></div>
+            <div class="px-5 py-4 bg-[#0d1117] border-t border-[#30363d] flex justify-end space-x-3"><button class="px-4 py-2 border border-[#30363d] rounded" onclick="closeRestart()">取消</button><button class="px-4 py-2 bg-[#d29922] text-white rounded" onclick="confirmRestart()">确认重启</button></div>
+        </div>
+    </div>
+    <!-- ============ 通道实况预览 Modal（运维验证） ============ -->
+    <div id="modal-preview-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <h3 class="text-sm font-medium text-white" id="preview-device-name">海康双光谱球机-北门</h3>
+                <button onclick="closePreviewModal()" class="text-gray-400 hover:text-white shrink-0 ml-4"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="bg-black aspect-video relative flex items-center justify-center group">
+                <div id="preview-loading" class="hidden flex-col items-center text-gray-400">
+                    <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                    <span class="text-xs">正在拉流...</span>
+                </div>
+                <div id="preview-playing" class="hidden w-full h-full relative">
+                    <img src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=1200&auto=format&fit=crop" alt="实况画面" class="w-full h-full object-cover opacity-90">
+                    <div class="absolute top-4 left-4 text-white/90 text-xs font-mono drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">
+                        <i class="fas fa-video mr-2"></i><span id="preview-channel-name">通道1: 可见光</span>
+                    </div>
+                    <div class="absolute top-4 right-4 flex space-x-2">
+                        <span class="bg-black/50 text-[#3fb950] text-[10px] px-2 py-1 rounded backdrop-blur-sm border border-[#3fb950]/30"><i class="fas fa-circle text-[6px] mr-1"></i>播放中</span>
+                        <span class="bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">1920×1080</span>
+                        <span class="bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">25 FPS</span>
+                    </div>
+                    <div class="absolute bottom-4 right-4 text-white/70 text-xs font-mono drop-shadow-md" id="preview-time">2026-06-17 14:00:00</div>
+                </div>
+                <button id="preview-idle" onclick="startPreviewStream()" class="flex flex-col items-center text-white/50 group-hover:text-white/80 transition-colors cursor-pointer">
+                    <i class="fas fa-play-circle text-6xl mb-2"></i>
+                    <span class="text-xs">点击开始拉流验证</span>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-t border-[#30363d] bg-[#21262d] text-xs">
+                <span class="text-gray-500 font-mono">通道编码 <span id="preview-channel-code" class="text-gray-300">44030000001310000001</span></span>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- ============ 通道/设备 地图选点 Modal（可手改经纬度） ============ -->
+    <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[620px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <h3 class="text-sm font-medium text-white" id="map-picker-title">配置安装位置</h3>
+                <button onclick="closeMapPicker()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+                        <div class="flex-1 relative bg-[#0d1117] min-h-0" id="map-area">
+                <div id="picker-map" class="absolute inset-0 z-0"></div>
+                <div class="absolute top-4 left-4 right-4 flex justify-center z-[500] pointer-events-none">
+                    <div class="relative w-96 shadow-lg pointer-events-auto">
+                        <input type="text" placeholder="搜索地点（原型示意）" class="w-full bg-[#161b22]/90 backdrop-blur border border-[#30363d] text-sm rounded px-4 py-2 focus:outline-none focus:border-[#58a6ff] text-white">
+                        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+<div class="px-4 py-3 border-t border-[#30363d] bg-[#21262d] flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 text-xs">
+                    <label class="text-gray-400">经度</label>
+                    <input id="picker-lng" type="text" class="w-32 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <label class="text-gray-400">纬度</label>
+                    <input id="picker-lat" type="text" class="w-32 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-[#58a6ff]" oninput="syncMarkerFromInputs()" onclick="event.stopPropagation()">
+                    <span class="text-gray-500">也可在地图上点击选点</span>
+                </div>
+                <div class="flex space-x-3 shrink-0">
+                    <button onclick="closeMapPicker()" class="px-4 py-1.5 bg-transparent text-gray-300 border border-[#444] rounded hover:bg-[#30363d] text-xs">取消</button>
+                    <button onclick="confirmMapPicker()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] text-xs">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 地图查看 Modal (只读) ============ -->
+    <div id="map-view-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center">
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#30363d] flex justify-between items-center bg-[#21262d]">
+                <div class="flex items-center">
+                    <h3 class="text-sm font-medium text-white" id="map-view-title">安装位置</h3>
+                    <span class="ml-3 px-1.5 py-0.5 rounded text-[10px] bg-[#1f6feb]/10 text-[#58a6ff] border border-[#1f6feb]/20">只读查看</span>
+                </div>
+                <button onclick="closeMapView()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+                        <div class="flex-1 relative bg-[#0d1117] min-h-0">
+                <div id="view-map" class="absolute inset-0"></div>
+                <div class="absolute bottom-4 left-4 bg-[#161b22]/90 backdrop-blur border border-[#30363d] px-3 py-1.5 rounded text-xs text-gray-300 font-mono shadow-lg z-[500]">
+                    <span id="map-view-lng">113.945231</span>, <span id="map-view-lat">22.573123</span>
+                </div>
+            </div>
+<div class="px-4 py-3 border-t border-[#30363d] flex justify-end bg-[#21262d]">
+                <button onclick="closeMapView()" class="px-4 py-1.5 bg-[#1f6feb] text-white rounded hover:bg-[#388bfd] text-xs">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[90]"></div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const isNvr = params.get('type') === 'nvr';
+        const status = params.get('status') || '在线';
+        const name = params.get('name') || (isNvr ? '海康录像机-北区机房' : '海康双光谱球机-北门');
+        const nvrNames = ['北门可见光','仓库入口','东围墙','卸货区','南门球机','停车场A','停车场B','周界1','周界2','机房门口','办公楼大厅','货梯口','充电棚','油库区','装卸台','门禁通道'];
+        const data = isNvr ? {
+            type:'硬盘录像机', gb:'44030000001180000001', count:16,
+            channels: nvrNames.map((n, i) => [
+                '通道' + (i + 1) + '：' + n,
+                '440300000013100000' + String(11 + i).padStart(2, '0'),
+                i === 0 ? '113.945231, 22.573123' : '未配置位置',
+                i === 2 || i === 9 ? '离线' : '在线'
+            ])
+        } : {
+            type:'摄像头', gb:'44030000001320000001', count:2,
+            channels:[
+                ['通道1：可见光','44030000001310000001','在线'],
+                ['通道2：红外','44030000001310000002','在线']
+            ]
+        };
+
+        let channelPage = 1;
+        let channelPageSize = 10;
+
+        function renderChannels() {
+            const total = data.channels.length;
+            const pages = Math.max(1, Math.ceil(total / channelPageSize));
+            if (channelPage > pages) channelPage = pages;
+            const start = (channelPage - 1) * channelPageSize;
+            const slice = data.channels.slice(start, start + channelPageSize);
+            document.getElementById('channel-body').innerHTML = slice.map((c, i) => {
+                const absIndex = start + i;
+                const channelStatus = isNvr ? c[3] : c[2];
+                const previewBtn = previewButtonHtml(c[0], c[1], channelStatus);
+                const nameCell =
+                    '<div class="channel-name-display flex items-center"><i class="fas fa-video text-gray-500 mr-2"></i><span class="name-text">'+c[0]+'</span></div>' +
+                    '<div class="channel-name-edit hidden flex items-center"><i class="fas fa-video text-gray-500 mr-2"></i>' +
+                    '<input type="text" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-white w-48 focus:outline-none focus:border-[#58a6ff]" value="'+c[0]+'"></div>';
+                const editActions =
+                    '<div class="channel-actions-display inline-block">' +
+                    '<button class="text-[#58a6ff] hover:underline" onclick="startEditChannelName(this)">编辑名称</button>';
+                const editSave =
+                    '<div class="channel-actions-edit hidden inline-block space-x-3 ml-0">' +
+                    '<button class="text-gray-400 hover:text-white" onclick="cancelEditChannelName(this)">取消</button>' +
+                    '<button class="text-[#3fb950] hover:underline" onclick="saveChannelName(this)">保存</button></div>';
+                if (isNvr) {
+                    const noLocation = c[2] === '未配置位置';
+                    const safeName = c[0].replace(/'/g, '');
+                    const locCell = noLocation
+                        ? '<div class="flex flex-col items-start gap-1.5"><span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未配置</span><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker('+absIndex+')">配置安装位置</button></div>'
+                        : '<div class="flex flex-col items-start gap-1"><button type="button" class="font-mono text-[#58a6ff] hover:underline text-left" title="在地图中查看" onclick="openMapView(\''+c[2].split(',')[0].trim()+'\',\''+c[2].split(',')[1].trim()+'\',\''+safeName+'\')">'+c[2]+'</button><button type="button" class="text-[#58a6ff] hover:underline text-xs" onclick="openChannelLocPicker('+absIndex+')">编辑位置</button></div>';
+                    return '<tr class="hover:bg-[#21262d] channel-row" data-channel-index="'+absIndex+'"><td class="py-3 px-4 text-white">'+nameCell+'</td><td class="py-3 px-4 font-mono text-gray-400">'+c[1]+'</td><td class="py-3 px-4">'+locCell+'</td><td class="py-3 px-4 '+(channelStatus==='在线'?'text-[#3fb950]':'text-gray-500')+'">'+channelStatus+'</td><td class="py-3 px-4 text-right whitespace-nowrap">'+editActions+'</div>'+editSave+previewBtn+'</td></tr>';
+                }
+                return '<tr class="hover:bg-[#21262d] channel-row" data-channel-index="'+absIndex+'"><td class="py-3 px-4 text-white">'+nameCell+'</td><td class="py-3 px-4 font-mono text-gray-400">'+c[1]+'</td><td class="py-3 px-4 '+(channelStatus==='在线'?'text-[#3fb950]':'text-gray-500')+'">'+channelStatus+'</td><td class="py-3 px-4 text-right whitespace-nowrap">'+editActions+'</div>'+editSave+previewBtn+'</td></tr>';
+            }).join('');
+            document.getElementById('channel-page-label').textContent = '第 ' + channelPage + ' / ' + pages + ' 页';
+            document.getElementById('channel-prev').disabled = channelPage <= 1;
+            document.getElementById('channel-next').disabled = channelPage >= pages;
+            document.getElementById('channel-pager').classList.toggle('hidden', total <= 10 && !isNvr);
+        }
+
+        function startEditChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            row.querySelector('.channel-name-display').classList.add('hidden');
+            row.querySelector('.channel-name-edit').classList.remove('hidden');
+            row.querySelector('.channel-actions-display').classList.add('hidden');
+            row.querySelector('.channel-actions-edit').classList.remove('hidden');
+            const input = row.querySelector('.channel-name-edit input');
+            input.focus();
+            const val = input.value;
+            input.value = '';
+            input.value = val;
+        }
+
+        function cancelEditChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            row.querySelector('.channel-name-display').classList.remove('hidden');
+            row.querySelector('.channel-name-edit').classList.add('hidden');
+            row.querySelector('.channel-actions-display').classList.remove('hidden');
+            row.querySelector('.channel-actions-edit').classList.add('hidden');
+            row.querySelector('.channel-name-edit input').value = row.querySelector('.name-text').textContent;
+        }
+
+        function saveChannelName(btn) {
+            const row = btn.closest('.channel-row');
+            const newName = row.querySelector('.channel-name-edit input').value.trim();
+            if (!newName) { showToast('通道名称不能为空', 'error'); return; }
+            row.querySelector('.name-text').textContent = newName;
+            const idx = data.channels.findIndex(ch => ch[1] === row.cells[1].textContent.trim());
+            if (idx >= 0) data.channels[idx][0] = newName;
+            showToast('通道名称已更新', 'success');
+            row.querySelector('.channel-name-display').classList.remove('hidden');
+            row.querySelector('.channel-name-edit').classList.add('hidden');
+            row.querySelector('.channel-actions-display').classList.remove('hidden');
+            row.querySelector('.channel-actions-edit').classList.add('hidden');
+        }
+
+        function previewButtonHtml(channelName, channelCode, channelStatus) {
+            const enabled = status === '在线' && channelStatus === '在线';
+            const cls = enabled ? 'text-[#58a6ff] hover:underline ml-3' : 'text-gray-600 cursor-not-allowed ml-3';
+            const title = status !== '在线' ? '设备' + status + '，无法预览实况' : (enabled ? '' : '通道离线，无法预览实况');
+            return '<button class="'+cls+'" title="'+title+'" onclick="openChannelPreview(\''+channelName+'\', \''+channelCode+'\', \''+channelStatus+'\')">实况预览</button>';
+        }
+
+        function openChannelPreview(channelName, channelCode, channelStatus) {
+            if (status !== '在线') { showToast('设备' + status + '，无法预览实况', 'error'); return; }
+            if (channelStatus !== '在线') { showToast('通道离线，无法预览实况', 'error'); return; }
+            document.getElementById('preview-device-name').textContent = name;
+            document.getElementById('preview-channel-name').textContent = channelName;
+            document.getElementById('preview-channel-code').textContent = channelCode;
+            resetPreviewPlayer();
+            document.getElementById('modal-preview-overlay').classList.remove('hidden');
+            startPreviewStream();
+        }
+
+        function resetPreviewPlayer() {
+            const loading = document.getElementById('preview-loading');
+            document.getElementById('preview-idle').classList.remove('hidden');
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            document.getElementById('preview-playing').classList.add('hidden');
+        }
+
+        function startPreviewStream() {
+            const loading = document.getElementById('preview-loading');
+            document.getElementById('preview-idle').classList.add('hidden');
+            document.getElementById('preview-playing').classList.add('hidden');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            document.getElementById('preview-time').textContent = new Date().toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+            setTimeout(() => {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                document.getElementById('preview-playing').classList.remove('hidden');
+            }, 800);
+        }
+
+        function closePreviewModal() {
+            document.getElementById('modal-preview-overlay').classList.add('hidden');
+            resetPreviewPlayer();
+        }
+
+        
+        const hubPicker = (typeof HubMap !== 'undefined') ? HubMap.createPicker('picker-map', 'picker-lng', 'picker-lat') : null;
+        const hubViewer = (typeof HubMap !== 'undefined') ? HubMap.createViewer('view-map') : null;
+        let hubInline = null;
+        let editingChannelIndex = -1;
+
+        function ensureInlinePreview(lng, lat) {
+            const el = document.getElementById('inline-preview-map');
+            if (!el || typeof HubMap === 'undefined') return;
+            const la = parseFloat(lat), ln = parseFloat(lng);
+            if (isNaN(la) || isNaN(ln)) return;
+            if (!hubInline) hubInline = HubMap.createInline('inline-preview-map', { lat: la, lng: ln, zoom: 15, color: '#f85149' });
+            else { hubInline.setPoint(la, ln); hubInline.invalidate(); }
+        }
+        function updateMarker() {}
+        function syncMarkerFromInputs() { if (hubPicker) hubPicker.syncFromInputs(); }
+
+        function openChannelLocPicker(index) {
+            editingChannelIndex = index;
+            const ch = data.channels[index];
+            if (!ch) return;
+            const noLoc = !isNvr || ch[2] === '未配置位置';
+            let lng = '113.945231';
+            let lat = '22.573123';
+            if (!noLoc && typeof ch[2] === 'string' && ch[2].includes(',')) {
+                const parts = ch[2].split(',').map(s => s.trim());
+                lng = parts[0] || lng;
+                lat = parts[1] || lat;
+            }
+            document.getElementById('map-picker-title').textContent = '配置安装位置 · ' + ch[0];
+            document.getElementById('picker-lng').value = lng;
+            document.getElementById('picker-lat').value = lat;
+            document.getElementById('map-modal').classList.remove('hidden');
+            if (hubPicker) hubPicker.openAt(lng, lat);
+        }
+
+        function closeMapPicker() {
+            document.getElementById('map-modal').classList.add('hidden');
+            editingChannelIndex = -1;
+        }
+
+        function confirmMapPicker() {
+            const lng = document.getElementById('picker-lng').value.trim();
+            const lat = document.getElementById('picker-lat').value.trim();
+            if (!lng || !lat || isNaN(parseFloat(lng)) || isNaN(parseFloat(lat))) {
+                showToast('请填写有效的经纬度', 'error');
+                return;
+            }
+            if (editingChannelIndex >= 0 && data.channels[editingChannelIndex]) {
+                data.channels[editingChannelIndex][2] = lng + ', ' + lat;
+                updateMissingLocBanner();
+                renderChannels();
+                showToast('通道安装位置已更新', 'success');
+            }
+            closeMapPicker();
+        }
+
+        function openMapView(lng, lat, label) {
+            document.getElementById('map-view-lng').textContent = lng;
+            document.getElementById('map-view-lat').textContent = lat;
+            document.getElementById('map-view-title').textContent = label ? ('安装位置 · ' + label) : '安装位置';
+            document.getElementById('map-view-modal').classList.remove('hidden');
+            if (hubViewer) hubViewer.openAt(lng, lat);
+        }
+
+        function closeMapView() {
+            document.getElementById('map-view-modal').classList.add('hidden');
+        }
+
+        function updateMissingLocBanner() {
+            if (!isNvr) return;
+            const missing = data.channels.filter(c => c[2] === '未配置位置').length;
+            const banner = document.getElementById('location-banner');
+            if (missing > 0) {
+                banner.classList.remove('hidden');
+                banner.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>有 <strong>' + missing + '</strong> 个通道未配置安装位置，请在通道列表中逐路配置。';
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function gotoChannelPage(p) {
+            const pages = Math.max(1, Math.ceil(data.channels.length / channelPageSize));
+            channelPage = Math.min(Math.max(1, p), pages);
+            renderChannels();
+        }
+
+        function init() {
+            document.getElementById('device-name').textContent = name;
+            document.getElementById('view-name').textContent = name;
+            document.getElementById('view-type').textContent = data.type;
+            document.getElementById('type-badge').textContent = data.type;
+            document.getElementById('view-gb').textContent = data.gb;
+            document.getElementById('config-gb').textContent = data.gb;
+            document.getElementById('channel-count').textContent = data.count;
+            document.getElementById('tab-channel-count').textContent = '(' + data.count + ')';
+            if (isNvr) {
+                document.getElementById('location-view').classList.add('hidden');
+                document.getElementById('location-coords').classList.add('hidden');
+                document.getElementById('location-edit').classList.add('hidden');
+                document.getElementById('location-banner').classList.remove('hidden');
+                document.getElementById('type-badge').className = 'ml-2 text-[10px] text-[#58a6ff] bg-[#1f6feb]/10 border border-[#1f6feb]/30 px-1.5 py-0.5 rounded';
+                document.getElementById('channel-head').innerHTML = '<th class="py-3 px-4 font-normal">通道名称</th><th class="py-3 px-4 font-normal">通道编码</th><th class="py-3 px-4 font-normal">安装位置 <span class="text-[#f85149]">*</span></th><th class="py-3 px-4 font-normal">状态</th><th class="py-3 px-4 font-normal text-right">操作</th>';
+            } else {
+                document.getElementById('location-banner').classList.add('hidden');
+                document.getElementById('channel-head').innerHTML = '<th class="py-3 px-4 font-normal">通道名称</th><th class="py-3 px-4 font-normal">通道编码</th><th class="py-3 px-4 font-normal">状态</th><th class="py-3 px-4 font-normal text-right">操作</th>';
+            }
+            const statusEl = document.getElementById('device-status');
+            const color = status === '在线' ? '#3fb950' : status === '未注册' ? '#d29922' : '#8b949e';
+            statusEl.style.color = color;
+            statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full mr-1.5" style="background:'+color+'"></span>'+status;
+            if (status !== '在线') {
+                const btn = document.getElementById('restart-btn');
+                btn.disabled = true;
+                btn.className = 'text-xs text-gray-600 cursor-not-allowed';
+            }
+            renderChannels();
+        }
+        function switchTab(id) {
+            ['basic','config','channels'].forEach(x => {
+                document.getElementById('content-'+x).classList.toggle('hidden', x !== id);
+                const tab = document.getElementById('tab-'+x);
+                tab.classList.toggle('border-[#58a6ff]', x === id);
+                tab.classList.toggle('text-[#58a6ff]', x === id);
+                tab.classList.toggle('font-medium', x === id);
+                tab.classList.toggle('border-transparent', x !== id);
+                tab.classList.toggle('text-gray-400', x !== id);
+            });
+        }
+        function toggleEdit() {
+            document.getElementById('basic-view').classList.toggle('hidden');
+            document.getElementById('basic-edit').classList.toggle('hidden');
+            document.getElementById('edit-btn').classList.toggle('hidden');
+        }
+        function saveEdit() { toggleEdit(); showToast('基本信息已保存','success'); }
+        function openRestart() { if (status === '在线') document.getElementById('restart-modal').classList.remove('hidden'); }
+        function closeRestart() { document.getElementById('restart-modal').classList.add('hidden'); }
+        function confirmRestart() { closeRestart(); showToast('重启指令已下发','success'); }
+        function togglePassword() {
+            const display=document.getElementById('password-display'), value=document.getElementById('password-value'), icon=document.getElementById('password-icon');
+            display.classList.toggle('hidden'); value.classList.toggle('hidden'); icon.classList.toggle('fa-eye'); icon.classList.toggle('fa-eye-slash');
+        }
+        function copyText(id) { navigator.clipboard?.writeText(document.getElementById(id).textContent); showToast('已复制到剪贴板','success'); }
+        function showToast(message,type) {
+            const toast=document.createElement('div');
+            toast.className='px-4 py-2 rounded text-white shadow-lg border '+(type==='success'?'bg-[#238636] border-[#2ea043]':'bg-[#1f6feb] border-[#388bfd]');
+            toast.textContent=message; document.getElementById('toast-container').appendChild(toast); setTimeout(()=>toast.remove(),2500);
+        }
+        init();
+    </script>
+<script>document.addEventListener('DOMContentLoaded',function(){ensureInlinePreview(113.945231,22.573123);});</script>
+</body>
+</html>

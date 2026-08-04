@@ -336,7 +336,7 @@
             </aside>
 
             <!-- ---------- 中间地球地图 ---------- -->
-            <main class="flex-1 earth-bg relative">
+            <main class="flex-1 earth-bg relative min-w-0 overflow-hidden">
                 <!-- 视图切换：地球↔平面 -->
                 <div class="absolute top-4 left-4 flex panel rounded p-1 gap-1 z-10">
                     <button id="globe-btn" class="seg active" onclick="toggleGlobe('globe')"><i class="fas fa-globe mr-1"></i>地球</button>
@@ -621,7 +621,7 @@
             </aside>
 
             <!-- 中间：卫星地图 + 项目落点 -->
-            <main class="flex-1 sat-bg relative">
+            <main class="flex-1 sat-bg relative min-w-0 overflow-hidden">
                 <div class="absolute top-4 right-4 z-10">
                     <div class="w-8 h-8 panel rounded flex items-center justify-center text-gray-300 cursor-pointer hover:text-white"><i class="fas fa-search"></i></div>
                 </div>
@@ -681,10 +681,14 @@
             el.parentElement.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));
             el.classList.add('active');
         }
-        // 地球/平面切换（占位）
+        // 地球/平面切换（示意：切换背景图）
         function toggleGlobe(v) {
             document.getElementById('globe-btn').classList.toggle('active', v==='globe');
             document.getElementById('plane-btn').classList.toggle('active', v==='plane');
+            const main = document.querySelector('#view-screen main');
+            if (!main) return;
+            main.classList.toggle('earth-bg', v==='globe');
+            main.classList.toggle('sat-bg', v==='plane');
         }
         // 项目气泡
         function showProjectBubble(e) { e.stopPropagation(); document.getElementById('projectBubble').classList.remove('hidden'); }
