@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>告警配置 - 系统设置 | Avant Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body {
+      background: #141414;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .form-ctl {
+      background: #1a1a1a;
+      border: 1px solid #30363d;
+      color: #e6e6e6;
+      border-radius: 4px;
+      padding: 7px 12px;
+      font-size: 13px;
+    }
+    .form-ctl:focus { outline: none; border-color: #58a6ff; }
+    .form-ctl::placeholder { color: #6b7280; }
+    .form-ctl[readonly] { color: #9ca3af; cursor: not-allowed; }
+    table th { white-space: nowrap; font-weight: 400; color: #8b949e; }
+
+    .nav-item.active {
+      background: rgba(88, 166, 255, 0.12);
+      color: #58a6ff;
+      border-right: 2px solid #58a6ff;
+    }
+
+    .tab { padding: 8px 2px; color: #9ca3af; border-bottom: 2px solid transparent; cursor: pointer; }
+    .tab:hover { color: #e5e7eb; }
+    .tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+
+    .subtab {
+      padding: 4px 12px;
+      border-radius: 4px;
+      color: #9ca3af;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .subtab:hover { color: #e5e7eb; }
+    .subtab.active {
+      color: #58a6ff;
+      background: rgba(88, 166, 255, 0.1);
+      border-color: rgba(88, 166, 255, 0.35);
+    }
+
+    .lv { display: inline-block; padding: 1px 10px; border-radius: 3px; font-size: 12px; line-height: 18px; }
+    .lv-1 { background: rgba(248, 81, 73, .12); color: #f85149; border: 1px solid rgba(248, 81, 73, .45); }
+    .lv-2 { background: rgba(255, 123, 114, .12); color: #ff7b72; border: 1px solid rgba(255, 123, 114, .45); }
+    .lv-3 { background: rgba(210, 153, 34, .12); color: #d29922; border: 1px solid rgba(210, 153, 34, .45); }
+    .lv-4 { background: rgba(227, 179, 65, .12); color: #e3b341; border: 1px solid rgba(227, 179, 65, .45); }
+    .lv-5 { background: rgba(88, 166, 255, .12); color: #58a6ff; border: 1px solid rgba(88, 166, 255, .45); }
+
+    .link { color: #58a6ff; cursor: pointer; }
+    .link:hover { text-decoration: underline; }
+
+    /* 抽屉 */
+    .drawer-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 60; }
+    .drawer-mask.show { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 256px;
+      background: #1f1f1f;
+      border-left: 1px solid #2d2d2d;
+      z-index: 61;
+      display: none;
+      flex-direction: column;
+    }
+    .drawer.show { display: flex; }
+
+    /* 抽屉内自定义下拉 */
+    .picker { position: relative; }
+    .picker-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #1f1f1f;
+      border: 1px solid #303030;
+      border-radius: 6px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.5);
+      padding: 4px 0;
+      z-index: 5;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .picker.open .picker-panel { display: block; }
+    .picker-item { padding: 6px 12px; margin: 2px 4px; border-radius: 4px; cursor: pointer; color: #e5e5e5; }
+    .picker-item:hover { background: rgba(255,255,255,.08); }
+    .picker-item.selected { background: rgba(255,255,255,.04); }
+
+    /* 确认弹窗 */
+    .modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 70; align-items: center; justify-content: center; }
+    .modal-mask.show { display: flex; }
+
+    .btn-primary { background: #1668dc; color: #fff; border-radius: 4px; padding: 6px 14px; }
+    .btn-primary:hover { background: #3c89e8; }
+    .btn-ghost { border: 1px solid #30363d; color: #d4d4d4; border-radius: 4px; padding: 6px 14px; }
+    .btn-ghost:hover { border-color: #6b7280; }
+    .btn-danger { background: #d13b34; color: #fff; border-radius: 4px; padding: 6px 14px; }
+    .btn-danger:hover { background: #e04b44; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶栏 -->
+  <header class="h-12 shrink-0 flex items-center justify-between px-5 border-b border-[#2d2d2d] bg-[#141414] w-full">
+    <div class="text-xs text-gray-400">
+      <span class="hover:text-white cursor-pointer" onclick="location.href='home-dashboard.html'">全局首页</span>
+      <span class="mx-1">/</span>
+      <span class="text-white">系统设置</span>
+      <span class="mx-1">/</span>
+      <span class="text-white">告警配置</span>
+      <span class="mx-1">/</span>
+      <span class="text-white" id="crumbTab">告警等级</span>
+    </div>
+    <i class="fas fa-times cursor-pointer hover:text-white text-lg" onclick="location.href='home-dashboard.html'" title="关闭"></i>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <!-- 左侧栏 -->
+    <aside class="w-40 shrink-0 bg-[#1a1a1a] border-r border-[#2d2d2d] flex flex-col">
+      <nav class="flex-1 py-2 text-sm text-gray-400">
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">项目管理</a>
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">用户管理</a>
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="javascript:;">角色管理</a>
+        <a class="nav-item active block px-4 py-2.5" href="javascript:;">告警配置</a>
+        <a class="nav-item block px-4 py-2.5 hover:bg-[#222] hover:text-gray-200" href="operation-log.html">操作日志</a>
+      </nav>
+    </aside>
+
+    <!-- 主区 -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- 一级 Tab -->
+      <div class="px-5 pt-4 shrink-0 flex items-center gap-6 text-sm">
+        <div id="tabLevel" class="tab active" onclick="switchTab('level')">告警等级</div>
+        <div id="tabType" class="tab" onclick="switchTab('type')">告警类型</div>
+      </div>
+
+      <!-- 告警类型：二级 Tab（无人机 / 摄像头） -->
+      <div id="subTabRow" class="hidden px-5 pt-3 shrink-0 flex items-center gap-2 text-[13px]">
+        <div id="subTabDrone" class="subtab active" onclick="switchSub('drone')">无人机告警类型</div>
+        <div id="subTabCamera" class="subtab" onclick="switchSub('camera')">摄像头告警类型</div>
+      </div>
+
+      <!-- 工具栏 -->
+      <div class="px-5 pt-4 pb-3 shrink-0 flex items-center justify-between gap-3">
+        <div class="relative">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-500"></i>
+          <input id="kw" class="form-ctl w-[220px] pl-8" type="text" placeholder="请输入等级名称/描述" oninput="render()" />
+        </div>
+        <button id="addLevelBtn" class="btn-primary flex items-center gap-1.5" onclick="openLevelDrawer(null)">
+          <i class="fas fa-plus text-[11px]"></i>添加告警等级
+        </button>
+      </div>
+
+      <!-- 表格 -->
+      <div class="flex-1 overflow-auto custom-scrollbar px-5">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-[#2d2d2d]" id="thead"></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="hidden py-16 text-center text-gray-500">暂无符合条件的记录</div>
+        <div id="typeHint" class="hidden pt-4 text-xs text-gray-500 leading-relaxed"></div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="px-5 py-3 shrink-0 flex items-center justify-end gap-3 text-xs text-gray-400">
+        <span id="totalLabel">共0条记录</span>
+        <div class="flex items-center gap-1">
+          <button class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500" onclick="gotoPage(page-1)">‹</button>
+          <span id="pageNums" class="flex gap-1"></span>
+          <button class="px-2 py-1 rounded border border-[#30363d] hover:border-gray-500" onclick="gotoPage(page+1)">›</button>
+        </div>
+        <select id="pageSize" class="form-ctl no-custom py-1" onchange="pageSize=+this.value; page=1; render();">
+          <option value="10">10/页</option>
+          <option value="20">20/页</option>
+          <option value="50">50/页</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 抽屉：告警等级 新增 / 编辑 -->
+  <div id="levelMask" class="drawer-mask" onclick="closeLevelDrawer()"></div>
+  <div id="levelDrawer" class="drawer">
+    <div class="shrink-0 flex items-center justify-between px-4 h-12 border-b border-[#2d2d2d]">
+      <h2 id="levelDrawerTitle" class="text-white text-[15px]">添加告警等级</h2>
+      <button class="text-gray-400 hover:text-white" onclick="closeLevelDrawer()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4">
+      <div>
+        <div class="text-gray-400 mb-1.5">等级名称 <span class="text-[#f85149]">*</span></div>
+        <input id="fLevelName" class="form-ctl w-full" type="text" placeholder="请输入等级名称" />
+      </div>
+      <div>
+        <div class="text-gray-400 mb-1.5">描述</div>
+        <textarea id="fLevelDesc" class="form-ctl w-full h-20 resize-none" placeholder="请输入描述"></textarea>
+      </div>
+      <div>
+        <div class="text-gray-400 mb-1.5">响应时间（小时） <span class="text-[#f85149]">*</span></div>
+        <input id="fLevelSla" class="form-ctl w-full" type="number" min="1" placeholder="请输入响应时间" />
+      </div>
+    </div>
+    <div class="shrink-0 px-4 py-3 border-t border-[#2d2d2d] flex items-center justify-end gap-2">
+      <button class="btn-ghost" onclick="closeLevelDrawer()">取消</button>
+      <button class="btn-primary" onclick="saveLevel()">保存</button>
+    </div>
+  </div>
+
+  <!-- 抽屉：告警类型 编辑（仅可改等级） -->
+  <div id="typeMask" class="drawer-mask" onclick="closeTypeDrawer()"></div>
+  <div id="typeDrawer" class="drawer">
+    <div class="shrink-0 flex items-center justify-between px-4 h-12 border-b border-[#2d2d2d]">
+      <h2 class="text-white text-[15px]">编辑告警类型</h2>
+      <button class="text-gray-400 hover:text-white" onclick="closeTypeDrawer()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4">
+      <div>
+        <div class="text-gray-400 mb-1.5">告警类型</div>
+        <input id="fTypeName" class="form-ctl w-full" type="text" readonly />
+      </div>
+      <div>
+        <div class="text-gray-400 mb-1.5">告警等级 <span class="text-[#f85149]">*</span></div>
+        <div id="typeLevelPicker" class="picker">
+          <div class="form-ctl w-full flex items-center justify-between cursor-pointer" onclick="toggleLevelPicker(event)">
+            <span id="fTypeLevelLabel">请选择告警等级</span>
+            <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
+          </div>
+          <div class="picker-panel" id="typeLevelOptions"></div>
+        </div>
+      </div>
+      <div id="typeExtraField" class="hidden">
+        <div class="text-gray-400 mb-1.5" id="typeExtraLabel">识别场景</div>
+        <input id="fTypeExtra" class="form-ctl w-full" type="text" readonly />
+      </div>
+    </div>
+    <div class="shrink-0 px-4 py-3 border-t border-[#2d2d2d] flex items-center justify-end gap-2">
+      <button class="btn-ghost" onclick="closeTypeDrawer()">取消</button>
+      <button class="btn-primary" onclick="saveType()">保存</button>
+    </div>
+  </div>
+
+  <!-- 删除确认 -->
+  <div id="confirmMask" class="modal-mask" onclick="if(event.target===this)closeConfirm()">
+    <div class="w-[380px] bg-[#1f1f1f] border border-[#2d2d2d] rounded-lg shadow-2xl">
+      <div class="px-5 py-4 flex items-start gap-3">
+        <i class="fas fa-circle-exclamation text-[#d29922] mt-0.5"></i>
+        <div>
+          <div class="text-white text-sm mb-1.5">确认删除该告警等级？</div>
+          <div id="confirmText" class="text-gray-400 text-xs leading-relaxed"></div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#2d2d2d] flex items-center justify-end gap-2">
+        <button class="btn-ghost" onclick="closeConfirm()">取消</button>
+        <button class="btn-danger" onclick="doDelete()">删除</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ============ 数据 ============ */
+// 告警等级：全局共用（无人机告警与摄像头告警共用同一套等级体系）
+let LEVELS = [
+  { id: 1, name: '一级', lv: 1, desc: '', sla: 72 },
+  { id: 2, name: '二级', lv: 2, desc: '', sla: 72 },
+  { id: 3, name: '三级', lv: 3, desc: '', sla: 72 },
+  { id: 4, name: '四级', lv: 4, desc: '', sla: 72 },
+  { id: 5, name: '五级', lv: 5, desc: '', sla: 72 },
+];
+
+// 无人机告警类型：平台内置算法，等级可配
+let DRONE_TYPES = [
+  { id: 'D1', name: '路面抛撒物', lv: 2, desc: '及时发现路面抛撒物，保障道路畅通', scene: '路政巡检' },
+  { id: 'D2', name: '路面裂缝', lv: 2, desc: '检测路面裂缝，为道路养护提供及时依据', scene: '路政巡检' },
+  { id: 'D3', name: '行人闯入', lv: 2, desc: '检测路面上是否有行人闯入，保障道路畅通', scene: '路政巡检' },
+  { id: 'D4', name: '车辆违停', lv: 3, desc: '检测道路上的车辆违停行为，保障道路畅通和交通安全', scene: '路政巡检' },
+  { id: 'D5', name: '非机动车闯入', lv: 2, desc: '检测路面上非机动车闯入事件', scene: '路政巡检' },
+];
+
+// 摄像头告警类型：设备侧 AI 上报后由平台映射生成，仅等级可配
+let CAMERA_TYPES = [
+  { id: 'C1', name: '区域入侵', lv: 2, desc: '检测人员或车辆进入布防区域', event: 'FieldDetection' },
+  { id: 'C2', name: '越界侦测', lv: 2, desc: '检测目标跨越警戒线，用于周界防护', event: 'CrossLineDetection' },
+  { id: 'C3', name: '行人闯入', lv: 2, desc: '检测限制区域内出现行人', event: 'IntrusionDetection' },
+  { id: 'C4', name: '车辆违停', lv: 3, desc: '检测禁停区域内车辆长时间停留', event: 'ParkingDetection' },
+  { id: 'C5', name: '烟火识别', lv: 1, desc: '检测画面中的烟雾与明火，及时预警火情', event: 'FireSmokeDetection' },
+  { id: 'C6', name: '人员聚集', lv: 3, desc: '检测区域内人员密度异常聚集', event: 'PeopleGathering' },
+  { id: 'C7', name: '视频遮挡', lv: 3, desc: '检测镜头被遮挡或人为破坏', event: 'TamperDetection' },
+];
+
+const HINTS = {
+  drone: '无人机告警类型由平台算法能力内置，本页仅支持配置告警等级；检测区域在「检测区域配置」中维护。',
+  camera: '摄像头告警类型由设备侧 AI 检测后经 GB28181 上报，平台按上报事件标识映射生成，本页仅支持配置告警等级。'
+};
+
+/* ============ 状态 ============ */
+let tab = 'level';      // level | type
+let sub = 'drone';      // drone | camera
+let page = 1, pageSize = 10;
+let editingLevelId = null;
+let editingTypeId = null;
+let editingTypeLv = null;
+let pendingDeleteId = null;
+
+function levelName(lv) {
+  const l = LEVELS.find(x => x.lv === lv);
+  return l ? l.name : '—';
+}
+function lvBadge(lv) {
+  return `<span class="lv lv-${lv}">${levelName(lv)}</span>`;
+}
+function currentTypes() {
+  return sub === 'drone' ? DRONE_TYPES : CAMERA_TYPES;
+}
+
+/* ============ Tab 切换 ============ */
+function switchTab(t) {
+  tab = t;
+  document.getElementById('tabLevel').classList.toggle('active', t === 'level');
+  document.getElementById('tabType').classList.toggle('active', t === 'type');
+  document.getElementById('crumbTab').textContent = t === 'level' ? '告警等级' : '告警类型';
+  document.getElementById('subTabRow').classList.toggle('hidden', t !== 'type');
+  document.getElementById('addLevelBtn').classList.toggle('hidden', t !== 'level');
+  const kw = document.getElementById('kw');
+  kw.value = '';
+  kw.placeholder = t === 'level' ? '请输入等级名称/描述' : '请输入告警类型';
+  page = 1;
+  render();
+}
+
+function switchSub(s) {
+  sub = s;
+  document.getElementById('subTabDrone').classList.toggle('active', s === 'drone');
+  document.getElementById('subTabCamera').classList.toggle('active', s === 'camera');
+  page = 1;
+  render();
+}
+
+/* ============ 渲染 ============ */
+function rows() {
+  const q = document.getElementById('kw').value.trim().toLowerCase();
+  if (tab === 'level') {
+    return LEVELS.filter(r => !q || r.name.toLowerCase().includes(q) || (r.desc || '').toLowerCase().includes(q));
+  }
+  return currentTypes().filter(r => !q || r.name.toLowerCase().includes(q));
+}
+
+function render() {
+  const list = rows();
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > pages) page = pages;
+  const slice = list.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
+
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+  const hint = document.getElementById('typeHint');
+
+  if (tab === 'level') {
+    thead.innerHTML = `
+      <th class="py-2.5 px-2 w-[220px]">等级名称</th>
+      <th class="py-2.5 px-2">描述</th>
+      <th class="py-2.5 px-2 w-[240px]">响应时间</th>
+      <th class="py-2.5 px-2 w-[120px]">操作</th>`;
+    tbody.innerHTML = slice.map(r => `
+      <tr class="border-b border-[#222] hover:bg-[#1a1a1a]">
+        <td class="py-3 px-2">${lvBadge(r.lv)}</td>
+        <td class="py-3 px-2 text-gray-400">${r.desc || '--'}</td>
+        <td class="py-3 px-2 text-gray-300">${r.sla}小时</td>
+        <td class="py-3 px-2">
+          <span class="link" onclick="openLevelDrawer(${r.id})">编辑</span>
+          <span class="link ml-2" onclick="askDelete(${r.id})">删除</span>
+        </td>
+      </tr>`).join('');
+    hint.classList.add('hidden');
+  } else {
+    const extraCol = sub === 'drone' ? '识别场景' : '上报事件标识';
+    thead.innerHTML = `
+      <th class="py-2.5 px-2 w-[130px]">告警等级</th>
+      <th class="py-2.5 px-2 w-[170px]">告警类型</th>
+      <th class="py-2.5 px-2">描述</th>
+      <th class="py-2.5 px-2 w-[200px]">${extraCol}</th>
+      <th class="py-2.5 px-2 w-[100px]">操作</th>`;
+    tbody.innerHTML = slice.map(r => {
+      const extra = sub === 'drone'
+        ? `<span class="text-gray-300">${r.scene}</span>`
+        : `<span class="text-gray-400 font-mono text-xs">${r.event}</span>`;
+      return `<tr class="border-b border-[#222] hover:bg-[#1a1a1a]">
+        <td class="py-3 px-2">${lvBadge(r.lv)}</td>
+        <td class="py-3 px-2 text-gray-200">${r.name}</td>
+        <td class="py-3 px-2 text-gray-400">${r.desc || '--'}</td>
+        <td class="py-3 px-2">${extra}</td>
+        <td class="py-3 px-2"><span class="link" onclick="openTypeDrawer('${r.id}')">编辑</span></td>
+      </tr>`;
+    }).join('');
+    hint.textContent = HINTS[sub];
+    hint.classList.remove('hidden');
+  }
+
+  document.getElementById('empty').classList.toggle('hidden', slice.length > 0);
+  document.getElementById('totalLabel').textContent = `共${total}条记录`;
+
+  let html = '';
+  for (let p = 1; p <= pages; p++) {
+    html += `<button class="min-w-[28px] px-2 py-1 rounded border ${p === page ? 'border-[#58a6ff] text-[#58a6ff]' : 'border-[#30363d] hover:border-gray-500'}" onclick="gotoPage(${p})">${p}</button>`;
+  }
+  document.getElementById('pageNums').innerHTML = html;
+}
+
+function gotoPage(p) {
+  const pages = Math.max(1, Math.ceil(rows().length / pageSize));
+  page = Math.min(Math.max(1, p), pages);
+  render();
+}
+
+/* ============ 告警等级抽屉 ============ */
+function openLevelDrawer(id) {
+  editingLevelId = id;
+  const r = id ? LEVELS.find(x => x.id === id) : null;
+  document.getElementById('levelDrawerTitle').textContent = r ? '编辑告警等级' : '添加告警等级';
+  document.getElementById('fLevelName').value = r ? r.name : '';
+  document.getElementById('fLevelDesc').value = r ? (r.desc || '') : '';
+  document.getElementById('fLevelSla').value = r ? r.sla : '';
+  document.getElementById('levelMask').classList.add('show');
+  document.getElementById('levelDrawer').classList.add('show');
+}
+
+function closeLevelDrawer() {
+  document.getElementById('levelMask').classList.remove('show');
+  document.getElementById('levelDrawer').classList.remove('show');
+}
+
+function saveLevel() {
+  const name = document.getElementById('fLevelName').value.trim();
+  const sla = +document.getElementById('fLevelSla').value;
+  if (!name || !sla) return;
+  const desc = document.getElementById('fLevelDesc').value.trim();
+  if (editingLevelId) {
+    const r = LEVELS.find(x => x.id === editingLevelId);
+    r.name = name; r.desc = desc; r.sla = sla;
+  } else {
+    const nextLv = Math.min(5, LEVELS.length + 1);
+    LEVELS.push({ id: Date.now(), name, lv: nextLv, desc, sla });
+  }
+  closeLevelDrawer();
+  render();
+}
+
+/* ============ 删除确认 ============ */
+function askDelete(id) {
+  pendingDeleteId = id;
+  const r = LEVELS.find(x => x.id === id);
+  const used = DRONE_TYPES.concat(CAMERA_TYPES).filter(t => t.lv === r.lv).length;
+  document.getElementById('confirmText').innerHTML =
+    `「${r.name}」当前被 <span class="text-gray-200">${used}</span> 个告警类型（无人机 + 摄像头）引用，删除后需为这些类型重新配置等级。`;
+  document.getElementById('confirmMask').classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmMask').classList.remove('show');
+  pendingDeleteId = null;
+}
+
+function doDelete() {
+  LEVELS = LEVELS.filter(x => x.id !== pendingDeleteId);
+  closeConfirm();
+  render();
+}
+
+/* ============ 告警类型抽屉 ============ */
+function openTypeDrawer(id) {
+  editingTypeId = id;
+  const r = currentTypes().find(x => x.id === id);
+  editingTypeLv = r.lv;
+  document.getElementById('fTypeName').value = r.name;
+  document.getElementById('fTypeLevelLabel').textContent = levelName(r.lv);
+  const extra = document.getElementById('typeExtraField');
+  document.getElementById('typeExtraLabel').textContent = sub === 'drone' ? '识别场景' : '上报事件标识';
+  document.getElementById('fTypeExtra').value = sub === 'drone' ? r.scene : r.event;
+  extra.classList.remove('hidden');
+  renderLevelOptions();
+  document.getElementById('typeMask').classList.add('show');
+  document.getElementById('typeDrawer').classList.add('show');
+}
+
+function closeTypeDrawer() {
+  document.getElementById('typeMask').classList.remove('show');
+  document.getElementById('typeDrawer').classList.remove('show');
+  document.getElementById('typeLevelPicker').classList.remove('open');
+}
+
+function renderLevelOptions() {
+  document.getElementById('typeLevelOptions').innerHTML = LEVELS.map(l =>
+    `<div class="picker-item ${l.lv === editingTypeLv ? 'selected' : ''}" onclick="pickLevel(event, ${l.lv})">${l.name}</div>`
+  ).join('');
+}
+
+function toggleLevelPicker(e) {
+  e.stopPropagation();
+  document.getElementById('typeLevelPicker').classList.toggle('open');
+}
+
+function pickLevel(e, lv) {
+  e.stopPropagation();
+  editingTypeLv = lv;
+  document.getElementById('fTypeLevelLabel').textContent = levelName(lv);
+  renderLevelOptions();
+  document.getElementById('typeLevelPicker').classList.remove('open');
+}
+
+function saveType() {
+  const r = currentTypes().find(x => x.id === editingTypeId);
+  if (r) r.lv = editingTypeLv;
+  closeTypeDrawer();
+  render();
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('typeLevelPicker').classList.remove('open');
+});
+
+/* ============ 初始化：支持 ?tab=type&sub=camera 直达 ============ */
+(function init() {
+  const q = new URLSearchParams(location.search);
+  const t = q.get('tab');
+  const s = q.get('sub');
+  if (s === 'camera' || s === 'drone') sub = s;
+  switchSub(sub);
+  switchTab(t === 'type' ? 'type' : 'level');
+})();
+</script>
+<script src="custom-select.js"></script>
+</body>
+</html>

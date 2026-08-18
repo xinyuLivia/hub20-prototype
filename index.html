@@ -74,6 +74,7 @@
                 <a href="drone-list.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-plane text-[#58a6ff] mr-2"></i>无人机/机巢列表</div><div class="text-xs text-gray-500">无人机与机巢设备</div></a>
                 <a href="drone-monitor.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-satellite-dish text-[#58a6ff] mr-2"></i>无人机/机巢实况</div><div class="text-xs text-gray-500">飞行实况与画面</div></a>
                 <a href="platform-device-management.html" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-microchip text-[#58a6ff] mr-2"></i>平台设备管理</div><div class="text-xs text-gray-500">设备接入与故障总览</div></a>
+                <a href="alarm-config.html?tab=type&sub=camera" class="card rounded-lg p-4 block"><div class="text-white text-sm font-medium mb-1"><i class="fas fa-sliders text-[#58a6ff] mr-2"></i>告警配置（系统设置）</div><div class="text-xs text-gray-500">告警等级 + 告警类型（无人机 / 摄像头双 Tab）</div></a>
             </div>
         </section>
 
@@ -120,7 +121,7 @@ camera-list → camera-detail → camera-monitor → camera-playback
 drone-list → drone-monitor
 workflow-list（新增配置弹窗：无人机/机器狗）→ workflow-create[?device=dog] / manual-trigger-dispatch-modal
 workflow-list（查看详情 / 统计卡片）→ workflow-event-list（工作流事件列表，分设备）
-operation-log → 全局首页(home-dashboard)
+operation-log ⇄ alarm-config（系统设置左侧栏互跳；告警配置 = 告警等级 / 告警类型[无人机·摄像头]）
 alert/alert-list ⇄ detection-zone-config（无人机告警 ↔ 检测区域配置 互链）
                 </div>
             </div>

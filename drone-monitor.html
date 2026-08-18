@@ -17,21 +17,42 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        .ctrl-tab { border-bottom: 2px solid transparent; color: #8b949e; }
-        .ctrl-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
-        .param-label { color: #8b949e; font-size: 11px; }
-        .param-value { color: #e6edf3; font-size: 13px; font-weight: 500; }
-        .ptz-btn { background:#1e1e1e; border:1px solid #333; color:#c9d1d9; }
-        .ptz-btn:hover { border-color:#58a6ff; color:#fff; }
-        .type-pill.active { background:#1f6feb; color:#fff; border-color:#1f6feb; }
         .dev-row.offline { opacity:.75; cursor:not-allowed; }
         .dev-row.displayed { background:rgba(31,111,235,.14); }
-        #video-grid { display:grid; gap:2px; background:#2d2d2d; height:100%; }
+
+        /* 分屏网格 */
+        #video-grid.mode-grid {
+            display: grid;
+            gap: 2px;
+            background: #2d2d2d;
+            height: 100%;
+        }
+        /* 瀑布：多列流式滚动 */
+        #video-grid.mode-waterfall {
+            display: block;
+            column-count: 3;
+            column-gap: 8px;
+            height: auto;
+            min-height: 100%;
+            background: transparent;
+            padding: 2px;
+        }
+        @media (max-width: 1400px) {
+            #video-grid.mode-waterfall { column-count: 2; }
+        }
+        #video-grid.mode-waterfall .video-cell {
+            break-inside: avoid;
+            margin-bottom: 8px;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+        }
 
         .video-cell {
             border: 1px solid #30363d;
             background: #000;
             position: relative;
+            overflow: hidden;
         }
         .video-cell.active {
             border-color: #58a6ff;
@@ -44,6 +65,10 @@
                 #0d1117 10px,
                 #0d1117 20px
             );
+        }
+        .layout-btn.on {
+            background: #333;
+            color: #fff;
         }
     </style>
 </head>
@@ -88,10 +113,9 @@
         </div>
     </div>
 
-    <!-- 主体内容 -->
+    <!-- 主体：左列表 + 中间实况（无右侧操控） -->
     <div class="flex-1 flex overflow-hidden">
 
-        <!-- 左侧设备列表（非树状；机巢与无人机绑定展示；可分别选中；仅展示启用设备；离线不可点） -->
         <div class="w-72 bg-[#141414] border-r border-[#2d2d2d] flex flex-col shrink-0">
             <div class="p-2 space-y-2 shrink-0">
                 <div class="relative">
@@ -110,145 +134,23 @@
             <div id="dev-list" class="p-2 flex-1 overflow-y-auto custom-scrollbar space-y-2"></div>
         </div>
 
-        <!-- 右侧主监控区 -->
-        <div class="flex-1 flex bg-[#0d1117] min-w-0">
-
-            <!-- 视频分屏区 -->
-            <div class="flex-1 flex flex-col p-2 min-w-0 min-h-0">
-                <div class="flex justify-between items-center mb-2 px-1 shrink-0">
-                    <div class="flex space-x-1 bg-[#1e1e1e] rounded border border-[#2d2d2d] p-0.5" id="layout-controls">
-                        <button data-layout="1" class="px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors layout-btn" onclick="setLayout(1)"><i class="fas fa-square mr-1.5"></i>1 画面</button>
-                        <button data-layout="2" class="px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors layout-btn" onclick="setLayout(2)"><i class="fas fa-columns mr-1.5"></i>2 画面</button>
-                        <button data-layout="4" class="px-3 h-7 flex items-center justify-center rounded bg-[#333] text-white transition-colors layout-btn" onclick="setLayout(4)"><i class="fas fa-th-large mr-1.5"></i>4 画面</button>
-                    </div>
-                    <div class="flex items-center space-x-4 text-xs text-gray-300">
-                        <span class="text-gray-500">点击左侧设备 → 展示到当前选中窗口</span>
-                        <button class="px-3 py-1.5 bg-[#1e1e1e] border border-[#2d2d2d] rounded hover:text-white hover:bg-[#252525] transition-colors"><i class="fas fa-expand mr-1"></i> 全屏</button>
-                    </div>
+        <div class="flex-1 flex flex-col p-2 min-w-0 min-h-0 bg-[#0d1117]">
+            <div class="flex justify-between items-center mb-2 px-1 shrink-0">
+                <div class="flex space-x-1 bg-[#1e1e1e] rounded border border-[#2d2d2d] p-0.5" id="layout-controls">
+                    <button data-layout="waterfall" class="layout-btn on px-3 h-7 flex items-center justify-center rounded text-white transition-colors" onclick="setLayout('waterfall')"><i class="fas fa-stream mr-1.5"></i>瀑布</button>
+                    <button data-layout="1" class="layout-btn px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" onclick="setLayout(1)"><i class="fas fa-square mr-1.5"></i>1</button>
+                    <button data-layout="2" class="layout-btn px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" onclick="setLayout(2)"><i class="fas fa-columns mr-1.5"></i>2</button>
+                    <button data-layout="4" class="layout-btn px-3 h-7 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#2d2d2d] transition-colors" onclick="setLayout(4)"><i class="fas fa-th-large mr-1.5"></i>4</button>
                 </div>
-
-                <div class="flex-1 min-h-0 rounded overflow-hidden border border-[#2d2d2d]">
-                    <div id="video-grid"></div>
+                <div class="flex items-center space-x-3 text-xs text-gray-400">
+                    <span id="layout-hint">瀑布模式：点击左侧设备加入实况流</span>
+                    <button class="px-3 py-1.5 bg-[#1e1e1e] border border-[#2d2d2d] rounded hover:text-white hover:bg-[#252525] transition-colors text-gray-300"><i class="fas fa-expand mr-1"></i> 全屏</button>
                 </div>
             </div>
 
-            <!-- 操控面板（右侧竖排） -->
-            <div class="w-[360px] shrink-0 bg-[#161616] border-l border-[#2d2d2d] flex flex-col min-h-0">
-                <!-- 当前设备 -->
-                <div class="px-4 py-2.5 border-b border-[#2d2d2d] shrink-0 flex items-center text-xs text-gray-400">
-                    <i class="fas fa-microchip mr-1.5 text-gray-500"></i>当前设备：<span id="ctrl-device-name" class="text-[#58a6ff] bg-[#58a6ff]/10 px-1.5 py-0.5 rounded border border-[#58a6ff]/20 ml-1 truncate">深圳站evo_4T_真机</span>
-                </div>
-
-                <!-- 飞行直播 -->
-                <div id="cpanel-fly" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-3 space-y-4">
-                    <!-- 飞机参数 -->
-                    <div>
-                        <div class="text-xs text-gray-300 font-medium mb-2">飞机参数</div>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                            <div><div class="param-label">相对起飞点高度</div><div class="param-value">120.0 m</div></div>
-                            <div><div class="param-label">海拔</div><div class="param-value">156.0 m</div></div>
-                            <div><div class="param-label">电量</div><div class="param-value">45%</div></div>
-                            <div><div class="param-label">垂直速度</div><div class="param-value">0.2 m/s</div></div>
-                            <div><div class="param-label">航向角度</div><div class="param-value">90°</div></div>
-                            <div><div class="param-label">剩余飞行时间</div><div class="param-value">18 min</div></div>
-                            <div><div class="param-label">水平速度</div><div class="param-value">12.5 m/s</div></div>
-                            <div><div class="param-label">起降高度</div><div class="param-value">0 m</div></div>
-                            <div class="col-span-2"><div class="param-label">GPS坐标</div><div class="param-value font-mono">22.5431, 114.0579</div></div>
-                        </div>
-                    </div>
-                    <!-- 起飞 / 控制权 -->
-                    <div class="flex items-center space-x-2">
-                        <button class="flex-1 py-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs rounded flex items-center justify-center"><i class="fas fa-plane-departure mr-1.5"></i>一键起飞</button>
-                        <label class="flex-1 flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-gray-300 cursor-pointer">
-                            <span>飞行控制权</span>
-                            <span class="relative inline-block w-9 h-5 bg-[#333] rounded-full" onclick="this.querySelector('span').classList.toggle('translate-x-4');this.classList.toggle('bg-[#1f6feb]')"><span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform"></span></span>
-                        </label>
-                    </div>
-                    <!-- 云台 PTZ -->
-                    <div>
-                        <div class="text-xs text-gray-300 font-medium mb-2">云台控制</div>
-                        <div class="grid grid-cols-3 gap-1 w-36 mx-auto">
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台左上"><i class="fas fa-arrow-up rotate-[-45deg]"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向上"><i class="fas fa-chevron-up"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台右上"><i class="fas fa-arrow-up rotate-45"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向左"><i class="fas fa-chevron-left"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台复位"><i class="fas fa-crosshairs"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向右"><i class="fas fa-chevron-right"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台左下"><i class="fas fa-arrow-down rotate-45"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台向下"><i class="fas fa-chevron-down"></i></button>
-                            <button class="ptz-btn text-[10px] py-1.5 rounded" title="云台右下"><i class="fas fa-arrow-down rotate-[-45deg]"></i></button>
-                        </div>
-                        <div class="flex justify-center space-x-1 mt-2 text-[10px]">
-                            <button class="ptz-btn px-2 py-1 rounded">缩小</button>
-                            <button class="ptz-btn px-2 py-1 rounded">复位</button>
-                            <button class="ptz-btn px-2 py-1 rounded">放大</button>
-                            <button class="ptz-btn px-2 py-1 rounded">云台重置</button>
-                        </div>
-                    </div>
-                    <!-- 镜头 -->
-                    <div>
-                        <div class="text-xs text-gray-300 font-medium mb-2">镜头切换</div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button class="py-1.5 bg-[#1f6feb] text-white text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-expand-arrows-alt mb-1"></i>广角镜头</button>
-                            <button class="py-1.5 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] text-gray-300 text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-search-plus mb-1"></i>变焦镜头</button>
-                            <button class="py-1.5 bg-[#1e1e1e] border border-[#333] hover:border-[#58a6ff] text-gray-300 text-xs rounded flex flex-col items-center justify-center"><i class="fas fa-thermometer-half mb-1"></i>红外镜头</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 机巢监控 -->
-                <div id="cpanel-nest" class="hidden flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-3 space-y-4">
-                    <!-- 远程控制模式 -->
-                    <label class="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] border border-[#333] rounded text-xs text-gray-300 cursor-pointer">
-                        <span>远程控制模式</span>
-                        <span class="relative inline-block w-9 h-5 bg-[#333] rounded-full transition-colors" onclick="this.querySelector('span').classList.toggle('translate-x-4');this.classList.toggle('bg-[#1f6feb]')"><span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform"></span></span>
-                    </label>
-                    <!-- 机巢气象检测 -->
-                    <div>
-                        <div class="text-xs text-gray-300 font-medium mb-2">机巢气象检测</div>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                            <div><div class="param-label">环境温度</div><div class="param-value">26.70°C</div></div>
-                            <div><div class="param-label">舱内无人机电量</div><div class="param-value">89.00%</div></div>
-                            <div><div class="param-label">舱内温度</div><div class="param-value">30.30°C</div></div>
-                            <div><div class="param-label">舱内湿度</div><div class="param-value">77.00%</div></div>
-                            <div><div class="param-label">风速</div><div class="param-value">0.00 m/s</div></div>
-                            <div><div class="param-label">降雨量</div><div class="param-value">无雨</div></div>
-                        </div>
-                    </div>
-                    <!-- 机巢控制 -->
-                    <div>
-                        <div class="text-xs text-gray-300 font-medium mb-2">机巢控制</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-plug mr-1 text-gray-500"></i>飞机电源</span><span class="text-[10px] text-gray-500">关闭</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开启</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">关闭</button></div>
-                            </div>
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-battery-half mr-1 text-gray-500"></i>飞机电池</span><span class="text-[10px] text-gray-500">未充电</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">充电</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">停充</button></div>
-                            </div>
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-door-open mr-1 text-gray-500"></i>舱门</span><span class="text-[10px] text-gray-500">已关闭</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开启</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">关闭</button></div>
-                            </div>
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-redo mr-1 text-gray-500"></i>机巢重启</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">重启</button></div>
-                            </div>
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-grip-lines mr-1 text-gray-500"></i>推杆</span><span class="text-[10px] text-gray-500">已关闭</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">推开</button><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">收回</button></div>
-                            </div>
-                            <div class="bg-[#1e1e1e] border border-[#333] rounded p-2">
-                                <div class="flex items-center justify-between mb-1.5"><span class="text-xs text-gray-300"><i class="fas fa-warehouse mr-1 text-gray-500"></i>舱盖</span></div>
-                                <div class="flex space-x-1"><button class="flex-1 py-1 text-[10px] bg-[#252525] hover:bg-[#2d2d2d] rounded text-gray-200">开盖</button></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <div id="video-stage" class="flex-1 min-h-0 rounded overflow-y-auto border border-[#2d2d2d] custom-scrollbar bg-[#0d1117]">
+                <div id="video-grid" class="mode-waterfall"></div>
             </div>
-
         </div>
     </div>
 
@@ -256,7 +158,6 @@
         const DRONE_IMG = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1200&auto=format&fit=crop';
         const NEST_IMG  = 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?q=80&w=1200&auto=format&fit=crop';
 
-        // 设备数据（仅启用设备；online 决定能否点击展示实况）
         const NESTS = [
             { id:'nest1', name:'深圳站_机巢', sn:'SIMU-SZ-NEST01', online:true, signal:5, battery:100, rtk:'Fixed', stream:NEST_IMG,
               drone:{ id:'drone1', name:'深圳站evo_4T', sn:'SIMU-SZ-4T01', online:true, signal:1, battery:89, rtk:'Fixed', stream:DRONE_IMG } },
@@ -268,9 +169,13 @@
 
         let typeFilter = 'all';
         let keyword = '';
-        let layout = 4;
+        /** @type {'waterfall'|1|2|4} */
+        let layout = 'waterfall';
+        /** 分屏固定槽位 */
         let slots = [null, null, null, null];
-        let activeCell = 0;
+        /** 瀑布：已展示设备列表（有序） */
+        let waterfallList = [];
+        let activeId = null;
 
         function findDevice(id){
             for (const n of NESTS){
@@ -280,19 +185,18 @@
             return null;
         }
         function displayedIds(){
-            return slots.slice(0, layout).filter(Boolean).map(d => d.id);
+            if (layout === 'waterfall') return waterfallList.map(d => d.id);
+            const n = Number(layout);
+            return slots.slice(0, n).filter(Boolean).map(d => d.id);
         }
 
-        /* ---------- 左侧列表 ---------- */
         function rowHtml(d, iconType){
             const on = d.online;
             const disp = displayedIds().includes(d.id) ? 'displayed' : '';
             const click = on ? `onclick="event.stopPropagation(); selectDevice('${d.id}')"` : '';
-            
-            const statusBadge = on 
+            const statusBadge = on
                 ? `<span class="ml-1 text-[10px] text-[#3fb950] bg-[#3fb950]/10 px-1 py-0.5 rounded border border-[#3fb950]/20 shrink-0">在线</span>`
                 : `<span class="ml-1 text-[10px] text-gray-500 bg-gray-800 px-1 py-0.5 rounded border border-gray-600 shrink-0">离线</span>`;
-
             return `
             <div class="dev-row flex items-start px-2 py-1.5 rounded ${on ? 'cursor-pointer hover:bg-[#21262d]' : 'offline'} ${disp}" ${click} title="${on ? '点击展示实况' : '离线设备，不可展示实况'}">
                 <i class="fas fa-${iconType} ${on ? 'text-gray-400' : 'text-gray-500'} mt-0.5 mr-2"></i>
@@ -322,12 +226,8 @@
         }
 
         function onSearch(v){ keyword = v; renderList(); }
-        function setType(t){
-            typeFilter = t;
-            renderList();
-        }
+        function setType(t){ typeFilter = t; renderList(); }
 
-        /* ---------- 画面 ---------- */
         function signalIcon(level){
             const color = level >= 3 ? 'text-[#3fb950]' : level >= 1 ? 'text-[#d29922]' : 'text-[#f85149]';
             return `<span class="flex items-center ${color}"><i class="fas fa-signal mr-1"></i>${level}</span>`;
@@ -346,58 +246,89 @@
                 ${signalIcon(d.signal)}${batteryIcon(d.battery)}${rtkBadge(d.rtk)}
             </div>`;
         }
+
+        /** 单机操控入口（本页不提供操控面板） */
+        function goSinglePilot(deviceId, deviceName){
+            const q = '?device=' + encodeURIComponent(deviceId || '') + '&name=' + encodeURIComponent(deviceName || '');
+            location.href = 'drone-detail.html' + q + '#pilot';
+        }
+
+        function cellHtml(d, opts){
+            const i = opts.index;
+            const active = (d && d.id === activeId) || (opts.slotActive) ? 'active' : '';
+            const isDrone = d && d.type === 'drone';
+            const inTask = d && ((d.type === 'drone' && d.inTask) || (d.type === 'nest' && d.drone && d.drone.inTask));
+            const pilotBtn = isDrone
+                ? (inTask
+                    ? `<button class="text-[10px] px-1.5 py-0.5 rounded border border-[#d29922]/40 text-[#d29922] hover:bg-[#d29922]/10" onclick="event.stopPropagation(); location.href='task-live.html?device=${encodeURIComponent(d.name)}'" title="任务中，查看任务实况">任务实况</button>`
+                    : `<button class="text-[10px] px-1.5 py-0.5 rounded border border-[#58a6ff]/40 text-[#58a6ff] hover:bg-[#58a6ff]/10" onclick="event.stopPropagation(); goSinglePilot('${d.id}','${(d.name||'').replace(/'/g,"\\'")}')" title="前往单机操控">单机操控</button>`)
+                : '';
+
+            if (d){
+                return `<div class="video-cell flex flex-col cursor-pointer ${active}" onclick="focusDevice('${d.id}', ${i})">
+                    <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
+                        <div class="flex items-center text-white font-medium min-w-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5 shrink-0"></span>
+                            <span class="truncate">${d.name}</span>
+                            <span class="ml-1.5 text-[10px] text-gray-500 shrink-0">${d.type === 'nest' ? '机巢' : '无人机'}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-gray-400 shrink-0">
+                            ${pilotBtn}
+                            <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); clearDevice('${d.id}', ${i})"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center relative overflow-hidden bg-black">
+                        <img src="${d.stream}" class="absolute inset-0 w-full h-full object-cover opacity-90" alt="">
+                        ${osd(d)}
+                    </div>
+                </div>`;
+            }
+            return `<div class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer ${active}" onclick="focusSlot(${i})">
+                <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
+                    <i class="fas fa-video-slash text-2xl mb-2"></i>
+                    <span class="text-xs">点击左侧设备添加画面</span>
+                </div>
+            </div>`;
+        }
+
         function renderVideo(){
             const grid = document.getElementById('video-grid');
-            grid.style.gridTemplateColumns = layout === 1 ? '1fr' : '1fr 1fr';
-            grid.style.gridTemplateRows = layout === 4 ? '1fr 1fr' : '1fr';
-            let html = '';
-            for (let i = 0; i < layout; i++){
-                const d = slots[i];
-                const active = i === activeCell ? 'active' : '';
-                if (d){
-                    html += `<div class="video-cell flex flex-col cursor-pointer ${active}" onclick="focusCell(${i})">
-                        <div class="h-7 bg-[#141414]/90 absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-2 text-xs border-b border-[#2d2d2d]">
-                            <div class="flex items-center text-white font-medium channel-title">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#3fb950] mr-1.5"></span>
-                                ${d.name}
-                            </div>
-                            <div class="flex items-center space-x-3 text-gray-400">
-                                <i class="fas fa-times hover:text-[#f85149] cursor-pointer" title="关闭" onclick="event.stopPropagation(); clearCell(${i})"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1 flex items-center justify-center relative overflow-hidden bg-black">
-                            <img src="${d.stream}" class="absolute inset-0 w-full h-full object-cover opacity-90">
-                            ${osd(d)}
-                            <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
-                        </div>
+            const stage = document.getElementById('video-stage');
+            const hint = document.getElementById('layout-hint');
+
+            if (layout === 'waterfall'){
+                grid.className = 'mode-waterfall';
+                stage.classList.add('overflow-y-auto');
+                stage.classList.remove('overflow-hidden');
+                if (hint) hint.textContent = '瀑布模式：滚动浏览多路实况 · 操控请用「单机操控」';
+                if (!waterfallList.length){
+                    grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-600 py-24" style="column-span:all">
+                        <i class="fas fa-video-slash text-3xl mb-3"></i>
+                        <span class="text-sm">点击左侧在线设备，加入瀑布实况</span>
                     </div>`;
                 } else {
-                    html += `<div class="video-cell flex flex-col items-center justify-center text-gray-600 cursor-pointer ${active}" onclick="focusCell(${i})">
-                        <div class="flex-1 video-placeholder w-full flex flex-col items-center justify-center relative overflow-hidden">
-                            <i class="fas fa-video-slash text-2xl mb-2 placeholder-icon"></i>
-                            <span class="text-xs placeholder-text">点击左侧设备添加画面</span>
-                            <div class="absolute inset-0 border-[2px] border-transparent cell-border"></div>
-                        </div>
-                    </div>`;
+                    grid.innerHTML = waterfallList.map((d, i) => cellHtml(d, { index: i })).join('');
                 }
+                return;
+            }
+
+            const n = Number(layout);
+            grid.className = 'mode-grid';
+            stage.classList.remove('overflow-y-auto');
+            stage.classList.add('overflow-hidden');
+            grid.style.gridTemplateColumns = n === 1 ? '1fr' : '1fr 1fr';
+            grid.style.gridTemplateRows = n === 4 ? '1fr 1fr' : '1fr';
+            grid.style.height = '100%';
+            if (hint) hint.textContent = '分屏模式：点击左侧设备 → 载入当前窗口 · 操控请用「单机操控」';
+            let html = '';
+            for (let i = 0; i < n; i++){
+                const d = slots[i];
+                html += cellHtml(d, { index: i, slotActive: (!d && activeId == null && i === 0) || (d && d.id === activeId) });
             }
             grid.innerHTML = html;
         }
 
-        function firstEmpty(){
-            for (let i = 0; i < layout; i++) if (!slots[i]) return i;
-            return -1;
-        }
-        function emptySlots(){
-            const arr = [];
-            for (let i = 0; i < layout; i++) if (!slots[i]) arr.push(i);
-            return arr;
-        }
-        function selectDevice(id){
-            const d = findDevice(id);
-            if (!d || !d.online) return;
-
-            // 解析该设备所属「机巢 + 绑定无人机」这一对
+        function resolvePair(id){
             let nestObj = null, droneObj = null;
             for (const n of NESTS){
                 if (n.id === id || (n.drone && n.drone.id === id)){
@@ -406,84 +337,112 @@
                     break;
                 }
             }
+            return { nestObj, droneObj };
+        }
 
-            const empty = emptySlots();
-            // 2/4 窗口且有 2 个及以上空余：机巢与其绑定无人机成对载入
-            const pairLoadable = (layout === 2 || layout === 4) && empty.length >= 2 && nestObj && droneObj;
+        function upsertWaterfall(d){
+            if (!d) return;
+            if (waterfallList.some(x => x.id === d.id)) return;
+            waterfallList.push(d);
+        }
+
+        function selectDevice(id){
+            const d = findDevice(id);
+            if (!d || !d.online) return;
+            const { nestObj, droneObj } = resolvePair(id);
+
+            if (layout === 'waterfall'){
+                // 瀑布：成对加入（若对方在线且尚未展示）
+                if (d.type === 'nest'){
+                    upsertWaterfall(nestObj);
+                    if (droneObj) upsertWaterfall(droneObj);
+                } else {
+                    upsertWaterfall(droneObj || d);
+                    if (nestObj) upsertWaterfall(nestObj);
+                }
+                activeId = d.id;
+                renderVideo(); renderList();
+                return;
+            }
+
+            const n = Number(layout);
+            const empty = [];
+            for (let i = 0; i < n; i++) if (!slots[i]) empty.push(i);
+            const pairLoadable = (n === 2 || n === 4) && empty.length >= 2 && nestObj && droneObj;
             if (pairLoadable){
                 slots[empty[0]] = nestObj;
                 slots[empty[1]] = droneObj;
-                activeCell = (d.type === 'nest') ? empty[0] : empty[1];
+                activeId = d.id;
             } else {
-                let t = empty.length ? empty[0] : activeCell;
+                let t = empty.length ? empty[0] : slots.findIndex(x => x && x.id === activeId);
+                if (t < 0) t = 0;
                 slots[t] = d;
-                activeCell = t;
+                activeId = d.id;
             }
-            renderVideo(); renderList(); syncPanel();
+            renderVideo(); renderList();
         }
-        function focusCell(i){ activeCell = i; renderVideo(); syncPanel(); }
-        function clearCell(i){ slots[i] = null; renderVideo(); renderList(); syncPanel(); }
 
-        function setLayout(n, silent){
-            layout = n;
-            if (activeCell >= n) activeCell = 0;
+        function focusDevice(id, index){
+            activeId = id;
+            if (layout !== 'waterfall'){
+                // keep
+            }
+            renderVideo();
+        }
+        function focusSlot(i){
+            if (layout === 'waterfall') return;
+            activeId = slots[i] ? slots[i].id : null;
+            // mark slot focus via storing index in active when empty
+            renderVideo();
+        }
+        function clearDevice(id, index){
+            if (layout === 'waterfall'){
+                waterfallList = waterfallList.filter(d => d.id !== id);
+                if (activeId === id) activeId = waterfallList[0] ? waterfallList[0].id : null;
+            } else {
+                slots[index] = null;
+                if (activeId === id) activeId = null;
+            }
+            renderVideo(); renderList();
+        }
+
+        function setLayout(mode){
+            const prev = layout;
+            layout = mode;
             document.querySelectorAll('#layout-controls .layout-btn').forEach(btn => {
-                const on = Number(btn.dataset.layout) === n;
-                btn.classList.toggle('bg-[#333]', on);
+                const on = String(btn.dataset.layout) === String(mode);
+                btn.classList.toggle('on', on);
                 btn.classList.toggle('text-white', on);
                 btn.classList.toggle('text-gray-400', !on);
             });
+
+            // 切到瀑布：把当前分屏里已有画面迁入瀑布
+            if (mode === 'waterfall' && prev !== 'waterfall'){
+                const n = Number(prev) || 4;
+                for (let i = 0; i < n; i++){
+                    if (slots[i]) upsertWaterfall(slots[i]);
+                }
+            }
+            // 切到分屏：用瀑布列表前 N 路填充
+            if (mode !== 'waterfall' && prev === 'waterfall'){
+                const n = Number(mode);
+                slots = [null, null, null, null];
+                waterfallList.slice(0, n).forEach((d, i) => { slots[i] = d; });
+                if (waterfallList[0]) activeId = waterfallList[0].id;
+            }
+
             renderVideo();
-            if (!silent) { renderList(); syncPanel(); }
+            renderList();
         }
 
-        /* ---------- 操控面板联动 ---------- */
-        function switchCtrlTab(tab){
-            const isFly = tab === 'fly';
-            document.getElementById('cpanel-fly').classList.toggle('hidden', !isFly);
-            document.getElementById('cpanel-nest').classList.toggle('hidden', isFly);
-        }
-        function isDeviceInTask(d){
-            if (!d) return false;
-            if (d.type === 'drone') return !!d.inTask;
-            if (d.type === 'nest') return !!(d.drone && d.drone.inTask);
-            return false;
-        }
-        function goTaskLive(droneName){
-            const q = droneName ? ('?device=' + encodeURIComponent(droneName)) : '';
-            location.href = 'task-live.html' + q;
-        }
-        function applyTaskLock(locked, droneName){
-            ['cpanel-fly', 'cpanel-nest'].forEach(id => {
-                const p = document.getElementById(id);
-                if (!p) return;
-                let banner = p.querySelector('.task-lock-banner');
-                if (locked){
-                    const bannerHtml = '<div class="flex items-center min-w-0"><i class="fas fa-plane-departure mr-1.5 shrink-0"></i><span class="truncate">无人机在任务中，暂不支持操控</span></div>'
-                        + '<button onclick="goTaskLive(\'' + (droneName || '').replace(/'/g, "\\'") + '\')" class="ml-2 shrink-0 inline-flex items-center px-2 py-0.5 rounded bg-[#1f6feb] text-white hover:bg-[#388bfd]">查看任务实况<i class="fas fa-arrow-right ml-1"></i></button>';
-                    if (!banner){
-                        banner = document.createElement('div');
-                        banner.className = 'task-lock-banner flex items-center justify-between px-3 py-2 rounded text-xs text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30';
-                        p.insertBefore(banner, p.firstChild);
-                    }
-                    banner.innerHTML = bannerHtml;
-                    p.querySelectorAll('button:not(.task-lock-banner button), input, label').forEach(el => el.classList.add('pointer-events-none', 'opacity-40'));
-                    banner.querySelectorAll('button').forEach(el => el.classList.remove('pointer-events-none', 'opacity-40'));
-                } else {
-                    if (banner) banner.remove();
-                    p.querySelectorAll('button, input, label').forEach(el => el.classList.remove('pointer-events-none', 'opacity-40'));
-                }
+        /** 默认瀑布：载入全部在线设备实况 */
+        function seedWaterfallOnline(){
+            waterfallList = [];
+            NESTS.forEach(n => {
+                if (n.online) upsertWaterfall({ ...n, type: 'nest' });
+                if (n.drone && n.drone.online) upsertWaterfall({ ...n.drone, type: 'drone', nestName: n.name });
             });
-        }
-        function syncPanel(){
-            const d = slots[activeCell];
-            if (!d) return;
-            const isNest = d.type === 'nest';
-            document.getElementById('ctrl-device-name').textContent = d.name + (isNest ? '_机巢' : '_真机');
-            // 无人机只展示「飞行直播」，机巢只展示「机巢监控」
-            switchCtrlTab(isNest ? 'nest' : 'fly');
-            const taskDroneName = isNest ? (d.drone && d.drone.name) : d.name;
-            applyTaskLock(isDeviceInTask(d), taskDroneName);
+            activeId = waterfallList[0] ? waterfallList[0].id : null;
         }
 
         (function(){
@@ -492,8 +451,8 @@
                 var menu = document.getElementById('breadcrumbMenu');
                 if (dd && menu && !dd.contains(e.target)) menu.classList.add('hidden');
             });
-            setLayout(4, true);
-            selectDevice('nest1');
+            seedWaterfallOnline();
+            setLayout('waterfall');
         })();
     </script>
 </body>
