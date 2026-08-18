@@ -304,8 +304,8 @@ let CAMERA_TYPES = [
 ];
 
 const HINTS = {
-  drone: '无人机告警类型由平台算法能力内置，本页仅支持配置告警等级；检测区域在「检测区域配置」中维护。',
-  camera: '摄像头告警类型由设备侧 AI 检测后经 GB28181 上报，平台按上报事件标识映射生成，本页仅支持配置告警等级。'
+  drone: '无人机告警类型由平台算法能力内置，本页仅支持配置告警等级。',
+  camera: '摄像头告警类型由设备侧 AI 检测后经 GB28181 上报，平台按告警类型标识映射生成，本页仅支持配置告警等级。'
 };
 
 /* ============ 状态 ============ */
@@ -389,7 +389,7 @@ function render() {
       </tr>`).join('');
     hint.classList.add('hidden');
   } else {
-    const extraCol = sub === 'drone' ? '识别场景' : '上报事件标识';
+    const extraCol = sub === 'drone' ? '识别场景' : '告警类型标识';
     thead.innerHTML = `
       <th class="py-2.5 px-2 w-[130px]">告警等级</th>
       <th class="py-2.5 px-2 w-[170px]">告警类型</th>
@@ -490,7 +490,7 @@ function openTypeDrawer(id) {
   document.getElementById('fTypeName').value = r.name;
   document.getElementById('fTypeLevelLabel').textContent = levelName(r.lv);
   const extra = document.getElementById('typeExtraField');
-  document.getElementById('typeExtraLabel').textContent = sub === 'drone' ? '识别场景' : '上报事件标识';
+  document.getElementById('typeExtraLabel').textContent = sub === 'drone' ? '识别场景' : '告警类型标识';
   document.getElementById('fTypeExtra').value = sub === 'drone' ? r.scene : r.event;
   extra.classList.remove('hidden');
   renderLevelOptions();
