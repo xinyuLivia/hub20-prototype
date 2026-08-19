@@ -63,7 +63,7 @@
                     <div><div class="text-xs text-gray-500 mb-1.5">设备类型</div><div id="view-type" class="text-sm text-white">摄像头</div></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">所属项目</div><div class="text-sm text-white">深圳物流园区</div></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">国标编码</div><div id="view-gb" class="text-sm text-white font-mono">44030000001320000001</div></div>
-                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><div class="text-sm text-white font-mono">192.168.1.100</div></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><div id="view-ip" class="text-sm text-white font-mono">192.168.1.100</div></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">传输协议</div><div class="text-sm text-white">UDP</div></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">厂商</div><div class="text-sm text-white">海康威视</div></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">型号</div><div class="text-sm text-white">DS-2TD4136-25</div></div>
@@ -83,7 +83,7 @@
                     <div><div class="text-xs text-gray-500 mb-1.5">设备类型</div><input class="form-input text-gray-500" value="摄像头" disabled></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">所属项目</div><input class="form-input text-gray-500" value="深圳物流园区" disabled></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">国标编码</div><input class="form-input text-gray-500" value="44030000001320000001" disabled></div>
-                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><input class="form-input text-gray-500" value="192.168.1.100" disabled></div>
+                    <div><div class="text-xs text-gray-500 mb-1.5">IP 地址</div><input id="edit-ip" class="form-input font-mono" value="192.168.1.100" placeholder="如：192.168.1.100"></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">传输协议</div><input class="form-input text-gray-500" value="UDP" disabled></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">厂商</div><select class="form-input"><option>海康威视</option><option>大华</option><option>宇视</option><option>其他（标准 GB28181）</option></select></div>
                     <div><div class="text-xs text-gray-500 mb-1.5">型号</div><input class="form-input" value="DS-2TD4136-25"></div>
@@ -103,12 +103,14 @@
             </div>
 
             <div class="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg mt-4 overflow-hidden">
-                <div class="px-4 py-3 border-b border-[#2d2d2d] flex items-center justify-between">
+                <div class="px-4 py-3 border-b border-[#2d2d2d] flex flex-wrap items-center justify-between gap-3">
                     <div class="text-sm text-white">通道编码发放
-                        <span class="text-xs text-gray-500 ml-2">已发放 <span id="alloc-total">0</span> 路 · 已对齐 <span id="alloc-matched" class="text-[#3fb950]">0</span> · 待回填 <span id="alloc-pending" class="text-[#d29922]">0</span></span>
+                        <span class="text-xs text-gray-500 ml-2">已发放 <span id="alloc-total">0</span> 路 · 已注册 <span id="alloc-matched" class="text-[#3fb950]">0</span> · 未注册 <span id="alloc-pending" class="text-[#d29922]">0</span></span>
                     </div>
-                    <div class="flex items-center gap-4 text-xs">
-                        <button type="button" id="alloc-more-btn" class="text-[#58a6ff] hover:underline hidden" onclick="openAllocMore()"><i class="fas fa-plus mr-1"></i>增发通道码</button>
+                    <div class="flex items-center gap-2 text-xs">
+                        <label class="text-gray-500" for="alloc-channel-count">通道数量</label>
+                        <input id="alloc-channel-count" type="number" min="1" max="64" value="2" class="w-16 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-white font-mono focus:outline-none focus:border-[#58a6ff]">
+                        <button type="button" id="alloc-confirm-btn" onclick="confirmIssueChannels()" class="px-3 py-1 rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white">确认并发放</button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -117,8 +119,7 @@
                             <tr>
                                 <th class="py-2 px-4 font-normal w-24">通道序号</th>
                                 <th class="py-2 px-4 font-normal">通道国标编码</th>
-                                <th class="py-2 px-4 font-normal w-40">设备回填状态</th>
-                                <th class="py-2 px-4 font-normal">设备上报名称</th>
+                                <th class="py-2 px-4 font-normal w-40">注册状态</th>
                             </tr>
                         </thead>
                         <tbody id="alloc-body" class="divide-y divide-[#30363d]"></tbody>
@@ -126,25 +127,10 @@
                 </div>
                 <div class="px-4 py-3 border-t border-[#2d2d2d] text-xs text-gray-500 flex items-start">
                     <i class="fas fa-lightbulb mt-0.5 mr-2 text-[#d29922]"></i>
-                    <span id="alloc-hint">「待回填」表示该编码平台已发放、但设备目录中尚未上报，请到设备后台通道配置中填入。</span>
+                    <span id="alloc-hint">修改数量后需点「确认并发放」才会生效；已注册编码不可改、不可删，通道数量不可低于已注册路数。</span>
                 </div>
             </div>
         </section>
-
-        <div id="alloc-more-modal" class="hidden fixed inset-0 bg-black/70 z-[85] flex items-center justify-center">
-            <div class="w-[420px] bg-[#161b22] border border-[#30363d] rounded-lg">
-                <div class="p-5">
-                    <h3 class="text-base text-white mb-3">增发通道编码</h3>
-                    <p class="text-sm text-gray-400 mb-4">录像机新接入摄像头时，由平台续发编码，序号在已发放基础上顺延，不会与历史编码重复。</p>
-                    <label class="block text-xs text-gray-400 mb-1.5">本次增发路数</label>
-                    <input id="alloc-more-count" type="number" min="1" max="32" value="4" class="form-input">
-                </div>
-                <div class="px-5 py-4 bg-[#0d1117] border-t border-[#30363d] flex justify-end space-x-3">
-                    <button class="px-4 py-2 border border-[#30363d] rounded text-sm" onclick="closeAllocMore()">取消</button>
-                    <button class="px-4 py-2 bg-[#1f6feb] text-white rounded text-sm" onclick="confirmAllocMore()">确认增发</button>
-                </div>
-            </div>
-        </div>
 
         <section id="content-channels" class="hidden max-w-6xl">
             <div class="flex justify-between mb-3 text-xs text-gray-500">
@@ -300,51 +286,104 @@
         let channelPage = 1;
         let channelPageSize = 10;
 
-        // 平台发放的通道编码台账：reported=设备目录已上报（编码已回填设备）
-        let allocations = data.channels.map((c, i) => ({ index: i + 1, code: c[1], reported: true, name: c[0] }));
+        // 平台发放的通道编码台账：registered=设备已完成注册并上报该通道
+        // 设备本身未注册时，各通道一律视为未注册；已注册编码不可改
+        const deviceRegistered = status !== '未注册';
+        let allocations = data.channels.map((c, i) => ({
+            index: i + 1,
+            code: c[1],
+            registered: deviceRegistered,
+            name: deviceRegistered ? c[0] : ''
+        }));
+
+        function registeredCount() {
+            return allocations.filter(a => a.registered).length;
+        }
+
+        function nextChannelCode() {
+            if (!allocations.length) return data.gb.slice(0, 14) + '01';
+            return String(BigInt(allocations[allocations.length - 1].code) + 1n);
+        }
 
         function renderAllocations() {
+            const matched = registeredCount();
+            const minCount = Math.max(1, matched);
+            const countInput = document.getElementById('alloc-channel-count');
+            countInput.min = String(minCount);
+            countInput.value = allocations.length;
             document.getElementById('alloc-body').innerHTML = allocations.map(a => {
-                const state = a.reported
-                    ? '<span class="text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded">已对齐</span>'
-                    : '<span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">待回填</span>';
+                const state = a.registered
+                    ? '<span class="text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded">已注册</span>'
+                    : '<span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未注册</span>';
+                const lock = a.registered ? ' <i class="fas fa-lock text-[10px] text-gray-600 ml-1" title="已注册，不可修改"></i>' : '';
                 return '<tr class="hover:bg-[#21262d]">' +
                     '<td class="py-2.5 px-4 text-gray-400">通道 ' + a.index + '</td>' +
-                    '<td class="py-2.5 px-4 font-mono ' + (a.reported ? 'text-gray-300' : 'text-[#58a6ff]') + '">' + a.code + '</td>' +
-                    '<td class="py-2.5 px-4">' + state + '</td>' +
-                    '<td class="py-2.5 px-4 ' + (a.reported ? 'text-gray-300' : 'text-gray-600') + '">' + (a.reported ? a.name : '—') + '</td></tr>';
+                    '<td class="py-2.5 px-4 font-mono ' + (a.registered ? 'text-gray-300' : 'text-[#58a6ff]') + '">' + a.code + lock + '</td>' +
+                    '<td class="py-2.5 px-4">' + state + '</td></tr>';
             }).join('');
-            const matched = allocations.filter(a => a.reported).length;
             document.getElementById('alloc-total').textContent = allocations.length;
             document.getElementById('alloc-matched').textContent = matched;
             document.getElementById('alloc-pending').textContent = allocations.length - matched;
-            document.getElementById('alloc-more-btn').classList.toggle('hidden', !isNvr);
         }
 
-        function openAllocMore() { document.getElementById('alloc-more-modal').classList.remove('hidden'); }
-        function closeAllocMore() { document.getElementById('alloc-more-modal').classList.add('hidden'); }
-
-        function confirmAllocMore() {
-            const n = Math.max(1, Math.min(32, parseInt(document.getElementById('alloc-more-count').value, 10) || 1));
-            let last = BigInt(allocations[allocations.length - 1].code);
-            for (let i = 0; i < n; i++) {
-                last += 1n;
-                allocations.push({ index: allocations.length + 1, code: String(last), reported: false, name: '' });
+        function confirmIssueChannels() {
+            const matched = registeredCount();
+            const minCount = Math.max(1, matched);
+            let target = parseInt(document.getElementById('alloc-channel-count').value, 10);
+            if (isNaN(target)) {
+                showToast('请输入有效的通道数量', 'error');
+                return;
             }
-            closeAllocMore();
+            if (target < minCount) {
+                document.getElementById('alloc-channel-count').value = minCount;
+                showToast('通道数量不可低于已注册路数（' + minCount + '）', 'error');
+                return;
+            }
+            target = Math.min(64, Math.max(minCount, target));
+            document.getElementById('alloc-channel-count').value = target;
+
+            if (target === allocations.length) {
+                showToast('通道数量未变化', 'error');
+                return;
+            }
+
+            const prevLen = allocations.length;
+
+            if (target > prevLen) {
+                let code = nextChannelCode();
+                for (let i = prevLen; i < target; i++) {
+                    allocations.push({ index: i + 1, code: code, registered: false, name: '' });
+                    code = String(BigInt(code) + 1n);
+                }
+                renderAllocations();
+                showToast('已增发 ' + (target - prevLen) + ' 路通道编码（已注册编码未改动）', 'success');
+                return;
+            }
+
+            // 减少：仅从末尾裁掉未注册；已注册编码与序号均不改动
+            while (allocations.length > target) {
+                const last = allocations[allocations.length - 1];
+                if (last.registered) {
+                    document.getElementById('alloc-channel-count').value = allocations.length;
+                    showToast('末尾通道已注册，无法继续减少（不可低于已注册路数）', 'error');
+                    renderAllocations();
+                    return;
+                }
+                allocations.pop();
+            }
             renderAllocations();
-            showToast('已增发 ' + n + ' 个通道编码，请抄录至设备后台并点「同步」', 'success');
+            showToast('已将通道数量调整为 ' + target + ' 路（已注册编码未改动）', 'success');
         }
 
         // 同步 = 拉取设备目录并与发放台账核对
         function syncDevice() {
-            const pending = allocations.filter(a => !a.reported);
+            const pending = allocations.filter(a => !a.registered);
             if (!pending.length) {
-                showToast('同步完成：' + allocations.length + ' 路通道编码全部对齐', 'success');
+                showToast('同步完成：' + allocations.length + ' 路通道全部已注册', 'success');
                 return;
             }
             const hit = pending[0];
-            hit.reported = true;
+            hit.registered = true;
             hit.name = '通道' + hit.index + '：新增摄像头';
             data.channels.push(isNvr ? [hit.name, hit.code, '未配置位置', '在线'] : [hit.name, hit.code, '在线']);
             data.count = data.channels.length;
@@ -354,7 +393,7 @@
             renderChannels();
             updateMissingLocBanner();
             const rest = pending.length - 1;
-            showToast(rest > 0 ? '同步完成：新对齐 1 路，仍有 ' + rest + ' 路待回填' : '同步完成：新对齐 1 路，全部编码已对齐', 'success');
+            showToast(rest > 0 ? '同步完成：新注册 1 路，仍有 ' + rest + ' 路未注册' : '同步完成：新注册 1 路，全部通道已注册', 'success');
         }
 
         function renderChannels() {
@@ -610,7 +649,12 @@
             document.getElementById('basic-edit').classList.toggle('hidden');
             document.getElementById('edit-btn').classList.toggle('hidden');
         }
-        function saveEdit() { toggleEdit(); showToast('基本信息已保存','success'); }
+        function saveEdit() {
+            const ipInput = document.getElementById('edit-ip');
+            if (ipInput) document.getElementById('view-ip').textContent = ipInput.value.trim() || '—';
+            toggleEdit();
+            showToast('基本信息已保存','success');
+        }
         function openRestart() { if (status === '在线') document.getElementById('restart-modal').classList.remove('hidden'); }
         function closeRestart() { document.getElementById('restart-modal').classList.add('hidden'); }
         function confirmRestart() { closeRestart(); showToast('重启指令已下发','success'); }
@@ -621,7 +665,7 @@
         function copyText(id) { navigator.clipboard?.writeText(document.getElementById(id).textContent); showToast('已复制到剪贴板','success'); }
         function showToast(message,type) {
             const toast=document.createElement('div');
-            toast.className='px-4 py-2 rounded text-white shadow-lg border '+(type==='success'?'bg-[#238636] border-[#2ea043]':'bg-[#1f6feb] border-[#388bfd]');
+            toast.className='px-4 py-2 rounded text-white shadow-lg border '+(type==='success'?'bg-[#238636] border-[#2ea043]':type==='error'?'bg-[#da3633] border-[#f85149]':'bg-[#1f6feb] border-[#388bfd]');
             toast.textContent=message; document.getElementById('toast-container').appendChild(toast); setTimeout(()=>toast.remove(),2500);
         }
         init();

@@ -473,7 +473,7 @@
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             <label class="text-xs text-gray-500" for="cred-channel-count">接入路数</label>
-                            <input id="cred-channel-count" type="number" min="1" max="64" value="1" oninput="onCredChannelCountChange()" class="w-16 bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#58a6ff]">
+                            <input id="cred-channel-count" type="number" min="1" max="64" value="2" oninput="onCredChannelCountChange()" class="w-16 bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-[#58a6ff]">
                         </div>
                     </div>
                     <div class="max-h-48 overflow-y-auto custom-scrollbar divide-y divide-[#21262d]" id="cred-ch-list"></div>
@@ -837,7 +837,7 @@
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
-                            <div class="text-sm text-white font-mono">192.168.1.100</div>
+                            <div class="text-sm text-white font-mono" id="detail-view-ip">192.168.1.100</div>
                         </div>
                         <div>
                             <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
@@ -879,7 +879,7 @@
                             </div>
                             <div>
                                 <div class="text-xs text-gray-500 mb-1.5">IP地址</div>
-                                <input type="text" class="form-input bg-[#0d1117] text-gray-500 cursor-not-allowed" value="192.168.1.100" disabled>
+                                <input type="text" id="detail-edit-ip" class="form-input font-mono" value="192.168.1.100" placeholder="如：192.168.1.100">
                             </div>
                             <div>
                                 <div class="text-xs text-gray-500 mb-1.5">传输协议</div>
@@ -958,7 +958,7 @@
                     <div class="border border-[#30363d] rounded overflow-hidden">
                         <div class="px-4 py-2.5 bg-[#0d1117] border-b border-[#30363d] flex items-center justify-between">
                             <div class="text-xs text-gray-300">通道编码发放
-                                <span class="text-gray-500 ml-2">已发放 <span id="detail-alloc-total">2</span> 路 · 待回填 <span id="detail-alloc-pending" class="text-[#d29922]">0</span></span>
+                                <span class="text-gray-500 ml-2">已发放 <span id="detail-alloc-total">2</span> 路 · 未注册 <span id="detail-alloc-pending" class="text-[#d29922]">0</span></span>
                             </div>
                             <a class="text-xs text-[#58a6ff] hover:underline" id="detail-alloc-link" href="#" onclick="return false;">在设备详情页管理 / 增发 <i class="fas fa-arrow-right ml-1 text-[10px]"></i></a>
                         </div>
@@ -1376,7 +1376,7 @@
             const serial = String(Math.floor(100000 + Math.random() * 899999));
             const devPrefix = isNvr ? '44030000001180' : '44030000001320';
             channelCodeBase = '44030000001320' + serial.slice(-4);
-            const defaultCount = isNvr ? 16 : 1;
+            const defaultCount = isNvr ? 16 : 2;
             document.getElementById('cred-gbid').innerText = devPrefix + serial;
             document.getElementById('cred-pwd').innerText = Math.random().toString(36).slice(-8);
             document.getElementById('cred-channel-count').value = defaultCount;
@@ -1799,21 +1799,23 @@
             document.getElementById('modal-detail-overlay').classList.remove('hidden');
         }
 
-        // 通道编码发放台账（原型：NVR 演示 2 路已增发但设备尚未回填）
+        // 通道编码发放台账（设备未注册时通道一律未注册；NVR 可演示已增发但未注册的额外路）
         function renderDetailAllocations(isNvr, deviceName, deviceStatus) {
-            const reported = isNvr ? detailChannelRows.map(c => c.code) : ['44030000001320000101', '44030000001320000102'];
-            const extra = isNvr ? ['440300000013100000' + String(11 + 16).padStart(2, '0'), '440300000013100000' + String(11 + 17).padStart(2, '0')] : [];
-            const rows = reported.map((code, i) => ({ code: code, index: i + 1, reported: true }))
-                .concat(extra.map((code, i) => ({ code: code, index: reported.length + i + 1, reported: false })));
+            const deviceRegistered = deviceStatus !== '未注册';
+            const codes = isNvr ? detailChannelRows.map(c => c.code) : ['44030000001320000101', '44030000001320000102'];
+            const extra = (isNvr && deviceRegistered) ? ['440300000013100000' + String(11 + 16).padStart(2, '0'), '440300000013100000' + String(11 + 17).padStart(2, '0')] : [];
+            const rows = codes.map((code, i) => ({ code: code, index: i + 1, registered: deviceRegistered }))
+                .concat(extra.map((code, i) => ({ code: code, index: codes.length + i + 1, registered: false })));
+            const pending = rows.filter(r => !r.registered).length;
             document.getElementById('detail-alloc-total').innerText = rows.length;
-            document.getElementById('detail-alloc-pending').innerText = extra.length;
+            document.getElementById('detail-alloc-pending').innerText = pending;
             document.getElementById('detail-alloc-list').innerHTML = rows.map(r =>
                 '<div class="flex items-center justify-between px-4 py-2 bg-[#0d1117] text-xs">' +
                 '<span class="text-gray-500">通道 ' + r.index + '</span>' +
-                '<span class="flex items-center gap-3"><span class="font-mono ' + (r.reported ? 'text-gray-300' : 'text-[#58a6ff]') + '">' + r.code + '</span>' +
-                (r.reported
-                    ? '<span class="text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded">已对齐</span>'
-                    : '<span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">待回填</span>') +
+                '<span class="flex items-center gap-3"><span class="font-mono ' + (r.registered ? 'text-gray-300' : 'text-[#58a6ff]') + '">' + r.code + '</span>' +
+                (r.registered
+                    ? '<span class="text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded">已注册</span>'
+                    : '<span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未注册</span>') +
                 '</span></div>'
             ).join('');
             const link = document.getElementById('detail-alloc-link');
@@ -1846,6 +1848,8 @@
         }
 
         function saveDetailEdit() {
+            const ipInput = document.getElementById('detail-edit-ip');
+            if (ipInput) document.getElementById('detail-view-ip').textContent = ipInput.value.trim() || '—';
             toggleDetailEdit();
             showToast('基本信息已保存', 'success');
         }

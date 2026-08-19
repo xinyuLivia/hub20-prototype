@@ -329,7 +329,7 @@
     </div>
 
     <!-- 地图选点 Modal（可手改经纬度） -->
-    <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div id="map-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] hidden flex items-center justify-center">
         <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[800px] h-[620px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center bg-[#252525]">
                 <h3 class="text-sm font-medium text-white" id="map-picker-title">配置安装位置</h3>
@@ -361,13 +361,13 @@
     </div>
 
     <!-- ============ 接入凭证 Modal ============ -->
-    <div id="credentials-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[520px] flex flex-col overflow-hidden">
-            <div class="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#252525]">
+    <div id="credentials-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] hidden flex items-center justify-center">
+        <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[520px] flex flex-col overflow-hidden max-h-[85vh]">
+            <div class="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#252525] shrink-0">
                 <h3 class="text-sm font-medium text-white">接入凭证</h3>
                 <button onclick="closeCredentialsModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <div class="p-5 pb-6">
+            <div class="p-5 pb-6 overflow-y-auto flex-1 min-h-0">
                 <div class="text-xs text-[#58a6ff] flex items-start bg-[#1f6feb]/10 border border-[#1f6feb]/30 rounded p-3 mb-5">
                     <i class="fas fa-info-circle mt-0.5 mr-2 shrink-0"></i>
                     <span>以下信息由平台统一生成，请抄录至摄像头后台完成注册。</span>
@@ -404,12 +404,27 @@
                         </span>
                     </div>
                 </div>
+
+                <div class="mt-5 border border-[#30363d] rounded overflow-hidden">
+                    <div class="px-3 py-2.5 bg-[#0d1117] border-b border-[#30363d] flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-xs text-gray-300">通道编码发放
+                            <span class="text-[11px] text-gray-500 ml-1">已发放 <span id="cred-alloc-total">0</span> 路 · 已注册 <span id="cred-alloc-matched" class="text-[#3fb950]">0</span> · 未注册 <span id="cred-alloc-pending" class="text-[#d29922]">0</span></span>
+                        </span>
+                        <span class="flex items-center gap-2 text-[11px]">
+                            <label class="text-gray-500" for="cred-channel-count">通道数量</label>
+                            <input id="cred-channel-count" type="number" min="1" max="64" value="2" class="w-14 bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-white font-mono focus:outline-none focus:border-[#58a6ff]">
+                            <button type="button" onclick="confirmIssueCredChannels()" class="px-2.5 py-1 rounded bg-[#1f6feb] hover:bg-[#388bfd] text-white">确认并发放</button>
+                        </span>
+                    </div>
+                    <div id="cred-alloc-list" class="max-h-48 overflow-y-auto divide-y divide-[#21262d]"></div>
+                    <p class="px-3 py-2 bg-[#0d1117] border-t border-[#30363d] text-[11px] text-gray-500">修改数量后需点「确认并发放」才生效；已注册编码不可改、不可删，通道数量不可低于已注册路数。</p>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ============ 地图查看 Modal (只读) ============ -->
-    <div id="map-view-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div id="map-view-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] hidden flex items-center justify-center">
         <div class="bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl w-[800px] h-[560px] flex flex-col overflow-hidden">
             <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center bg-[#252525]">
                 <div class="flex items-center">
@@ -431,7 +446,7 @@
     </div>
 
     <!-- Toast 容器 -->
-    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1100] flex flex-col space-y-2"></div>
 
     <script>
         // Toast 系统
@@ -562,8 +577,99 @@
             }).catch(() => showToast('复制失败', 'error'));
         }
 
+        // 项目侧通道编码发放：与全局「国标配置」一致，支持调数量并「确认并发放」
+        let credAllocations = null;
+
+        function initCredAllocations() {
+            if (credAllocations) return;
+            let codes = [];
+            if (Array.isArray(window.projectNvrChannels) && projectNvrChannels.length) {
+                codes = projectNvrChannels.map(c => c.code);
+            } else {
+                codes = Array.from(document.querySelectorAll('#channel-tbody .channel-row'))
+                    .map(row => row.children[1] && row.children[1].textContent.trim())
+                    .filter(Boolean);
+            }
+            if (!codes.length) codes = ['44030000001320000001', '44030000001320000002'];
+            // 项目页设备默认在线，已有通道视为已注册
+            credAllocations = codes.map((code, i) => ({ index: i + 1, code: code, registered: true }));
+        }
+
+        function credRegisteredCount() {
+            return credAllocations.filter(a => a.registered).length;
+        }
+
+        function credNextCode() {
+            if (!credAllocations.length) return '44030000001320000001';
+            return String(BigInt(credAllocations[credAllocations.length - 1].code) + 1n);
+        }
+
         function openCredentialsModal() {
+            initCredAllocations();
+            renderCredAllocations();
             document.getElementById('credentials-modal').classList.remove('hidden');
+        }
+
+        function renderCredAllocations() {
+            const matched = credRegisteredCount();
+            const minCount = Math.max(1, matched);
+            const countInput = document.getElementById('cred-channel-count');
+            countInput.min = String(minCount);
+            countInput.value = credAllocations.length;
+            document.getElementById('cred-alloc-list').innerHTML = credAllocations.map(a => {
+                const state = a.registered
+                    ? '<span class="text-[#3fb950] bg-[#3fb950]/10 border border-[#3fb950]/30 px-1.5 py-0.5 rounded">已注册</span>'
+                    : '<span class="text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/30 px-1.5 py-0.5 rounded">未注册</span>';
+                const lock = a.registered ? ' <i class="fas fa-lock text-[10px] text-gray-600 ml-1" title="已注册，不可修改"></i>' : '';
+                return '<div class="flex items-center justify-between px-3 py-2 bg-[#1e1e1e] text-xs">' +
+                    '<span class="text-gray-500">通道 ' + a.index + '</span>' +
+                    '<span class="flex items-center gap-3">' +
+                    '<span class="font-mono ' + (a.registered ? 'text-gray-300' : 'text-[#58a6ff]') + '">' + a.code + lock + '</span>' +
+                    state +
+                    '</span></div>';
+            }).join('');
+            document.getElementById('cred-alloc-total').textContent = credAllocations.length;
+            document.getElementById('cred-alloc-matched').textContent = matched;
+            document.getElementById('cred-alloc-pending').textContent = credAllocations.length - matched;
+        }
+
+        function confirmIssueCredChannels() {
+            const matched = credRegisteredCount();
+            const minCount = Math.max(1, matched);
+            let target = parseInt(document.getElementById('cred-channel-count').value, 10);
+            if (isNaN(target)) { showToast('请输入有效的通道数量', 'error'); return; }
+            if (target < minCount) {
+                document.getElementById('cred-channel-count').value = minCount;
+                showToast('通道数量不可低于已注册路数（' + minCount + '）', 'error');
+                return;
+            }
+            target = Math.min(64, Math.max(minCount, target));
+            document.getElementById('cred-channel-count').value = target;
+            if (target === credAllocations.length) { showToast('通道数量未变化', 'error'); return; }
+
+            const prevLen = credAllocations.length;
+            if (target > prevLen) {
+                let code = credNextCode();
+                for (let i = prevLen; i < target; i++) {
+                    credAllocations.push({ index: i + 1, code: code, registered: false });
+                    code = String(BigInt(code) + 1n);
+                }
+                renderCredAllocations();
+                showToast('已增发 ' + (target - prevLen) + ' 路通道编码（已注册编码未改动）', 'success');
+                return;
+            }
+            while (credAllocations.length > target) {
+                const last = credAllocations[credAllocations.length - 1];
+                if (last.registered) {
+                    document.getElementById('cred-channel-count').value = credAllocations.length;
+                    showToast('末尾通道已注册，无法继续减少', 'error');
+                    renderCredAllocations();
+                    return;
+                }
+                credAllocations.pop();
+            }
+            renderCredAllocations();
+            showToast('已将通道数量调整为 ' + target + ' 路（已注册编码未改动）', 'success');
         }
 
         function closeCredentialsModal() {
